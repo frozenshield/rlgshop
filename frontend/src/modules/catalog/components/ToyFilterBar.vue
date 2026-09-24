@@ -173,8 +173,8 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
           class="w-full accent-red-600 cursor-pointer"
         />
         <div class="flex justify-between text-[10px] text-slate-400 font-semibold">
-          <span>$20</span>
-          <span>$120</span>
+          <span>{{ formatCurrency(20) }}</span>
+          <span>{{ formatCurrency(120) }}</span>
         </div>
       </div>
 

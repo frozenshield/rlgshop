@@ -198,9 +198,9 @@ const handleAddRecommended = (toyId: string) => {
                 class="w-full accent-red-600 cursor-pointer"
               />
               <div class="flex justify-between text-xs text-slate-400 font-bold">
-                <span>$20</span>
-                <span>$60</span>
-                <span>$120</span>
+                <span>{{ formatCurrency(20) }}</span>
+                <span>{{ formatCurrency(60) }}</span>
+                <span>{{ formatCurrency(120) }}</span>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { checkoutFormSchema } from '../checkout-form.schema'
 import type { CheckoutFormData } from '@/shared/types/toy.types'
 import BaseButton from '@/shared/components/BaseButton.vue'
+import { formatCurrency } from '@/shared/utils/currency.util'
 import * as yup from 'yup'
 
 interface Props {
@@ -172,7 +173,7 @@ const handleSubmit = async () => {
             </div>
             <p class="text-[11px] text-slate-500">3-5 business days</p>
           </div>
-          <span class="text-xs font-bold text-slate-800 mt-2">FREE / $5.99</span>
+          <span class="text-xs font-bold text-slate-800 mt-2">FREE / {{ formatCurrency(5.99) }}</span>
         </div>
 
         <!-- Express -->
@@ -188,7 +189,7 @@ const handleSubmit = async () => {
             </div>
             <p class="text-[11px] text-slate-500">1-2 days priority air dispatch</p>
           </div>
-          <span class="text-xs font-bold text-slate-800 mt-2">$12.99</span>
+          <span class="text-xs font-bold text-slate-800 mt-2">{{ formatCurrency(12.99) }}</span>
         </div>
 
         <!-- Gift Wrapped -->
@@ -204,7 +205,7 @@ const handleSubmit = async () => {
             </div>
             <p class="text-[11px] text-slate-500">Ribbon + Pikachu card note</p>
           </div>
-          <span class="text-xs font-bold text-slate-800 mt-2">$7.99</span>
+          <span class="text-xs font-bold text-slate-800 mt-2">{{ formatCurrency(7.99) }}</span>
         </div>
       </div>
 

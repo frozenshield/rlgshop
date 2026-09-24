@@ -1,10 +1,11 @@
 /**
- * Formats a number to currency string ($XX.XX)
+ * Formats a number to Philippine Peso currency string (₱XX.XX)
  */
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-PH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'PHP',
+    currencyDisplay: 'symbol',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
