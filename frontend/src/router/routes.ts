@@ -4,6 +4,7 @@ const HomeView = () => import('@/modules/home/HomeView.vue')
 const ToyCatalogView = () => import('@/modules/catalog/ToyCatalogView.vue')
 const CheckoutView = () => import('@/modules/checkout/CheckoutView.vue')
 const WishlistView = () => import('@/modules/wishlist/WishlistView.vue')
+const AuthCallbackView = () => import('@/modules/auth/AuthCallbackView.vue')
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -36,6 +37,14 @@ export const routes: RouteRecordRaw[] = [
     component: CheckoutView,
     meta: {
       title: 'Express Poké-Checkout | RLG Online Shop',
+    },
+  },
+  {
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: AuthCallbackView,
+    meta: {
+      title: 'Authenticating... | RLG Online Shop',
     },
   },
   {

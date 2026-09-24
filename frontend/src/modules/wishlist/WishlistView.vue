@@ -21,21 +21,21 @@ const {
   <div class="min-h-screen py-10 font-display">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       <!-- Wishlist Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-200/80 pb-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <button
             type="button"
-            class="text-xs font-bold text-slate-500 hover:text-red-600 flex items-center gap-1.5 mb-1 cursor-pointer transition-colors"
+            class="text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1.5 mb-1 cursor-pointer transition-colors"
             @click="router.back()"
           >
             &larr; Back
           </button>
           <div class="flex items-center gap-3">
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Trainer Wishlist &amp; Pokédex Saves
+              Collector Wishlist
             </h1>
-            <span class="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
-              {{ count }} caught items
+            <span class="bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full border border-rose-200">
+              {{ count }} saved items
             </span>
           </div>
         </div>
@@ -43,13 +43,13 @@ const {
         <div v-if="count > 0" class="flex items-center gap-3">
           <button
             type="button"
-            class="text-xs font-bold text-slate-400 hover:text-red-600 cursor-pointer"
+            class="text-xs font-bold text-slate-400 hover:text-rose-600 cursor-pointer"
             @click="clearWishlist"
           >
             Clear All
           </button>
           <BaseButton variant="primary" size="md" @click="moveAllToCart">
-            Catch All to Bag 🔴
+            Move All to Cart 🛒
           </BaseButton>
         </div>
       </div>
@@ -57,17 +57,17 @@ const {
       <!-- Empty State -->
       <div
         v-if="count === 0"
-        class="bg-white rounded-3xl p-16 text-center border border-amber-200/80 shadow-sm max-w-lg mx-auto space-y-4 my-8"
+        class="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm max-w-lg mx-auto space-y-4 my-8"
       >
-        <div class="w-20 h-20 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-4xl mx-auto border border-red-100">
-          🔴
+        <div class="w-20 h-20 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center text-3xl mx-auto border border-rose-100">
+          🤍
         </div>
-        <h3 class="text-xl font-bold text-slate-800">Your Poké-Wishlist is Empty</h3>
+        <h3 class="text-xl font-bold text-slate-900">Your Wishlist is Empty</h3>
         <p class="text-xs text-slate-500 max-w-sm mx-auto">
-          Save your dream Pokémon plushies, booster boxes, and battle figures here so you can easily catch them later!
+          Save your favorite TCG booster boxes, model kits, and scale figures here to track prices and availability!
         </p>
         <BaseButton variant="primary" size="md" @click="router.push('/catalog')">
-          Discover Pokémon Gear ⚡
+          Browse Products 🔍
         </BaseButton>
       </div>
 
@@ -76,13 +76,13 @@ const {
         <div
           v-for="toy in favoriteToys"
           :key="toy.id"
-          class="bg-white rounded-3xl p-4 border border-amber-200/80 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+          class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
         >
-          <div class="relative w-full aspect-square rounded-2xl overflow-hidden bg-amber-50 mb-3">
+          <div class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 mb-3">
             <img :src="toy.imageUrl" :alt="toy.name" class="w-full h-full object-cover" />
             <button
               type="button"
-              class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 text-red-500 flex items-center justify-center shadow-xs cursor-pointer hover:scale-110 transition-transform"
+              class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 text-slate-400 hover:text-rose-600 flex items-center justify-center shadow-xs cursor-pointer hover:scale-110 transition-transform"
               title="Remove"
               @click="toggleFavorite(toy.id)"
             >
@@ -93,7 +93,7 @@ const {
           <div class="space-y-2 flex-1 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span class="text-red-600 uppercase">{{ toy.brand }}</span>
+                <span class="text-rose-600 uppercase">{{ toy.brand }}</span>
                 <BaseBadge variant="secondary" size="sm">
                   {{ formatAgeGroup(toy.ageGroup) }}
                 </BaseBadge>
@@ -110,7 +110,7 @@ const {
 
             <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-3">
               <div>
-                <span class="text-base font-extrabold text-red-600">
+                <span class="text-base font-extrabold text-slate-900">
                   {{ formatCurrency(toy.price) }}
                 </span>
                 <span v-if="toy.originalPrice" class="text-xs text-slate-400 line-through ml-1.5">
@@ -119,7 +119,7 @@ const {
               </div>
 
               <BaseButton variant="primary" size="sm" @click="addSingleToCart(toy)">
-                Catch 🔴
+                Add to Cart
               </BaseButton>
             </div>
           </div>

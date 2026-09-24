@@ -29,10 +29,10 @@ const orderTotal = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white rounded-3xl p-6 border border-amber-200/80 shadow-sm space-y-4 font-display">
+  <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4 font-display">
     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-      <h3 class="text-base font-extrabold text-slate-800">Poké-Bag Summary</h3>
-      <span class="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
+      <h3 class="text-base font-extrabold text-slate-900">Order Summary</h3>
+      <span class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
         {{ cartStore.totalItemCount }} items
       </span>
     </div>
@@ -47,7 +47,7 @@ const orderTotal = computed(() => {
         <img
           :src="item.toy.imageUrl"
           :alt="item.toy.name"
-          class="w-12 h-12 rounded-xl object-cover bg-amber-50"
+          class="w-12 h-12 rounded-xl object-cover bg-slate-50 border border-slate-100"
         />
         <div class="flex-1 min-w-0">
           <p class="text-xs font-bold text-slate-800 truncate">{{ item.toy.name }}</p>
@@ -67,7 +67,7 @@ const orderTotal = computed(() => {
       </div>
 
       <div v-if="cartStore.promoDiscount > 0" class="flex justify-between text-emerald-600 font-bold">
-        <span>Trainer Promo ({{ cartStore.appliedPromo }})</span>
+        <span>Collector Coupon ({{ cartStore.appliedPromo }})</span>
         <span>-{{ formatCurrency(cartStore.promoDiscount) }}</span>
       </div>
 
@@ -80,13 +80,13 @@ const orderTotal = computed(() => {
 
       <div class="flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
         <span>Final Total</span>
-        <span class="text-red-600 font-extrabold text-lg">{{ formatCurrency(orderTotal) }}</span>
+        <span class="text-rose-600 font-extrabold text-lg">{{ formatCurrency(orderTotal) }}</span>
       </div>
     </div>
 
-    <div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/70 text-[11px] text-amber-900 flex items-center gap-2">
+    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
       <span class="text-sm">🛡️</span>
-      <span>100% Genuine Pokémon Center licensed goods. Guaranteed authentic cards and figures.</span>
+      <span>100% Genuine, Sealed Collector Products. Factory sealed booster boxes, official Bandai kits &amp; figures.</span>
     </div>
   </div>
 </template>

@@ -23,23 +23,23 @@ const percentage = computed(() => {
 </script>
 
 <template>
-  <div class="bg-amber-50/80 rounded-2xl p-3 border border-amber-200/80 space-y-1.5">
-    <div class="flex items-center justify-between text-xs font-bold">
-      <span v-if="remainingAmount > 0" class="text-amber-900 flex items-center gap-1.5">
+  <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/90 space-y-1.5 font-display">
+    <div class="flex items-center justify-between text-xs font-semibold">
+      <span v-if="remainingAmount > 0" class="text-slate-700 flex items-center gap-1.5">
         <span>🚚</span>
-        Add <span class="text-rose-600 font-extrabold">{{ formatCurrency(remainingAmount) }}</span> more for <span class="text-emerald-600 uppercase">Free Shipping!</span>
+        <span>Add <strong class="text-rose-600">{{ formatCurrency(remainingAmount) }}</strong> more for <strong class="text-emerald-600 uppercase">Free Nationwide Shipping!</strong></span>
       </span>
-      <span v-else class="text-emerald-700 flex items-center gap-1.5">
+      <span v-else class="text-emerald-700 flex items-center gap-1.5 font-bold">
         <span>🎉</span>
-        <span class="font-extrabold uppercase">You unlocked FREE Standard Shipping!</span>
+        <span class="uppercase">You unlocked FREE Nationwide Shipping!</span>
       </span>
-      <span class="text-slate-400 font-mono text-[11px]">{{ percentage }}%</span>
+      <span class="text-slate-400 font-mono text-[11px] font-bold">{{ percentage }}%</span>
     </div>
 
     <!-- Animated progress bar -->
-    <div class="w-full bg-amber-200/60 rounded-full h-2.5 overflow-hidden">
+    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
       <div
-        class="bg-gradient-to-r from-amber-400 via-rose-400 to-emerald-400 h-2.5 rounded-full transition-all duration-500 ease-out"
+        class="bg-gradient-to-r from-rose-500 to-emerald-500 h-2 rounded-full transition-all duration-500 ease-out"
         :style="{ width: `${percentage}%` }"
       ></div>
     </div>

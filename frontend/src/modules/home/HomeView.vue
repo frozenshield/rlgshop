@@ -46,10 +46,10 @@ const handleQuickView = (toy: ToyProduct) => {
             <div class="flex items-center gap-2">
               <span class="text-xl">🔥</span>
               <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                Top Trending &amp; Best Sellers
+                Hobby Favorites &amp; Best Sellers
               </h2>
             </div>
-            <p class="text-xs text-slate-500 font-medium">Most caught Pokémon &amp; anime collectibles by trainers this week</p>
+            <p class="text-xs text-slate-500 font-medium">Top-rated sealed booster boxes, Anime merchandise, and collectible figures this week</p>
           </div>
 
           <BaseButton
@@ -82,15 +82,15 @@ const handleQuickView = (toy: ToyProduct) => {
             <div class="flex items-center gap-2">
               <span class="text-xl">🃏</span>
               <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                TCG (Trading Cards) Spotlight
+                Trading Card Games (TCG) Spotlight
               </h2>
             </div>
-            <p class="text-xs text-slate-500 font-medium">Factory-sealed Pokémon and One Piece booster boxes, Elite Trainer Boxes &amp; Holos</p>
+            <p class="text-xs text-slate-500 font-medium">Factory-sealed Pokémon, One Piece, Yu-Gi-Oh! and Weiß Schwarz booster boxes</p>
           </div>
 
           <button
             type="button"
-            class="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors"
+            class="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
             @click="() => { catalogStore.setCategory('tcg'); router.push('/catalog') }"
           >
             <span>Explore All TCG</span>
@@ -108,57 +108,57 @@ const handleQuickView = (toy: ToyProduct) => {
         </div>
       </section>
 
-      <!-- 6. Pokémon & Anime Fan Reviews Section -->
-      <section class="bg-amber-100/40 rounded-3xl p-8 sm:p-12 border border-amber-200/80 space-y-6 text-center">
+      <!-- 6. Verified Hobbyist Reviews Section -->
+      <section class="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-xs space-y-6 text-center">
         <div class="max-w-xl mx-auto space-y-1">
-          <span class="text-xs font-extrabold uppercase tracking-widest text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
-            Gym Leader Approved
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
+            Verified Hobbyist Reviews
           </span>
           <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
-            Loved by Over 15,000+ Collectors &amp; Trainers
+            Trusted by 10,000+ Collectors &amp; Builders
           </h3>
-          <p class="text-xs text-slate-500">Read what collectors, parents, and trainers say about RLG Online Shop</p>
+          <p class="text-xs text-slate-500">Read authentic reviews from card players, model kit builders, and anime enthusiasts</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          <div class="bg-white rounded-2xl p-5 border border-red-100 shadow-sm space-y-3">
+          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-3">
             <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
             <p class="text-xs text-slate-600 leading-relaxed font-medium">
-              "The Scarlet &amp; Violet 151 Elite Trainer Box arrived in factory-sealed mint condition. Pulled the special illustration rare Snorlax! Best TCG source online."
+              "The Scarlet &amp; Violet 151 Elite Trainer Box and OP-05 booster box arrived in factory-sealed mint condition. The double-boxed packaging protected the corners perfectly!"
             </p>
             <div class="flex items-center gap-2.5 pt-1">
-              <span class="w-8 h-8 rounded-full bg-red-100 text-red-600 font-bold text-xs flex items-center justify-center">AK</span>
+              <span class="w-8 h-8 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center">MT</span>
               <div>
-                <h5 class="text-xs font-bold text-slate-800">Ash K.</h5>
-                <p class="text-[10px] text-slate-400">Pallet Town Collector</p>
+                <h5 class="text-xs font-bold text-slate-800">Marcus T.</h5>
+                <p class="text-[10px] text-slate-400">TCG Sealed Collector</p>
               </div>
             </div>
           </div>
 
-          <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm space-y-3">
+          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-3">
             <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
             <p class="text-xs text-slate-600 leading-relaxed font-medium">
-              "Got the giant 24\" Snorlax plush and the Luffy Gear 5 figure for my room setup. Quality is 10/10 official licensed goods. Super satisfied with RLG Online Shop!"
+              "Got the Luffy Gear 5 figure and Gunpla kits. 100% authentic licensed goods with pristine runners and flawless paint applications. Best hobby shop online!"
             </p>
             <div class="flex items-center gap-2.5 pt-1">
-              <span class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">MW</span>
+              <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">ER</span>
               <div>
-                <h5 class="text-xs font-bold text-slate-800">Misty W.</h5>
-                <p class="text-[10px] text-slate-400">Cerulean Anime Enthusiast</p>
+                <h5 class="text-xs font-bold text-slate-800">Elena R.</h5>
+                <p class="text-[10px] text-slate-400">Gunpla &amp; Figure Hobbyist</p>
               </div>
             </div>
           </div>
 
-          <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm space-y-3">
+          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-3">
             <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
             <p class="text-xs text-slate-600 leading-relaxed font-medium">
-              "The Gift Advisor recommended the Mega Charizard battle statue for my nephew. He finished building it in one weekend and loves the mechanized wing-flapping crank!"
+              "The Hobby Matcher quiz recommended the ideal deck sleeves and Charizard collection box for a tournament gift. Fast delivery and stellar customer service!"
             </p>
             <div class="flex items-center gap-2.5 pt-1">
-              <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">BS</span>
+              <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center">DC</span>
               <div>
-                <h5 class="text-xs font-bold text-slate-800">Brock S.</h5>
-                <p class="text-[10px] text-slate-400">Pewter Gym Leader</p>
+                <h5 class="text-xs font-bold text-slate-800">David C.</h5>
+                <p class="text-[10px] text-slate-400">Competitive Card Player</p>
               </div>
             </div>
           </div>

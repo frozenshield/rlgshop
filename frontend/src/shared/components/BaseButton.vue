@@ -23,23 +23,23 @@ const emit = defineEmits<{
 
 const variantClasses: Record<string, string> = {
   primary:
-    'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-200 active:scale-95',
+    'bg-slate-900 hover:bg-slate-800 text-white shadow-xs active:scale-95',
   secondary:
-    'bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 text-slate-900 shadow-md shadow-amber-200 active:scale-95 font-extrabold',
+    'bg-slate-100 hover:bg-slate-200 text-slate-800 active:scale-95 font-bold',
   accent:
-    'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-200 active:scale-95',
+    'bg-rose-600 hover:bg-rose-700 text-white shadow-xs shadow-rose-600/20 active:scale-95',
   outline:
-    'border-2 border-red-500 text-red-600 hover:bg-red-50 active:scale-95 bg-white',
+    'border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 active:scale-95 bg-white',
   ghost:
-    'text-slate-700 hover:bg-amber-100/70 active:scale-95',
+    'text-slate-700 hover:bg-slate-100 active:scale-95',
   soft:
-    'bg-red-50 hover:bg-red-100 text-red-600 font-semibold active:scale-95',
+    'bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold active:scale-95',
 }
 
 const sizeClasses: Record<string, string> = {
   sm: 'text-xs px-3 py-1.5 rounded-xl font-bold gap-1.5',
-  md: 'text-sm px-4 py-2.5 rounded-2xl font-bold gap-2',
-  lg: 'text-base px-6 py-3.5 rounded-2xl font-bold gap-2.5 shadow-lg',
+  md: 'text-sm px-4 py-2.5 rounded-xl font-bold gap-2',
+  lg: 'text-base px-6 py-3 rounded-xl font-bold gap-2.5 shadow-sm',
 }
 </script>
 

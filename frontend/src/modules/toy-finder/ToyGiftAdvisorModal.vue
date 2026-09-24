@@ -64,16 +64,16 @@ const handleAddRecommended = (toyId: string) => {
         @click="emit('close')"
       >
         <div
-          class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative border border-amber-200 font-display space-y-6 max-h-[90vh] overflow-y-auto"
+          class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 font-display space-y-6 max-h-[90vh] overflow-y-auto"
           @click.stop
         >
           <!-- Modal Header -->
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div class="flex items-center gap-2.5">
-              <span class="text-2xl">🔴</span>
+              <span class="text-2xl">🎯</span>
               <div>
-                <h3 class="text-lg font-extrabold text-slate-900">RLG Gift &amp; Collector Matcher</h3>
-                <p class="text-[11px] text-slate-500 font-semibold">Step {{ currentStep }} of 3 - Discover the perfect anime &amp; TCG collectible</p>
+                <h3 class="text-lg font-extrabold text-slate-900">RLG Collector &amp; Gift Matcher</h3>
+                <p class="text-[11px] text-slate-500 font-semibold">Step {{ currentStep }} of 3 - Discover the perfect hobby &amp; TCG collectible</p>
               </div>
             </div>
             <button
@@ -89,7 +89,7 @@ const handleAddRecommended = (toyId: string) => {
           <div v-if="currentStep === 1" class="space-y-4">
             <div class="text-center space-y-1">
               <h4 class="text-base font-extrabold text-slate-900">Who is this gift or collectible for?</h4>
-              <p class="text-xs text-slate-500">Select age / experience rank to match appropriate items.</p>
+              <p class="text-xs text-slate-500">Select experience level or age group to match appropriate items.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -97,12 +97,12 @@ const handleAddRecommended = (toyId: string) => {
                 v-for="opt in ageOptions"
                 :key="opt.id"
                 type="button"
-                class="p-4 rounded-2xl border-2 border-slate-200 hover:border-red-500 hover:bg-red-50/40 transition-all text-left flex items-center gap-3.5 group cursor-pointer"
+                class="p-4 rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/70 transition-all text-left flex items-center gap-3.5 group cursor-pointer"
                 @click="selectAge(opt.id)"
               >
                 <span class="text-3xl group-hover:scale-110 transition-transform">{{ opt.icon }}</span>
                 <div>
-                  <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-red-600 transition-colors">{{ opt.label }}</h5>
+                  <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-slate-900 transition-colors">{{ opt.label }}</h5>
                   <p class="text-[11px] text-slate-400 font-semibold">{{ opt.desc }}</p>
                 </div>
               </button>
@@ -122,7 +122,7 @@ const handleAddRecommended = (toyId: string) => {
                 <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">🃏 Trading Card Games (TCG)</span>
                 <button
                   type="button"
-                  class="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                  class="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
                   @click="selectInterest('tcg')"
                 >
                   All TCG &rarr;
@@ -134,12 +134,12 @@ const handleAddRecommended = (toyId: string) => {
                   v-for="series in tcgFranchises"
                   :key="series.id"
                   type="button"
-                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-red-500 hover:bg-red-50/40 transition-all text-left flex items-center gap-3 group cursor-pointer"
+                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/70 transition-all text-left flex items-center gap-3 group cursor-pointer"
                   @click="selectInterest('tcg', series.id)"
                 >
                   <span class="text-2xl group-hover:scale-110 transition-transform">{{ series.icon }}</span>
                   <div class="min-w-0">
-                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-red-600 transition-colors truncate">
+                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-slate-900 transition-colors truncate">
                       {{ series.name }}
                     </h5>
                     <p class="text-[10px] text-slate-400 font-medium truncate">{{ series.description }}</p>
@@ -154,24 +154,24 @@ const handleAddRecommended = (toyId: string) => {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
-                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-red-500 hover:bg-red-50/40 transition-all text-left flex items-center gap-3 group cursor-pointer"
+                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/70 transition-all text-left flex items-center gap-3 group cursor-pointer"
                   @click="selectInterest('anime-figures')"
                 >
                   <span class="text-2xl group-hover:scale-110 transition-transform">⚡</span>
                   <div class="min-w-0">
-                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-red-600 transition-colors truncate">Anime Figures</h5>
+                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-slate-900 transition-colors truncate">Anime Figures</h5>
                     <p class="text-[10px] text-slate-400 font-medium truncate">Scale statues &amp; articulated figures</p>
                   </div>
                 </button>
                 <button
                   type="button"
-                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-red-500 hover:bg-red-50/40 transition-all text-left flex items-center gap-3 group cursor-pointer"
+                  class="p-3 rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/70 transition-all text-left flex items-center gap-3 group cursor-pointer"
                   @click="selectInterest('anime-merchandise')"
                 >
                   <span class="text-2xl group-hover:scale-110 transition-transform">🎁</span>
                   <div class="min-w-0">
-                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-red-600 transition-colors truncate">Anime Merchandise</h5>
-                    <p class="text-[10px] text-slate-400 font-medium truncate">Plushies, Pokéballs &amp; trainer pins</p>
+                    <h5 class="text-xs font-extrabold text-slate-800 group-hover:text-slate-900 transition-colors truncate">Anime Merchandise</h5>
+                    <p class="text-[10px] text-slate-400 font-medium truncate">Plushies, model accessories &amp; pins</p>
                   </div>
                 </button>
               </div>
@@ -185,8 +185,8 @@ const handleAddRecommended = (toyId: string) => {
               <p class="text-xs text-slate-500">We will find the highest-rated collectibles within your price range.</p>
             </div>
 
-            <div class="bg-amber-50/70 p-6 rounded-3xl border border-amber-200 text-center space-y-3">
-              <div class="text-3xl font-extrabold text-red-600 font-display">
+            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+              <div class="text-3xl font-extrabold text-slate-900 font-display">
                 Up to {{ formatCurrency(selectedBudget) }}
               </div>
               <input
@@ -195,7 +195,7 @@ const handleAddRecommended = (toyId: string) => {
                 min="20"
                 max="120"
                 step="5"
-                class="w-full accent-red-600 cursor-pointer"
+                class="w-full accent-rose-600 cursor-pointer"
               />
               <div class="flex justify-between text-xs text-slate-400 font-bold">
                 <span>{{ formatCurrency(20) }}</span>
@@ -210,14 +210,14 @@ const handleAddRecommended = (toyId: string) => {
               fullWidth
               @click="submitBudget(selectedBudget)"
             >
-              Reveal Matching Products 🔴
+              Reveal Matching Products 🔍
             </BaseButton>
           </div>
 
           <!-- Step 4: Results Display -->
           <div v-else-if="currentStep === 4" class="space-y-4">
             <div class="text-center space-y-1">
-              <span class="text-2xl">⚡</span>
+              <span class="text-2xl">✨</span>
               <h4 class="text-base font-extrabold text-slate-900">Your Recommended Matches!</h4>
               <p class="text-xs text-slate-500">
                 Custom recommendations for Rank: {{ formatAgeGroup(selectedAge || 'all') }}
@@ -228,16 +228,16 @@ const handleAddRecommended = (toyId: string) => {
               <div
                 v-for="toy in recommendedToys"
                 :key="toy.id"
-                class="p-3.5 rounded-2xl border border-amber-200/80 bg-amber-50/30 flex items-center justify-between gap-3"
+                class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3"
               >
-                <img :src="toy.imageUrl" :alt="toy.name" class="w-14 h-14 rounded-xl object-cover" />
+                <img :src="toy.imageUrl" :alt="toy.name" class="w-14 h-14 rounded-xl object-cover border border-slate-200" />
                 <div class="flex-1 min-w-0">
                   <h5 class="text-xs font-bold text-slate-800 truncate">{{ toy.name }}</h5>
                   <p class="text-[11px] text-slate-400 font-semibold">{{ toy.brand }}</p>
-                  <span class="text-xs font-extrabold text-red-600">{{ formatCurrency(toy.price) }}</span>
+                  <span class="text-xs font-extrabold text-slate-900">{{ formatCurrency(toy.price) }}</span>
                 </div>
                 <BaseButton variant="primary" size="sm" @click="handleAddRecommended(toy.id)">
-                  Catch 🔴
+                  Add to Cart
                 </BaseButton>
               </div>
             </div>
@@ -245,7 +245,7 @@ const handleAddRecommended = (toyId: string) => {
             <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
               <button
                 type="button"
-                class="text-xs font-bold text-slate-500 hover:text-red-600 cursor-pointer"
+                class="text-xs font-bold text-slate-500 hover:text-slate-900 cursor-pointer"
                 @click="resetFinder"
               >
                 &larr; Search Again

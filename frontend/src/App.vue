@@ -17,7 +17,7 @@ const closeAdvisorModal = () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-amber-50/40 text-slate-800 selection:bg-red-600 selection:text-white">
+  <div class="min-h-screen flex flex-col bg-slate-50/80 text-slate-800 selection:bg-rose-600 selection:text-white">
     <!-- Header with logo, live search, cart & wishlist counters -->
     <AppHeader @open-advisor="openAdvisorModal" />
 

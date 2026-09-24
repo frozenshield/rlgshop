@@ -24,15 +24,15 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-          Shop by Specialty Category
+          Shop by Hobby Category
         </h2>
-        <p class="text-xs text-slate-500 font-medium">Explore authentic Trading Cards, Anime Figures &amp; Exclusive Merch</p>
+        <p class="text-xs text-slate-500 font-medium">Explore Trading Card Games, Japanese Model Kits, Scale Figures &amp; Supplies</p>
       </div>
       <router-link
         to="/catalog"
-        class="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors"
+        class="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
       >
-        <span>View All Vault</span>
+        <span>View All Categories</span>
         <span>&rarr;</span>
       </router-link>
     </div>
@@ -42,22 +42,22 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
       <div
         v-for="cat in CATEGORIES_DATA"
         :key="cat.id"
-        class="bg-white rounded-3xl p-6 border border-amber-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all flex flex-col justify-between cursor-pointer group relative overflow-hidden"
+        class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between cursor-pointer group relative overflow-hidden"
         @click="handleCategoryClick(cat.id)"
       >
         <!-- Top icon & badge -->
         <div class="flex items-start justify-between mb-4">
-          <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl group-hover:scale-110 transition-transform bg-amber-50/80 border border-amber-200/60 shadow-xs">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform bg-slate-50 border border-slate-200/80 shadow-2xs">
             {{ cat.icon }}
           </div>
-          <span class="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-600 group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
+          <span class="text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-600 group-hover:bg-rose-50 group-hover:text-rose-600 transition-colors">
             Explore &rarr;
           </span>
         </div>
 
         <!-- Info -->
         <div class="space-y-2">
-          <h3 class="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-red-600 transition-colors">
+          <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
             {{ cat.name }}
           </h3>
           <p class="text-xs text-slate-500 font-medium leading-relaxed">
@@ -69,7 +69,7 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
             <span
               v-for="series in TCG_SERIES_DATA"
               :key="series.id"
-              class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-50 text-blue-800 hover:bg-blue-600 hover:text-white transition-colors cursor-pointer border border-blue-200/60"
+              class="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-900 hover:text-white transition-colors cursor-pointer border border-slate-200"
               @click="(e) => handleTcgSeriesClick(e, series.id)"
             >
               {{ series.icon }} {{ series.shortName }}
@@ -78,9 +78,9 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
         </div>
 
         <!-- Bottom bar highlight -->
-        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-400 group-hover:text-slate-800 transition-colors">
-          <span>Official Licensed Collection</span>
-          <span class="text-red-600 font-extrabold">Shop {{ cat.name.split(' ')[0] }} &rarr;</span>
+        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-400 group-hover:text-slate-800 transition-colors">
+          <span>Official Factory Sealed</span>
+          <span class="text-rose-600 font-bold">Shop {{ cat.name.split(' ')[0] }} &rarr;</span>
         </div>
       </div>
     </div>

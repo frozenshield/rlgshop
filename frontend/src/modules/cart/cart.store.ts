@@ -10,8 +10,11 @@ export const useCartStore = defineStore('cartStore', () => {
   const appliedPromo = useStorage<string | null>('rlg-shop-promo', null)
   const promoDiscountPercentage = ref(0)
 
-  // Pokemon theme valid promo codes
+  // Hobby & collector valid promo codes
   const VALID_PROMOS: Record<string, number> = {
+    HOBBY10: 10,
+    GUNPLA20: 20,
+    COLLECTOR25: 25,
     PIKACHU10: 10,
     POKEBALL20: 20,
     MASTERBALL: 25,
