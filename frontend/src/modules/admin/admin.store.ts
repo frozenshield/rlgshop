@@ -16,8 +16,25 @@ import type {
 } from './admin.types'
 
 export const useAdminStore = defineStore('adminStore', () => {
-  // Current logged in admin session
-  const currentAdmin = useStorage<AdminUser | null>('rlg-admin-session', null)
+  // Current logged in admin session (defaults to demo Super Admin)
+  const currentAdmin = useStorage<AdminUser | null>('rlg-admin-session', {
+    id: 'ADM-1001',
+    name: 'Admin Chief',
+    email: 'admin@rlghobby.com',
+    role: 'super-admin',
+    lastLogin: 'Active Now',
+  })
+
+  // Self-heal session if localStorage currently holds null or corrupt data
+  if (!currentAdmin.value || typeof currentAdmin.value !== 'object' || !currentAdmin.value.name) {
+    currentAdmin.value = {
+      id: 'ADM-1001',
+      name: 'Admin Chief',
+      email: 'admin@rlghobby.com',
+      role: 'super-admin',
+      lastLogin: 'Active Now',
+    }
+  }
 
   // Dashboard timeframe filter
   const dashboardTimeframe = ref<'today' | 'week' | 'month'>('week')

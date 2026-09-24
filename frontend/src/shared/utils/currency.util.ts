@@ -2,13 +2,14 @@
  * Formats a number to Philippine Peso currency string (₱XX.XX)
  */
 export const formatCurrency = (amount: number): string => {
+  const safeAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
     currencyDisplay: 'symbol',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(safeAmount)
 }
 
 /**

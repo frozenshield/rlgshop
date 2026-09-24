@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAdminStore } from './admin.store'
 
@@ -22,17 +22,17 @@ const handleSignOut = () => {
   router.push('/admin/login')
 }
 
-const navItems = [
+const navItems = computed(() => [
   { path: '/admin/dashboard', name: 'Dashboard', icon: '📊', badge: null },
-  { path: '/admin/orders', name: 'Orders', icon: '📦', badge: adminStore.metrics.pendingOrdersCount },
-  { path: '/admin/inventory', name: 'Inventory & Stock', icon: '🏷️', badge: adminStore.metrics.lowStockCount ? 'Low' : null },
+  { path: '/admin/orders', name: 'Orders', icon: '📦', badge: adminStore.metrics?.pendingOrdersCount ?? null },
+  { path: '/admin/inventory', name: 'Inventory & Stock', icon: '🏷️', badge: adminStore.metrics?.lowStockCount ? 'Low' : null },
   { path: '/admin/products', name: 'Product Catalog', icon: '➕', badge: 'New' },
-  { path: '/admin/customers', name: 'Customers & CRM', icon: '👥', badge: adminStore.metrics.unreadInquiriesCount || null },
+  { path: '/admin/customers', name: 'Customers & CRM', icon: '👥', badge: adminStore.metrics?.unreadInquiriesCount || null },
   { path: '/admin/marketing', name: 'Marketing & Promos', icon: '🎯', badge: null },
   { path: '/admin/cms', name: 'CMS & Storefront', icon: '🎨', badge: null },
   { path: '/admin/analytics', name: 'Analytics & Reports', icon: '📈', badge: null },
   { path: '/admin/settings', name: 'Settings & Config', icon: '⚙️', badge: null },
-]
+])
 </script>
 
 <template>
@@ -102,7 +102,7 @@ const navItems = [
           :class="isSidebarCollapsed ? 'justify-center' : ''"
         >
           <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
-            {{ adminStore.currentAdmin?.name.charAt(0) || 'A' }}
+            {{ (adminStore.currentAdmin?.name || 'Admin').charAt(0).toUpperCase() }}
           </div>
           <div v-if="!isSidebarCollapsed" class="flex-1 min-w-0">
             <p class="text-xs font-bold text-white truncate">{{ adminStore.currentAdmin?.name || 'Administrator' }}</p>
@@ -141,7 +141,7 @@ const navItems = [
           <div class="flex items-center gap-2 text-xs font-bold text-slate-400">
             <span>Admin</span>
             <span>/</span>
-            <span class="text-slate-800 capitalize">{{ route.name?.toString().replace('admin-', '') || 'Dashboard' }}</span>
+            <span class="text-slate-800 capitalize">{{ (route.name || 'dashboard').toString().replace('admin-', '') }}</span>
           </div>
         </div>
 
