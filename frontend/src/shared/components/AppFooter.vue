@@ -98,6 +98,7 @@ const handleSubscribe = () => {
             <li><a href="#" class="hover:text-rose-600 transition-colors">Authenticity Guarantee</a></li>
             <li><a href="#" class="hover:text-rose-600 transition-colors">Shipping &amp; Delivery Policies</a></li>
             <li><a href="#" class="hover:text-rose-600 transition-colors">Collector FAQs</a></li>
+            <li><router-link to="/admin/login" class="text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-1 font-bold text-xs pt-1"><span>Staff Portal &bull; Login</span> <span class="text-[9px] bg-slate-900 text-white px-1.5 py-0.2 rounded font-mono">ADMIN</span></router-link></li>
           </ul>
         </div>
 

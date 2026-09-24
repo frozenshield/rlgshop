@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AppHeader from './shared/components/AppHeader.vue'
 import AppFooter from './shared/components/AppFooter.vue'
 import CartDrawer from './modules/cart/components/CartDrawer.vue'
 import ToyGiftAdvisorModal from './modules/toy-finder/ToyGiftAdvisorModal.vue'
+
+const route = useRoute()
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 const isAdvisorOpen = ref(false)
 
@@ -19,7 +23,7 @@ const closeAdvisorModal = () => {
 <template>
   <div class="min-h-screen flex flex-col bg-slate-50/80 text-slate-800 selection:bg-rose-600 selection:text-white">
     <!-- Header with logo, live search, cart & wishlist counters -->
-    <AppHeader @open-advisor="openAdvisorModal" />
+    <AppHeader v-if="!isAdminRoute" @open-advisor="openAdvisorModal" />
 
     <!-- Main View Viewport -->
     <main class="flex-1">
@@ -39,15 +43,16 @@ const closeAdvisorModal = () => {
     </main>
 
     <!-- Global Cart Drawer Slide-Over -->
-    <CartDrawer />
+    <CartDrawer v-if="!isAdminRoute" />
 
-    <!-- Global Poke-Match Advisor Quiz Modal -->
+    <!-- Global Hobby Matcher Advisor Quiz Modal -->
     <ToyGiftAdvisorModal
+      v-if="!isAdminRoute"
       :is-open="isAdvisorOpen"
       @close="closeAdvisorModal"
     />
 
-    <!-- Global Pokemon Center Footer -->
-    <AppFooter />
+    <!-- Global Storefront Footer -->
+    <AppFooter v-if="!isAdminRoute" />
   </div>
 </template>
