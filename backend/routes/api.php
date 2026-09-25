@@ -2,12 +2,19 @@
 
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+// Username / Password Authentication
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 // Google Authentication
 Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle']);

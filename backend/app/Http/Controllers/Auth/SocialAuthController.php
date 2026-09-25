@@ -36,6 +36,7 @@ class SocialAuthController extends Controller
             ->first();
 
         if ($user) {
+            // Preserve existing user_type (e.g. admin should stay admin after Google re-login)
             $user->update([
                 'google_id' => $user->google_id ?? $googleUser->getId(),
                 'avatar' => $googleUser->getAvatar() ?? $user->avatar,
@@ -49,6 +50,7 @@ class SocialAuthController extends Controller
                 'avatar' => $googleUser->getAvatar(),
                 'email_verified_at' => now(),
                 'password' => null,
+                'user_type' => 'customer',
             ]);
         }
 
