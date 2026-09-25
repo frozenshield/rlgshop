@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AiProductController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
@@ -23,6 +24,9 @@ Route::get('/brands', function () {
 Route::get('/conditions', function () {
     return response()->json(RefCondition::all());
 });
+
+// Products Catalog API
+Route::apiResource('products', ProductController::class);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {

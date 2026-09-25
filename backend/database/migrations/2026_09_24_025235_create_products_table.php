@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('stock')->default(0);
             $table->text('description')->nullable();
             $table->foreignId('ref_brand_id')->nullable()->constrained('ref_brands')->nullOnDelete();
-            $table->foreignId('ref_category_id')->constrained('ref_categories')->cascadeOnDelete();
+            $table->foreignId('ref_category_id')->nullable()->constrained('ref_categories')->nullOnDelete();
             $table->foreignId('ref_subcategory_id')->nullable()->constrained('ref_subcategories')->nullOnDelete();
             $table->foreignId('ref_condition_id')->nullable()->constrained('ref_conditions')->nullOnDelete();
             $table->decimal('price', 10, 2);
