@@ -1,17 +1,17 @@
 <script setup lang="ts">
 interface Props {
-  rating: number
-  maxStars?: number
-  reviewCount?: number
-  size?: 'sm' | 'md'
-  showCount?: boolean
+  rating: number;
+  maxStars?: number;
+  reviewCount?: number;
+  size?: "sm" | "md";
+  showCount?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   maxStars: 5,
-  size: 'sm',
+  size: "sm",
   showCount: true,
-})
+});
 </script>
 
 <template>
@@ -21,7 +21,9 @@ const props = withDefaults(defineProps<Props>(), {
         <svg
           :class="[
             size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4',
-            star <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200',
+            star <= Math.round(rating)
+              ? 'text-amber-400 fill-amber-400'
+              : 'text-slate-200 fill-slate-200',
           ]"
           viewBox="0 0 24 24"
         >

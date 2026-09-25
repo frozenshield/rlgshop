@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import type { PlacedOrder } from '@/shared/types/toy.types'
-import { formatCurrency } from '@/shared/utils/currency.util'
-import BaseButton from '@/shared/components/BaseButton.vue'
+import { useRouter } from "vue-router";
+import type { PlacedOrder } from "@/shared/types/toy.types";
+import { formatCurrency } from "@/shared/utils/currency.util";
+import BaseButton from "@/shared/components/BaseButton.vue";
 
 interface Props {
-  order: PlacedOrder | null
-  isOpen: boolean
+  order: PlacedOrder | null;
+  isOpen: boolean;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-}>()
+  (e: "close"): void;
+}>();
 
-const router = useRouter()
+const router = useRouter();
 
 const handleContinueShopping = () => {
-  emit('close')
-  router.push('/catalog')
-}
+  emit("close");
+  router.push("/catalog");
+};
 </script>
 
 <template>
@@ -41,49 +41,73 @@ const handleContinueShopping = () => {
           class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 font-display text-center space-y-5 animate-scale-up"
         >
           <!-- Confetti / Success Header -->
-          <div class="w-18 h-18 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-emerald-500/20">
+          <div
+            class="w-18 h-18 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-emerald-500/20"
+          >
             ✓
           </div>
 
           <div>
-            <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span
+              class="text-xs font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200"
+            >
               Order Confirmed &amp; In Fulfillment
             </span>
             <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
               Thank You for Your Order!
             </h2>
             <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              We received your order, <span class="font-bold text-slate-700">{{ order.shippingDetails.firstName }}</span>! Our fulfillment team is preparing your collector items with reinforced packaging and tracking.
+              We received your order,
+              <span class="font-bold text-slate-700">{{
+                order.shippingDetails.firstName
+              }}</span
+              >! Our fulfillment team is preparing your collector items with
+              reinforced packaging and tracking.
             </p>
           </div>
 
           <!-- Order Summary Card -->
-          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-left space-y-2.5 text-xs">
-            <div class="flex justify-between items-center pb-2 border-b border-slate-200/70 font-bold">
+          <div
+            class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-left space-y-2.5 text-xs"
+          >
+            <div
+              class="flex justify-between items-center pb-2 border-b border-slate-200/70 font-bold"
+            >
               <span class="text-slate-500">Order Reference:</span>
-              <span class="text-rose-600 font-mono text-sm">{{ order.orderId }}</span>
+              <span class="text-rose-600 font-mono text-sm">{{
+                order.orderId
+              }}</span>
             </div>
 
             <div class="flex justify-between items-center">
               <span class="text-slate-500">Est. Dispatch Date:</span>
-              <span class="font-bold text-slate-800">{{ order.estimatedDeliveryDate }}</span>
+              <span class="font-bold text-slate-800">{{
+                order.estimatedDeliveryDate
+              }}</span>
             </div>
 
             <div class="flex justify-between items-center">
               <span class="text-slate-500">Ship To:</span>
               <span class="font-bold text-slate-800 truncate max-w-[200px]">
-                {{ order.shippingDetails.firstName }} {{ order.shippingDetails.lastName }}
+                {{ order.shippingDetails.firstName }}
+                {{ order.shippingDetails.lastName }}
               </span>
             </div>
 
-            <div class="flex justify-between items-center pt-2 border-t border-slate-200/70 font-extrabold text-sm text-slate-900">
+            <div
+              class="flex justify-between items-center pt-2 border-t border-slate-200/70 font-extrabold text-sm text-slate-900"
+            >
               <span>Total Paid:</span>
-              <span class="text-rose-600">{{ formatCurrency(order.total) }}</span>
+              <span class="text-rose-600">{{
+                formatCurrency(order.total)
+              }}</span>
             </div>
           </div>
 
           <!-- Items Ordered Mini-Preview -->
-          <div class="flex items-center justify-center gap-2 overflow-hidden py-1">
+          <div
+            class="flex items-center justify-center gap-2 overflow-hidden py-1"
+          >
             <img
               v-for="item in order.items.slice(0, 4)"
               :key="item.toy.id"
