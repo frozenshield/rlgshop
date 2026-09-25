@@ -1,97 +1,124 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useStorage } from '@vueuse/core'
-import { useCartStore } from '@/modules/cart/cart.store'
-import { useWishlistStore } from '@/modules/wishlist/wishlist.store'
-import { useCatalogStore } from '@/modules/catalog/catalog.store'
-import { TCG_SERIES_DATA } from '@/shared/constants/categories.data'
-import { formatCurrency } from '../utils/currency.util'
-import BaseBadge from './BaseBadge.vue'
-import type { TcgSubCategory } from '../types/toy.types'
+import { ref, computed } from "vue";
+import { useRouter } from "vue-router";
+import { useStorage } from "@vueuse/core";
+import { useCartStore } from "@/modules/cart/cart.store";
+import { useWishlistStore } from "@/modules/wishlist/wishlist.store";
+import { useCatalogStore } from "@/modules/catalog/catalog.store";
+import { TCG_SERIES_DATA } from "@/shared/constants/categories.data";
+import { formatCurrency } from "../utils/currency.util";
+import BaseBadge from "./BaseBadge.vue";
+import type { TcgSubCategory } from "../types/toy.types";
 
 const emit = defineEmits<{
-  (e: 'open-advisor'): void
-}>()
+  (e: "open-advisor"): void;
+  (e: "open-auth"): void;
+}>();
 
-const router = useRouter()
-const cartStore = useCartStore()
-const wishlistStore = useWishlistStore()
-const catalogStore = useCatalogStore()
+const router = useRouter();
+const cartStore = useCartStore();
+const wishlistStore = useWishlistStore();
+const catalogStore = useCatalogStore();
 
-const authToken = useStorage<string | null>('auth_token', null)
+const authToken = useStorage<string | null>("auth_token", null);
 
 const handleSignOut = () => {
-  authToken.value = null
-  localStorage.removeItem('auth_token')
-}
+  authToken.value = null;
+  localStorage.removeItem("auth_token");
+};
 
-const localSearchText = ref('')
-const isSearchFocused = ref(false)
-const isMobileMenuOpen = ref(false)
-const isTcgDropdownOpen = ref(false)
+const localSearchText = ref("");
+const isSearchFocused = ref(false);
+const isMobileMenuOpen = ref(false);
+const isTcgDropdownOpen = ref(false);
 
 const searchPreviewResults = computed(() => {
-  if (!localSearchText.value.trim()) return []
-  const query = localSearchText.value.toLowerCase().trim()
+  if (!localSearchText.value.trim()) return [];
+  const query = localSearchText.value.toLowerCase().trim();
   return catalogStore.toys
-    .filter((toy) =>
-      toy.name.toLowerCase().includes(query) ||
-      toy.category.includes(query) ||
-      (toy.tcgSeries && toy.tcgSeries.toLowerCase().includes(query)) ||
-      (toy.pokemonType && toy.pokemonType.toLowerCase().includes(query)),
+    .filter(
+      (toy) =>
+        toy.name.toLowerCase().includes(query) ||
+        toy.category.includes(query) ||
+        (toy.tcgSeries && toy.tcgSeries.toLowerCase().includes(query)) ||
+        (toy.pokemonType && toy.pokemonType.toLowerCase().includes(query)),
     )
-    .slice(0, 4)
-})
+    .slice(0, 4);
+});
 
 const handleSearchSubmit = () => {
-  if (!localSearchText.value.trim()) return
-  catalogStore.setSearchQuery(localSearchText.value)
-  isSearchFocused.value = false
-  router.push('/catalog')
-}
+  if (!localSearchText.value.trim()) return;
+  catalogStore.setSearchQuery(localSearchText.value);
+  isSearchFocused.value = false;
+  router.push("/catalog");
+};
 
 const handleSelectPreview = (toyId: string) => {
-  const toy = catalogStore.toys.find((t) => t.id === toyId)
+  const toy = catalogStore.toys.find((t) => t.id === toyId);
   if (toy) {
-    catalogStore.openDetailModal(toy)
+    catalogStore.openDetailModal(toy);
   }
-  isSearchFocused.value = false
-  localSearchText.value = ''
-}
+  isSearchFocused.value = false;
+  localSearchText.value = "";
+};
 
-const navigateToCategory = (cat: 'tcg' | 'anime-figures' | 'anime-merchandise' | 'all') => {
-  catalogStore.setCategory(cat)
-  isMobileMenuOpen.value = false
-  isTcgDropdownOpen.value = false
-  router.push('/catalog')
-}
+const navigateToCategory = (
+  cat: "tcg" | "anime-figures" | "anime-merchandise" | "all",
+) => {
+  catalogStore.setCategory(cat);
+  isMobileMenuOpen.value = false;
+  isTcgDropdownOpen.value = false;
+  router.push("/catalog");
+};
 
 const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
-  catalogStore.setTcgSeries(seriesId)
-  isMobileMenuOpen.value = false
-  isTcgDropdownOpen.value = false
-  router.push('/catalog')
-}
+  catalogStore.setTcgSeries(seriesId);
+  isMobileMenuOpen.value = false;
+  isTcgDropdownOpen.value = false;
+  router.push("/catalog");
+};
 </script>
 
 <template>
   <!-- Top Flash Announcement Bar -->
-  <div class="bg-slate-900 text-white text-xs font-semibold py-2 px-4 text-center tracking-wide flex items-center justify-center gap-2 border-b border-slate-800">
+  <div
+    class="bg-slate-900 text-white text-xs font-semibold py-2 px-4 text-center tracking-wide flex items-center justify-center gap-2 border-b border-slate-800"
+  >
     <span class="text-rose-400">⚡</span>
-    <span>WELCOME TO RLG HOBBY SHOP • FREE SHIPPING NATIONWIDE ON ORDERS OVER ₱2,500 • USE CODE <span class="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono font-bold">HOBBY10</span> FOR 10% OFF</span>
+    <span
+      >WELCOME TO RLG HOBBY SHOP • FREE SHIPPING NATIONWIDE ON ORDERS OVER
+      ₱2,500 • USE CODE
+      <span
+        class="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono font-bold"
+        >HOBBY10</span
+      >
+      FOR 10% OFF</span
+    >
     <span class="text-rose-400">⚡</span>
   </div>
 
   <!-- Main Navbar -->
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all font-display">
+  <header
+    class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all font-display"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-20 gap-4">
         <!-- Logo -->
-        <router-link to="/" class="flex items-center gap-3 group select-none flex-shrink-0">
-          <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-slate-900 via-rose-600 to-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200 text-white font-black text-xl">
+        <router-link
+          to="/"
+          class="flex items-center gap-3 group select-none flex-shrink-0"
+        >
+          <div
+            class="w-11 h-11 rounded-xl bg-gradient-to-tr from-slate-900 via-rose-600 to-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200 text-white font-black text-xl"
+          >
             <!-- Modern Hobby Emblem -->
-            <svg viewBox="0 0 24 24" class="w-6 h-6 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              class="w-6 h-6 fill-none stroke-current"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <rect x="3" y="3" width="18" height="18" rx="4" />
               <path d="m9 12 2 2 4-4" />
               <path d="M12 3v4" />
@@ -100,19 +127,27 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <span class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition-colors">
+              <span
+                class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition-colors"
+              >
                 RLG <span class="text-rose-600">HOBBY</span>
               </span>
-              <span class="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase tracking-widest border border-slate-200">
+              <span
+                class="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase tracking-widest border border-slate-200"
+              >
                 Shop
               </span>
             </div>
-            <p class="text-[11px] text-slate-400 font-medium tracking-wide">TCG • Gunpla • Figures • Supplies</p>
+            <p class="text-[11px] text-slate-400 font-medium tracking-wide">
+              TCG • Gunpla • Figures • Supplies
+            </p>
           </div>
         </router-link>
 
         <!-- Desktop Navigation Links -->
-        <nav class="hidden md:flex items-center gap-1 lg:gap-2 text-sm font-bold text-slate-700">
+        <nav
+          class="hidden md:flex items-center gap-1 lg:gap-2 text-sm font-bold text-slate-700"
+        >
           <router-link
             to="/"
             class="px-3 py-2 rounded-xl hover:text-rose-600 hover:bg-rose-50 transition-colors"
@@ -139,12 +174,27 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             <button
               type="button"
               class="px-3 py-2 rounded-xl hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-1.5 cursor-pointer"
-              :class="catalogStore.selectedCategory === 'tcg' ? 'text-rose-600 bg-rose-50' : ''"
+              :class="
+                catalogStore.selectedCategory === 'tcg'
+                  ? 'text-rose-600 bg-rose-50'
+                  : ''
+              "
               @click="navigateToCategory('tcg')"
             >
               <span>🃏 TCG Cards</span>
-              <svg class="w-3.5 h-3.5 transition-transform" :class="isTcgDropdownOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+              <svg
+                class="w-3.5 h-3.5 transition-transform"
+                :class="isTcgDropdownOpen ? 'rotate-180' : ''"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
@@ -161,7 +211,9 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
                 v-if="isTcgDropdownOpen"
                 class="absolute top-full left-0 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1 z-50 font-display"
               >
-                <div class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                <div
+                  class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100"
+                >
                   Select TCG Franchise:
                 </div>
                 <button
@@ -173,7 +225,9 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
                     <span>🃏</span>
                     <span>All TCG Games</span>
                   </span>
-                  <span class="text-[10px] text-rose-600 font-bold">&rarr;</span>
+                  <span class="text-[10px] text-rose-600 font-bold"
+                    >&rarr;</span
+                  >
                 </button>
                 <button
                   v-for="series in TCG_SERIES_DATA"
@@ -186,7 +240,10 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
                     <span>{{ series.icon }}</span>
                     <span>{{ series.name }}</span>
                   </span>
-                  <span class="text-[10px] text-slate-400 group-hover:text-rose-600">Browse</span>
+                  <span
+                    class="text-[10px] text-slate-400 group-hover:text-rose-600"
+                    >Browse</span
+                  >
                 </button>
               </div>
             </transition>
@@ -196,7 +253,11 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <button
             type="button"
             class="px-3 py-2 rounded-xl hover:text-rose-600 hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
-            :class="catalogStore.selectedCategory === 'anime-figures' ? 'text-rose-600 bg-slate-100' : ''"
+            :class="
+              catalogStore.selectedCategory === 'anime-figures'
+                ? 'text-rose-600 bg-slate-100'
+                : ''
+            "
             @click="navigateToCategory('anime-figures')"
           >
             <span>🤖 Figures</span>
@@ -206,7 +267,11 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <button
             type="button"
             class="px-3 py-2 rounded-xl hover:text-indigo-600 hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
-            :class="catalogStore.selectedCategory === 'anime-merchandise' ? 'text-indigo-600 bg-slate-100' : ''"
+            :class="
+              catalogStore.selectedCategory === 'anime-merchandise'
+                ? 'text-indigo-600 bg-slate-100'
+                : ''
+            "
             @click="navigateToCategory('anime-merchandise')"
           >
             <span>🛡️ Supplies</span>
@@ -257,7 +322,9 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             v-if="isSearchFocused && searchPreviewResults.length > 0"
             class="absolute top-12 left-0 right-0 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1 z-50 animate-scale-up font-display"
           >
-            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">
+            <div
+              class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1"
+            >
               Matching Products:
             </div>
             <button
@@ -273,8 +340,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
                 class="w-10 h-10 rounded-lg object-cover bg-slate-50 border border-slate-100"
               />
               <div class="flex-1 min-w-0">
-                <p class="text-xs font-bold text-slate-800 truncate">{{ item.name }}</p>
-                <p class="text-[11px] text-rose-600 font-extrabold">{{ formatCurrency(item.price) }}</p>
+                <p class="text-xs font-bold text-slate-800 truncate">
+                  {{ item.name }}
+                </p>
+                <p class="text-[11px] text-rose-600 font-extrabold">
+                  {{ formatCurrency(item.price) }}
+                </p>
               </div>
             </button>
           </div>
@@ -292,18 +363,23 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
               @click="handleSignOut"
             >
               <span>Collector</span>
-              <span class="text-[10px] text-slate-400 font-semibold">(Sign out)</span>
+              <span class="text-[10px] text-slate-400 font-semibold"
+                >(Sign out)</span
+              >
             </button>
-            <a
+            <button
               v-else
-              href="http://localhost:8000/api/auth/google/redirect"
+              type="button"
               class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+              @click="emit('open-auth')"
             >
               <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
+                <path
+                  d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"
+                />
               </svg>
-              <span>Sign in with Google</span>
-            </a>
+              <span>Sign In</span>
+            </button>
           </div>
 
           <!-- Wishlist Button -->
@@ -313,7 +389,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             title="Saved Wishlist"
             aria-label="Collector Wishlist"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -337,7 +418,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             @click="cartStore.openDrawer"
           >
             <div class="relative">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -364,7 +450,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             aria-label="Toggle navigation menu"
             @click="isMobileMenuOpen = !isMobileMenuOpen"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 v-if="!isMobileMenuOpen"
                 stroke-linecap="round"
@@ -385,9 +476,14 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
       </div>
 
       <!-- Mobile Dropdown Navigation -->
-      <div v-if="isMobileMenuOpen" class="md:hidden py-4 border-t border-slate-200 space-y-2">
+      <div
+        v-if="isMobileMenuOpen"
+        class="md:hidden py-4 border-t border-slate-200 space-y-2"
+      >
         <div class="px-2 pb-2">
-          <label for="mobile-search" class="sr-only">Mobile Search Products</label>
+          <label for="mobile-search" class="sr-only"
+            >Mobile Search Products</label
+          >
           <input
             id="mobile-search"
             v-model="localSearchText"
@@ -414,8 +510,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
         </router-link>
 
         <!-- TCG Subcategories in Mobile -->
-        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1.5 mx-2">
-          <div class="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
+        <div
+          class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1.5 mx-2"
+        >
+          <div
+            class="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider"
+          >
             🃏 TCG Franchises:
           </div>
           <button
@@ -463,13 +563,18 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
         <button
           type="button"
           class="w-full text-left px-4 py-2 rounded-xl text-sm font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer flex items-center gap-1.5"
-          @click="() => { isMobileMenuOpen = false; emit('open-advisor') }"
+          @click="
+            () => {
+              isMobileMenuOpen = false;
+              emit('open-advisor');
+            }
+          "
         >
           <span>🎯</span>
           <span>Hobby Matcher</span>
         </button>
 
-        <!-- Mobile Google Sign-In / Collector Status -->
+        <!-- Mobile Sign In / Collector Status -->
         <div class="pt-2 border-t border-slate-100">
           <button
             v-if="authToken"
@@ -479,16 +584,24 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           >
             Collector Account &bull; Sign Out
           </button>
-          <a
+          <button
             v-else
-            href="http://localhost:8000/api/auth/google/redirect"
-            class="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold text-xs shadow-xs cursor-pointer"
+            type="button"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold text-xs shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+            @click="
+              () => {
+                isMobileMenuOpen = false;
+                emit('open-auth');
+              }
+            "
           >
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
+              <path
+                d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"
+              />
             </svg>
-            <span>Sign in with Google</span>
-          </a>
+            <span>Sign In / Create Account</span>
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,10 @@
 export type AgeGroup = "0-2" | "3-5" | "6-8" | "9-12" | "12+";
 
-export type ToyCategory = "tcg" | "anime-figures" | "anime-merchandise";
+export type ToyCategory =
+  | "tcg"
+  | "gunpla"
+  | "anime-figures"
+  | "anime-merchandise";
 
 export type TcgSubCategory =
   | "pokemon"

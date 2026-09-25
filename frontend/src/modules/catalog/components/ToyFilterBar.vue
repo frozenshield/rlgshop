@@ -1,46 +1,57 @@
 <script setup lang="ts">
-import { useCatalogStore } from '../catalog.store'
-import { CATEGORIES_DATA, TCG_SERIES_DATA } from '@/shared/constants/categories.data'
-import type { AgeGroup, ToyCategory, TcgSubCategory } from '@/shared/types/toy.types'
-import { formatCurrency } from '@/shared/utils/currency.util'
+import { useCatalogStore } from "../catalog.store";
+import {
+  CATEGORIES_DATA,
+  TCG_SERIES_DATA,
+} from "@/shared/constants/categories.data";
+import type {
+  AgeGroup,
+  ToyCategory,
+  TcgSubCategory,
+} from "@/shared/types/toy.types";
+import { formatCurrency } from "@/shared/utils/currency.util";
 
 interface Props {
-  hasActiveFilters: boolean
-  totalCount: number
+  hasActiveFilters: boolean;
+  totalCount: number;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
-const store = useCatalogStore()
+const store = useCatalogStore();
 
-const ageGroups: { id: AgeGroup | 'all'; label: string }[] = [
-  { id: 'all', label: 'All Ranks' },
-  { id: '0-2', label: '0-2 Yrs (Baby)' },
-  { id: '3-5', label: '3-5 Yrs (Rookie)' },
-  { id: '6-8', label: '6-8 Yrs (Junior)' },
-  { id: '9-12', label: '9-12 Yrs (Ace)' },
-  { id: '12+', label: '12+ Yrs (Master)' },
-]
+const ageGroups: { id: AgeGroup | "all"; label: string }[] = [
+  { id: "all", label: "All Ranks" },
+  { id: "0-2", label: "0-2 Yrs (Baby)" },
+  { id: "3-5", label: "3-5 Yrs (Rookie)" },
+  { id: "6-8", label: "6-8 Yrs (Junior)" },
+  { id: "9-12", label: "9-12 Yrs (Ace)" },
+  { id: "12+", label: "12+ Yrs (Master)" },
+];
 
-const handleCategoryClick = (catId: ToyCategory | 'all') => {
-  store.setCategory(catId)
-}
+const handleCategoryClick = (catId: ToyCategory | "all") => {
+  store.setCategory(catId);
+};
 
-const handleTcgSeriesClick = (seriesId: TcgSubCategory | 'all') => {
-  store.setTcgSeries(seriesId)
-}
+const handleTcgSeriesClick = (seriesId: TcgSubCategory | "all") => {
+  store.setTcgSeries(seriesId);
+};
 
-const handleAgeClick = (age: AgeGroup | 'all') => {
-  store.setAgeGroup(age)
-}
+const handleAgeClick = (age: AgeGroup | "all") => {
+  store.setAgeGroup(age);
+};
 </script>
 
 <template>
-  <div class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4 font-display">
+  <div
+    class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4 font-display"
+  >
     <!-- Row 1: Main Categories Chips -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">
+        <label
+          class="block text-xs font-bold uppercase tracking-wider text-slate-400"
+        >
           Product Categories
         </label>
         <span class="text-xs font-semibold text-slate-400">
@@ -82,11 +93,15 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
 
     <!-- Row 1.5: TCG Subcategories (Shown when TCG is selected or whenever trainer wants TCG series) -->
     <div
-      v-if="store.selectedCategory === 'tcg' || store.selectedTcgSeries !== 'all'"
+      v-if="
+        store.selectedCategory === 'tcg' || store.selectedTcgSeries !== 'all'
+      "
       class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200/80 animate-fade-in space-y-2"
     >
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5 text-xs font-extrabold text-blue-900 uppercase tracking-wider">
+        <div
+          class="flex items-center gap-1.5 text-xs font-extrabold text-blue-900 uppercase tracking-wider"
+        >
           <span>🃏</span>
           <span>TCG Franchises &amp; Card Series:</span>
         </div>
@@ -134,10 +149,14 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
     </div>
 
     <!-- Row 2: Age Group, Price Slider, Sort & Quick Toggles -->
-    <div class="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-5 items-center">
+    <div
+      class="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-5 items-center"
+    >
       <!-- Age Group / Rank Filter -->
       <div>
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+        <label
+          class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2"
+        >
           Rank / Grade
         </label>
         <div class="flex flex-wrap gap-1.5">
@@ -160,27 +179,35 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
 
       <!-- Max Price Slider -->
       <div>
-        <div class="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
+        <div
+          class="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5"
+        >
           <span class="uppercase tracking-wider">Max Budget</span>
-          <span class="text-rose-600 font-bold text-sm">{{ formatCurrency(store.maxPriceFilter) }}</span>
+          <span class="text-rose-600 font-bold text-sm">{{
+            formatCurrency(store.maxPriceFilter)
+          }}</span>
         </div>
         <input
           v-model.number="store.maxPriceFilter"
           type="range"
-          min="20"
-          max="120"
-          step="5"
+          min="500"
+          max="15000"
+          step="250"
           class="w-full accent-rose-600 cursor-pointer"
         />
-        <div class="flex justify-between text-[10px] text-slate-400 font-semibold">
-          <span>{{ formatCurrency(20) }}</span>
-          <span>{{ formatCurrency(120) }}</span>
+        <div
+          class="flex justify-between text-[10px] text-slate-400 font-semibold"
+        >
+          <span>{{ formatCurrency(500) }}</span>
+          <span>{{ formatCurrency(15000) }}</span>
         </div>
       </div>
 
       <!-- Sort By Dropdown -->
       <div>
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+        <label
+          class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2"
+        >
           Sort Products
         </label>
         <select
@@ -189,7 +216,9 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
         >
           <option value="featured">⚡ Featured &amp; Hot Drops</option>
           <option value="price-asc">💵 Price: Low to High</option>
-          <option value="price-desc">💎 Rare &amp; Collector (High to Low)</option>
+          <option value="price-desc">
+            💎 Rare &amp; Collector (High to Low)
+          </option>
           <option value="rating">⭐ Highest Rated</option>
           <option value="newest">🆕 New Arrivals</option>
         </select>
@@ -197,7 +226,9 @@ const handleAgeClick = (age: AgeGroup | 'all') => {
 
       <!-- Quick Toggles & Reset -->
       <div class="flex flex-col justify-end space-y-2">
-        <div class="flex items-center justify-between gap-3 text-xs font-semibold text-slate-600">
+        <div
+          class="flex items-center justify-between gap-3 text-xs font-semibold text-slate-600"
+        >
           <label class="inline-flex items-center gap-1.5 cursor-pointer">
             <input
               v-model="store.onlyDiscounted"

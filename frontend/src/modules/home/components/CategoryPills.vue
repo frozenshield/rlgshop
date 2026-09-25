@@ -37,8 +37,8 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
       </router-link>
     </div>
 
-    <!-- 3 Core Featured Category Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+    <!-- Core Featured Category Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       <div
         v-for="cat in CATEGORIES_DATA"
         :key="cat.id"

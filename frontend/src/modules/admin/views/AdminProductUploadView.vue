@@ -53,7 +53,6 @@ onMounted(() => {
 
 // Basic Info
 const title = ref("");
-const shortSummary = ref("");
 const sku = ref("");
 const condition = ref("");
 
@@ -182,7 +181,6 @@ const runAiAnalysis = async (source: File | string, mediaItemId: string) => {
     const data = res.data;
 
     if (data.title) title.value = data.title;
-    if (data.short_summary) shortSummary.value = data.short_summary;
     if (data.description) description.value = data.description;
     if (data.primary_category) primaryCategory.value = data.primary_category;
     if (data.secondary_category)
@@ -203,28 +201,7 @@ const runAiAnalysis = async (source: File | string, mediaItemId: string) => {
       sellingPrice.value = Number(data.suggested_price);
     }
     if (data.sku_suggestion) sku.value = data.sku_suggestion;
-    if (data.condition) {
-      itemCondition.value = data.condition;
-      const foundCond = dbConditions.value.find(
-        (c) => c.desc.toLowerCase() === String(data.condition).toLowerCase(),
-      );
-      if (foundCond) {
-        itemConditionId.value = foundCond.id;
-      }
-    }
-    if (data.condition_id || data.ref_condition_id) {
-      itemConditionId.value = Number(
-        data.condition_id || data.ref_condition_id,
-      );
-    }
-    if (data.seo_title) seoTitle.value = data.seo_title;
-    if (data.seo_description) seoDescription.value = data.seo_description;
-    if (data.title) {
-      urlHandle.value = data.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)+/g, "");
-    }
+    if (data.condition) condition.value = data.condition;
 
     // Update with server stored image URL if returned
     if (data.image_url) {
@@ -275,11 +252,6 @@ const dimensionLength = ref<number | "">("");
 const dimensionWidth = ref<number | "">("");
 const dimensionHeight = ref<number | "">("");
 
-// Search Engine Optimization (SEO)
-const seoTitle = ref("");
-const seoDescription = ref("");
-const urlHandle = ref("");
-
 // Visibility & Publishing
 const publishStatus = ref<"Draft" | "Active" | "Archived">("Draft");
 const isScheduled = ref(false);
@@ -287,32 +259,116 @@ const scheduledDate = ref("");
 
 const isSaving = ref(false);
 const successNotice = ref("");
+const saveError = ref("");
 
-const handleSaveProduct = () => {
+const handleSaveProduct = async () => {
+  if (!title.value.trim()) {
+    saveError.value = "Please enter a product title before saving.";
+    return;
+  }
+
   isSaving.value = true;
-  setTimeout(() => {
-    // Add to inventory & catalog simulation
+  saveError.value = "";
+  successNotice.value = "";
+
+  try {
+    const primaryImg =
+      mediaList.value.find((m) => m.isPrimary)?.url ||
+      mediaList.value[0]?.url ||
+      "";
+    const gallery = mediaList.value.map((m) => m.url);
+
+    // Resolve category id
+    const selectedCat = dbCategories.value.find(
+      (c) => c.desc === primaryCategory.value,
+    );
+    const categoryId = selectedCat?.id || null;
+
+    // Resolve subcategory id
+    const selectedSub = selectedCat?.subcategories?.find(
+      (s) => s.desc === secondaryCategory.value,
+    );
+    const subcategoryId = selectedSub?.id || null;
+
+    // Resolve brand id
+    const selectedBrand = dbBrands.value.find(
+      (b) => b.name === brandVendor.value,
+    );
+    const brandId = selectedBrand?.id || null;
+
+    // Resolve condition id
+    const selectedCond = dbConditions.value.find(
+      (c) => c.desc === condition.value,
+    );
+    const conditionIdVal = selectedCond?.id || null;
+
+    const payload = {
+      name: title.value.trim(),
+      price: Number(sellingPrice.value) || 0,
+      stock: Number(stock.value) || 0,
+      description: description.value,
+      ref_category_id: categoryId,
+      category: primaryCategory.value,
+      ref_subcategory_id: subcategoryId,
+      subcategory: secondaryCategory.value,
+      ref_brand_id: brandId,
+      brand: brandVendor.value,
+      ref_condition_id: conditionIdVal,
+      condition_id: conditionIdVal,
+      condition: condition.value,
+      weight: Number(weightGrams.value) || null,
+      length: Number(dimensionLength.value) || null,
+      width: Number(dimensionWidth.value) || null,
+      height: Number(dimensionHeight.value) || null,
+      status: publishStatus.value.toLowerCase(),
+      image_url: primaryImg,
+      gallery_images: gallery,
+    };
+
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const res = await response.json();
+
+    if (!response.ok || !res.success) {
+      throw new Error(res.message || "Failed to save product in database.");
+    }
+
+    const savedProduct = res.data;
+
+    // Also add to inventory state in store
     adminStore.addInventoryItem({
-      sku: sku.value,
-      barcode: sku.value,
-      name: title.value,
+      sku: sku.value || `PRD-${savedProduct.id}`,
+      barcode: sku.value || `BC-${savedProduct.id}`,
+      name: savedProduct.name,
       category: primaryCategory.value,
       condition: condition.value,
-      stock: Number(stock.value) || 0,
+      stock: Number(savedProduct.stock) || 0,
       lowStockThreshold: 5,
       costPrice: 0,
-      sellingPrice: Number(sellingPrice.value) || 0,
+      sellingPrice: Number(savedProduct.price) || 0,
       vendor: brandVendor.value,
       leadTimeDays: 7,
       variants: [],
     });
 
-    isSaving.value = false;
-    successNotice.value = `"${title.value || "Product"}" published successfully to product catalog!`;
+    successNotice.value = `"${savedProduct.name}" saved successfully to database! (Product ID #${savedProduct.id})`;
+
     setTimeout(() => {
       router.push("/admin/inventory");
     }, 1500);
-  }, 600);
+  } catch (err: any) {
+    saveError.value =
+      err.message || "Failed to save product to database. Please try again.";
+  } finally {
+    isSaving.value = false;
+  }
 };
 </script>
 
@@ -330,7 +386,7 @@ const handleSaveProduct = () => {
         </h1>
         <p class="text-xs text-slate-500">
           Upload products with AI vision auto-fill, media gallery, pricing, and
-          SEO.
+          classification.
         </p>
       </div>
 
@@ -361,6 +417,24 @@ const handleSaveProduct = () => {
       class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl animate-fade-in"
     >
       ✓ {{ successNotice }}
+    </div>
+
+    <!-- Save Error Alert -->
+    <div
+      v-if="saveError"
+      class="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl animate-fade-in flex items-center justify-between"
+    >
+      <div class="flex items-center gap-2">
+        <span>⚠️</span>
+        <span>{{ saveError }}</span>
+      </div>
+      <button
+        type="button"
+        class="text-rose-500 hover:text-rose-800 text-sm font-bold"
+        @click="saveError = ''"
+      >
+        ✕
+      </button>
     </div>
 
     <!-- AI Success Alert -->
@@ -438,18 +512,6 @@ const handleSaveProduct = () => {
               type="text"
               placeholder="e.g. Pokémon TCG: Terastal Festival ex Booster Box"
               class="w-full text-sm font-bold p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1"
-              >Short Summary (Shown in cards &amp; previews)</label
-            >
-            <input
-              v-model="shortSummary"
-              type="text"
-              placeholder="Brief 1-2 sentence overview of the item..."
-              class="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900 text-slate-600"
             />
           </div>
 
@@ -533,33 +595,32 @@ const handleSaveProduct = () => {
               <label class="block text-xs font-bold text-slate-700 mb-1"
                 >Condition *</label
               >
-              <input
+              <select
                 v-model="condition"
-                type="text"
-                list="conditions-list"
-                placeholder="e.g. Brand New / Sealed"
-                class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200"
-              />
-              <datalist id="conditions-list">
+                class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-white"
+              >
+                <option value="" disabled>Select condition...</option>
                 <template v-if="dbConditions.length > 0">
                   <option
                     v-for="cond in dbConditions"
                     :key="cond.id"
                     :value="cond.desc"
-                  />
+                  >
+                    {{ cond.desc }}
+                  </option>
                 </template>
                 <template v-else>
-                  <option value="Brandnew" />
-                  <option value="MISB" />
-                  <option value="BIB" />
-                  <option value="Near Mint" />
-                  <option value="Lightly Played" />
-                  <option value="Moderately Played" />
-                  <option value="Heavily Played" />
-                  <option value="Damaged" />
-                  <option value="Loose" />
+                  <option value="Brandnew">Brandnew</option>
+                  <option value="MISB">MISB</option>
+                  <option value="BIB">BIB</option>
+                  <option value="Near Mint">Near Mint</option>
+                  <option value="Lightly Played">Lightly Played</option>
+                  <option value="Moderately Played">Moderately Played</option>
+                  <option value="Heavily Played">Heavily Played</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Loose">Loose</option>
                 </template>
-              </datalist>
+              </select>
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1"
@@ -958,37 +1019,6 @@ const handleSaveProduct = () => {
 
           <div>
             <label class="block font-bold text-slate-700 mb-1"
-              >Item Condition</label
-            >
-            <select
-              v-model="itemCondition"
-              class="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-800"
-            >
-              <template v-if="dbConditions.length > 0">
-                <option
-                  v-for="cond in dbConditions"
-                  :key="cond.id"
-                  :value="cond.desc"
-                >
-                  {{ cond.desc }}
-                </option>
-              </template>
-              <template v-else>
-                <option value="Near Mint">Near Mint</option>
-                <option value="Damaged">Damaged</option>
-                <option value="Lightly Played">Lightly Played</option>
-                <option value="Moderately Played">Moderately Played</option>
-                <option value="Heavily Played">Heavily Played</option>
-                <option value="MISB">MISB</option>
-                <option value="BIB">BIB</option>
-                <option value="Loose">Loose</option>
-                <option value="Brandnew">Brandnew</option>
-              </template>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
               >Tags &amp; Smart Collections (comma separated)</label
             >
             <textarea
@@ -1006,73 +1036,6 @@ const handleSaveProduct = () => {
                 #{{ t }}
               </span>
             </div>
-          </div>
-        </div>
-
-        <!-- SEO Details Card with Google Snippet -->
-        <div
-          class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 text-xs"
-        >
-          <h3 class="font-bold text-slate-900 uppercase tracking-wider text-xs">
-            Search Engine Optimization (SEO)
-          </h3>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Page Meta Title</label
-            >
-            <input
-              v-model="seoTitle"
-              type="text"
-              placeholder="e.g. Product Name - RLG Hobby Shop"
-              class="w-full p-2.5 rounded-xl border border-slate-200"
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Page Meta Description</label
-            >
-            <textarea
-              v-model="seoDescription"
-              rows="3"
-              placeholder="Write an engaging Google search summary..."
-              class="w-full p-2.5 rounded-xl border border-slate-200 text-slate-600"
-            ></textarea>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Custom URL Handle</label
-            >
-            <input
-              v-model="urlHandle"
-              type="text"
-              placeholder="e.g. pokemon-terastal-festival-booster-box"
-              class="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-[11px]"
-            />
-          </div>
-
-          <!-- SERP Snippet Preview -->
-          <div
-            class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1"
-          >
-            <span class="text-[9px] font-bold text-slate-400 uppercase"
-              >Google Result Preview:</span
-            >
-            <div class="text-[10px] text-slate-500 font-mono truncate">
-              rlghobby.ph/product/{{ urlHandle || "your-product-slug" }}
-            </div>
-            <h4 class="text-xs font-bold text-blue-700 line-clamp-1">
-              {{ seoTitle || title || "Product Title Preview" }}
-            </h4>
-            <p class="text-[11px] text-slate-600 line-clamp-2">
-              {{
-                seoDescription ||
-                shortSummary ||
-                "Meta description preview will appear here once entered or generated by AI."
-              }}
-            </p>
           </div>
         </div>
       </div>
