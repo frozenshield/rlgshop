@@ -1,32 +1,40 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { CATEGORIES_DATA, TCG_SERIES_DATA } from '@/shared/constants/categories.data'
-import { useCatalogStore } from '@/modules/catalog/catalog.store'
-import type { ToyCategory, TcgSubCategory } from '@/shared/types/toy.types'
+import { useRouter } from "vue-router";
+import {
+  CATEGORIES_DATA,
+  TCG_SERIES_DATA,
+} from "@/shared/constants/categories.data";
+import { useCatalogStore } from "@/modules/catalog/catalog.store";
+import type { ToyCategory, TcgSubCategory } from "@/shared/types/toy.types";
 
-const router = useRouter()
-const catalogStore = useCatalogStore()
+const router = useRouter();
+const catalogStore = useCatalogStore();
 
 const handleCategoryClick = (catId: ToyCategory) => {
-  catalogStore.setCategory(catId)
-  router.push('/catalog')
-}
+  catalogStore.setCategory(catId);
+  router.push("/catalog");
+};
 
 const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
-  e.stopPropagation()
-  catalogStore.setTcgSeries(seriesId)
-  router.push('/catalog')
-}
+  e.stopPropagation();
+  catalogStore.setTcgSeries(seriesId);
+  router.push("/catalog");
+};
 </script>
 
 <template>
   <div class="space-y-4 font-display">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h2
+          class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
+        >
           Shop by Hobby Category
         </h2>
-        <p class="text-xs text-slate-500 font-medium">Explore Trading Card Games, Japanese Model Kits, Scale Figures &amp; Supplies</p>
+        <p class="text-xs text-slate-500 font-medium">
+          Explore Trading Card Games, Japanese Model Kits, Scale Figures &amp;
+          Supplies
+        </p>
       </div>
       <router-link
         to="/catalog"
@@ -47,17 +55,23 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
       >
         <!-- Top icon & badge -->
         <div class="flex items-start justify-between mb-4">
-          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform bg-slate-50 border border-slate-200/80 shadow-2xs">
+          <div
+            class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform bg-slate-50 border border-slate-200/80 shadow-2xs"
+          >
             {{ cat.icon }}
           </div>
-          <span class="text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-600 group-hover:bg-rose-50 group-hover:text-rose-600 transition-colors">
+          <span
+            class="text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-600 group-hover:bg-rose-50 group-hover:text-rose-600 transition-colors"
+          >
             Explore &rarr;
           </span>
         </div>
 
         <!-- Info -->
         <div class="space-y-2">
-          <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
+          <h3
+            class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-rose-600 transition-colors"
+          >
             {{ cat.name }}
           </h3>
           <p class="text-xs text-slate-500 font-medium leading-relaxed">
@@ -78,9 +92,13 @@ const handleTcgSeriesClick = (e: Event, seriesId: TcgSubCategory) => {
         </div>
 
         <!-- Bottom bar highlight -->
-        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-400 group-hover:text-slate-800 transition-colors">
+        <div
+          class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-400 group-hover:text-slate-800 transition-colors"
+        >
           <span>Official Factory Sealed</span>
-          <span class="text-rose-600 font-bold">Shop {{ cat.name.split(' ')[0] }} &rarr;</span>
+          <span class="text-rose-600 font-bold"
+            >Shop {{ cat.name.split(" ")[0] }} &rarr;</span
+          >
         </div>
       </div>
     </div>

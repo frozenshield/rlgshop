@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { ToyProduct } from '@/shared/types/toy.types'
-import ToyCard from './ToyCard.vue'
+import type { ToyProduct } from "@/shared/types/toy.types";
+import ToyCard from "./ToyCard.vue";
 
 interface Props {
-  toys: ToyProduct[]
+  toys: ToyProduct[];
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'quick-view', toy: ToyProduct): void
-  (e: 'reset-filters'): void
-}>()
+  (e: "quick-view", toy: ToyProduct): void;
+  (e: "reset-filters"): void;
+}>();
 </script>
 
 <template>
@@ -35,9 +35,12 @@ const emit = defineEmits<{
       class="bg-white rounded-3xl p-12 text-center border border-amber-200/80 shadow-sm max-w-lg mx-auto my-8 space-y-4"
     >
       <div class="text-6xl animate-bounce">🔍</div>
-      <h3 class="text-xl font-bold font-display text-slate-800">No Products Matched Your Filters</h3>
+      <h3 class="text-xl font-bold font-display text-slate-800">
+        No Products Matched Your Filters
+      </h3>
       <p class="text-xs text-slate-500 max-w-sm mx-auto">
-        Try adjusting your budget slider, selecting a different category, or clearing your search term to discover more items!
+        Try adjusting your budget slider, selecting a different category, or
+        clearing your search term to discover more items!
       </p>
       <button
         type="button"
