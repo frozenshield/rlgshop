@@ -95,17 +95,20 @@ const allNavItems = computed(() => [
 // Filter visible sidebar items by staff access matrix permissions
 const navItems = computed(() => {
   return allNavItems.value.filter((item) =>
-    adminStore.canAccessPath(item.path),
+    adminStore.canAccess(item.code, item.path),
   );
 });
 
 // Friendly role label
 const roleLabel = computed(() => {
+  if (adminStore.currentAdmin?.roleLabel) {
+    return adminStore.currentAdmin.roleLabel;
+  }
   const r = adminStore.currentAdmin?.role;
-  if (r === "super-admin") return "Super Admin";
-  if (r === "manager") return "Store Manager";
-  if (r === "fulfillment") return "Fulfillment Staff";
-  return "Administrator";
+  if (r === "super-admin") return "Super Admin (Unrestricted)";
+  if (r === "manager") return "Store Manager (Catalog & Operations)";
+  if (r === "fulfillment") return "Fulfillment Staff (Packing & Shipping only)";
+  return "Staff Member";
 });
 
 // Access matrix route guard: if navigating to an unauthorized module URL, redirect to dashboard or first allowed module

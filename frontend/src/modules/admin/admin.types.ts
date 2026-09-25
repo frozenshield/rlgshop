@@ -36,6 +36,8 @@ export interface AdminUser {
   name: string;
   email: string;
   role: AdminRole;
+  roleLabel?: string;
+  token?: string;
   avatarUrl?: string;
   lastLogin: string;
   allowedPaths?: string[];

@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useStorage } from "@vueuse/core";
 import type {
+  AdminRole,
   AdminUser,
   AdminOrder,
   InventoryItem,
@@ -34,6 +35,77 @@ export const useAdminStore = defineStore("adminStore", () => {
   const isAuthenticated = computed(() => {
     return !!currentAdmin.value && !!currentAdmin.value.email;
   });
+
+  const KNOWN_ROSTER: Record<
+    string,
+    {
+      name: string;
+      role: AdminRole;
+      roleLabel: string;
+      roleId: number;
+    }
+  > = {
+    "admin@rlghobby.com": {
+      name: "Admin Chief",
+      role: "super-admin",
+      roleLabel: "Super Admin (Unrestricted)",
+      roleId: 1,
+    },
+    "russelluisg@gmail.com": {
+      name: "Russel Luis Gementiza",
+      role: "super-admin",
+      roleLabel: "Super Admin (Unrestricted)",
+      roleId: 1,
+    },
+    "rowena.ops@rlghobby.com": {
+      name: "Rowena Santos",
+      role: "manager",
+      roleLabel: "Store Manager (Catalog & Operations)",
+      roleId: 2,
+    },
+    "manager@rlghobby.com": {
+      name: "Store Manager Demo",
+      role: "manager",
+      roleLabel: "Store Manager (Catalog & Operations)",
+      roleId: 2,
+    },
+    "darwin.pack@rlghobby.com": {
+      name: "Darwin Gomez",
+      role: "fulfillment",
+      roleLabel: "Fulfillment Staff (Packing & Shipping only)",
+      roleId: 3,
+    },
+    "packer@rlghobby.com": {
+      name: "Fulfillment Packer Demo",
+      role: "fulfillment",
+      roleLabel: "Fulfillment Staff (Packing & Shipping only)",
+      roleId: 3,
+    },
+  };
+
+  const DEFAULT_ROLE_CODES: Record<string, string[]> = {
+    "super-admin": [
+      "dashboard",
+      "orders",
+      "inventory",
+      "products",
+      "customers",
+      "marketing",
+      "cms",
+      "analytics",
+      "settings",
+    ],
+    manager: [
+      "dashboard",
+      "orders",
+      "inventory",
+      "products",
+      "customers",
+      "marketing",
+      "analytics",
+    ],
+    fulfillment: ["dashboard", "orders", "inventory", "products"],
+  };
 
   // Staff Role Access Control Matrix & Allowed Modules
   const DEFAULT_ROLE_PATHS: Record<string, string[]> = {
@@ -72,7 +144,10 @@ export const useAdminStore = defineStore("adminStore", () => {
         : []),
   );
   const allowedModuleCodes = ref<string[]>(
-    currentAdmin.value?.allowedCodes || [],
+    currentAdmin.value?.allowedCodes ||
+      (currentAdmin.value?.role
+        ? DEFAULT_ROLE_CODES[currentAdmin.value.role] || []
+        : []),
   );
   const staffPermissions = ref<StaffModulePermission[]>([]);
   const isPermissionsLoaded = ref(false);
@@ -114,51 +189,69 @@ export const useAdminStore = defineStore("adminStore", () => {
     }
 
     // Offline / fallback defaults based on role
-    const fallback =
+    const fallbackPaths =
       DEFAULT_ROLE_PATHS[activeRole.toLowerCase()] ||
       DEFAULT_ROLE_PATHS["super-admin"];
-    allowedModulePaths.value = fallback;
+    const fallbackCodes =
+      DEFAULT_ROLE_CODES[activeRole.toLowerCase()] ||
+      DEFAULT_ROLE_CODES["super-admin"];
+    allowedModulePaths.value = fallbackPaths;
+    allowedModuleCodes.value = fallbackCodes;
     isPermissionsLoaded.value = true;
     return null;
   };
 
-  const canAccessPath = (path: string): boolean => {
+  const canAccess = (code?: string, path?: string): boolean => {
     if (!currentAdmin.value) return false;
     // Super-admin always has full access
     if (currentAdmin.value.role === "super-admin") return true;
 
-    if (allowedModulePaths.value.length > 0) {
-      return allowedModulePaths.value.some(
-        (p) => path === p || path.startsWith(p + "/") || p.startsWith(path),
-      );
-    }
-
-    if (
-      currentAdmin.value.allowedPaths &&
-      currentAdmin.value.allowedPaths.length > 0
-    ) {
-      return currentAdmin.value.allowedPaths.some(
-        (p) => path === p || path.startsWith(p + "/") || p.startsWith(path),
-      );
-    }
-
-    const fallback =
-      DEFAULT_ROLE_PATHS[currentAdmin.value.role.toLowerCase()] ||
-      DEFAULT_ROLE_PATHS["super-admin"];
-    return fallback.some(
-      (p) => path === p || path.startsWith(p + "/") || p.startsWith(path),
-    );
-  };
-
-  const canAccessModule = (code: string): boolean => {
-    if (!currentAdmin.value) return false;
-    if (currentAdmin.value.role === "super-admin") return true;
-
-    if (allowedModuleCodes.value.length > 0) {
+    // Check module code if provided
+    if (code && allowedModuleCodes.value.length > 0) {
       return allowedModuleCodes.value.includes(code.toLowerCase());
     }
 
-    return canAccessPath(`/admin/${code.toLowerCase()}`);
+    // Check path if provided
+    if (path && allowedModulePaths.value.length > 0) {
+      const normalizedPath = path.toLowerCase().replace(/\/$/, "");
+      const matched = allowedModulePaths.value.some((p) => {
+        const normalizedP = p.toLowerCase().replace(/\/$/, "");
+        return (
+          normalizedPath === normalizedP ||
+          normalizedPath.startsWith(normalizedP + "/")
+        );
+      });
+      if (matched) return true;
+    }
+
+    // Fallback based on stored code
+    if (code) {
+      const fallbackCodes =
+        DEFAULT_ROLE_CODES[currentAdmin.value.role] ||
+        DEFAULT_ROLE_CODES["super-admin"];
+      return fallbackCodes.includes(code.toLowerCase());
+    }
+
+    return false;
+  };
+
+  const canAccessPath = (path: string): boolean => {
+    if (!currentAdmin.value) return false;
+    if (currentAdmin.value.role === "super-admin") return true;
+
+    // Extract module code from /admin/:module
+    const match = path.match(/^\/admin\/([a-z0-9_-]+)/i);
+    const moduleCode = match ? match[1].toLowerCase() : null;
+
+    if (moduleCode) {
+      return canAccess(moduleCode, path);
+    }
+
+    return canAccess(undefined, path);
+  };
+
+  const canAccessModule = (code: string): boolean => {
+    return canAccess(code);
   };
 
   // Eagerly hydrate permissions if an admin session is already active
@@ -608,20 +701,104 @@ export const useAdminStore = defineStore("adminStore", () => {
   ]);
 
   // Authentication Actions
-  const login = async (
-    email: string,
-    role: "super-admin" | "manager" | "fulfillment" = "super-admin",
-  ): Promise<boolean> => {
-    currentAdmin.value = {
-      id: "ADM-" + Math.floor(1000 + Math.random() * 9000),
-      name: email.split("@")[0].toUpperCase(),
-      email,
-      role,
-      lastLogin: new Date().toLocaleTimeString(),
-    };
+  const login = async (email: string, password?: string): Promise<boolean> => {
+    const trimmedEmail = email.trim().toLowerCase();
 
-    await fetchStaffPermissions(role, email);
-    return true;
+    try {
+      const res = await fetch("/api/auth/staff-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email: trimmedEmail, password }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        const errorMsg =
+          data?.message ||
+          "Access denied: Only authorized users registered in the staff roster can log in.";
+        throw new Error(errorMsg);
+      }
+
+      const staff = data.staff;
+      let mappedRole: AdminRole = "super-admin";
+      if (
+        staff.role_id === 2 ||
+        (staff.role_name && staff.role_name.toLowerCase().includes("manager"))
+      ) {
+        mappedRole = "manager";
+      } else if (
+        staff.role_id === 3 ||
+        (staff.role_name &&
+          staff.role_name.toLowerCase().includes("fulfillment"))
+      ) {
+        mappedRole = "fulfillment";
+      }
+
+      currentAdmin.value = {
+        id: "STF-" + staff.id,
+        name: staff.name,
+        email: staff.email,
+        role: mappedRole,
+        roleLabel: staff.role_label || staff.role_name,
+        token: data.token,
+        lastLogin: new Date().toLocaleTimeString(),
+        allowedCodes: staff.allowed_codes || [],
+        allowedPaths: staff.allowed_paths || [],
+      };
+
+      allowedModuleCodes.value = staff.allowed_codes || [];
+      allowedModulePaths.value = staff.allowed_paths || [];
+      if (staff.permissions) {
+        staffPermissions.value = Object.entries(staff.permissions).map(
+          ([code, perm]: [string, any]) => ({
+            id: 0,
+            matrix_id: 0,
+            code,
+            name: code,
+            path: `/admin/${code}`,
+            can_read: !!perm.can_read,
+            can_create: !!perm.can_create,
+            can_update: !!perm.can_update,
+            can_delete: !!perm.can_delete,
+          }),
+        );
+      }
+      isPermissionsLoaded.value = true;
+      return true;
+    } catch (err: any) {
+      // If error message came from backend response, bubble it up directly!
+      if (err?.message && err.message.toLowerCase().includes("access denied")) {
+        throw err;
+      }
+
+      // Check fallback known roster if backend is unreachable
+      const rosterEntry = KNOWN_ROSTER[trimmedEmail];
+      if (!rosterEntry) {
+        throw new Error(
+          "Access denied: Only authorized users registered in the staff roster can log in.",
+        );
+      }
+
+      // In offline mode with valid staff roster email:
+      currentAdmin.value = {
+        id: "STF-" + rosterEntry.roleId,
+        name: rosterEntry.name,
+        email: trimmedEmail,
+        role: rosterEntry.role,
+        roleLabel: rosterEntry.roleLabel,
+        lastLogin: new Date().toLocaleTimeString(),
+        allowedCodes: DEFAULT_ROLE_CODES[rosterEntry.role],
+        allowedPaths: DEFAULT_ROLE_PATHS[rosterEntry.role],
+      };
+      allowedModuleCodes.value = DEFAULT_ROLE_CODES[rosterEntry.role];
+      allowedModulePaths.value = DEFAULT_ROLE_PATHS[rosterEntry.role];
+      isPermissionsLoaded.value = true;
+      return true;
+    }
   };
 
   const logout = () => {
@@ -630,6 +807,7 @@ export const useAdminStore = defineStore("adminStore", () => {
     allowedModuleCodes.value = [];
     staffPermissions.value = [];
     isPermissionsLoaded.value = false;
+    localStorage.removeItem("rlg-admin-session");
   };
 
   // Order Management Actions
@@ -739,6 +917,7 @@ export const useAdminStore = defineStore("adminStore", () => {
     staffPermissions,
     isPermissionsLoaded,
     fetchStaffPermissions,
+    canAccess,
     canAccessPath,
     canAccessModule,
     login,

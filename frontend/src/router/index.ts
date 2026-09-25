@@ -20,8 +20,19 @@ router.beforeEach((to, from, next) => {
   const isAdminRoute = to.path.startsWith("/admin");
   const isAdminLogin = to.path === "/admin/login";
 
+  // When visiting /admin directly, always route to /admin/login first
+  if (to.path === "/admin" || to.path === "/admin/") {
+    return next({ path: "/admin/login" });
+  }
+
+  // Allow unrestricted access to the admin login page
+  if (isAdminLogin) {
+    return next();
+  }
+
   // Verify stored admin session from localStorage
   let isAdminAuthenticated = false;
+  let parsedSession: any = null;
   const rawAdminSession = localStorage.getItem("rlg-admin-session");
   if (
     rawAdminSession &&
@@ -29,8 +40,8 @@ router.beforeEach((to, from, next) => {
     rawAdminSession !== "undefined"
   ) {
     try {
-      const parsed = JSON.parse(rawAdminSession);
-      if (parsed && (parsed.id || parsed.email)) {
+      parsedSession = JSON.parse(rawAdminSession);
+      if (parsedSession && (parsedSession.id || parsedSession.email)) {
         isAdminAuthenticated = true;
       }
     } catch {
@@ -39,19 +50,40 @@ router.beforeEach((to, from, next) => {
   }
 
   if (isAdminRoute) {
-    if (!isAdminAuthenticated && !isAdminLogin) {
-      // User is not logged in as admin -> redirect to /admin/login
-      const redirectTarget =
-        to.fullPath !== "/admin" ? to.fullPath : "/admin/dashboard";
+    // If not logged in, redirect to login page
+    if (!isAdminAuthenticated) {
       return next({
         path: "/admin/login",
-        query: { redirect: redirectTarget },
+        query: { redirect: to.fullPath },
       });
     }
 
-    if (isAdminAuthenticated && isAdminLogin) {
-      // Already logged in admin visiting login page -> redirect to dashboard
-      return next({ path: "/admin/dashboard" });
+    // Role-based Access Matrix enforcement on child routes
+    if (parsedSession && parsedSession.role !== "super-admin") {
+      const allowedCodes: string[] = parsedSession.allowedCodes || [];
+      const allowedPaths: string[] = parsedSession.allowedPaths || [];
+
+      // Extract module code from e.g. /admin/settings -> settings
+      const match = to.path.match(/^\/admin\/([a-z0-9_-]+)/i);
+      const moduleCode = match ? match[1].toLowerCase() : null;
+
+      if (moduleCode && moduleCode !== "dashboard") {
+        const hasCodeAccess =
+          allowedCodes.length > 0 ? allowedCodes.includes(moduleCode) : true;
+        const hasPathAccess =
+          allowedPaths.length > 0
+            ? allowedPaths.some(
+                (p) =>
+                  p.toLowerCase() === to.path.toLowerCase() ||
+                  to.path.toLowerCase().startsWith(p.toLowerCase() + "/"),
+              )
+            : true;
+
+        if (!hasCodeAccess && !hasPathAccess) {
+          // Block unauthorized module and redirect to permitted dashboard
+          return next({ path: "/admin/dashboard" });
+        }
+      }
     }
   }
 

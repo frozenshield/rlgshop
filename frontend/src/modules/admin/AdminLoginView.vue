@@ -27,12 +27,14 @@ const handleLogin = async () => {
   errorMessage.value = "";
 
   try {
-    await adminStore.login(email.value, role.value);
+    await adminStore.login(email.value, password.value);
     const redirectTarget =
       (route.query.redirect as string) || "/admin/dashboard";
     router.push(redirectTarget);
   } catch (e: any) {
-    errorMessage.value = e?.message || "Login authentication failed.";
+    errorMessage.value =
+      e?.message ||
+      "Access denied: Only authorized users registered in the staff roster can log in.";
   } finally {
     isLoading.value = false;
   }
@@ -43,6 +45,14 @@ const quickFillRole = (selectedRole: AdminRole, demoEmail: string) => {
   email.value = demoEmail;
   password.value = "AdminPass2026!";
   errorMessage.value = "";
+};
+
+const handleContinueSession = () => {
+  router.push("/admin/dashboard");
+};
+
+const handleSignOutCurrent = () => {
+  adminStore.logout();
 };
 </script>
 
@@ -102,6 +112,49 @@ const quickFillRole = (selectedRole: AdminRole, demoEmail: string) => {
       <div
         class="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 space-y-6 relative"
       >
+        <!-- Currently Active Session Banner (if already logged in) -->
+        <div
+          v-if="adminStore.isAuthenticated && adminStore.currentAdmin"
+          class="p-3.5 rounded-2xl bg-indigo-950/70 border border-indigo-500/30 text-xs space-y-2.5"
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-indigo-200 flex items-center gap-1.5">
+              <span>👤</span> Active Session Detected
+            </span>
+            <span
+              class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold"
+            >
+              Logged In
+            </span>
+          </div>
+          <p class="text-slate-300 text-[11px]">
+            Currently authenticated as
+            <strong class="text-white">{{
+              adminStore.currentAdmin.name
+            }}</strong>
+            (<span class="text-indigo-300 font-medium">{{
+              adminStore.currentAdmin.roleLabel || adminStore.currentAdmin.role
+            }}</span
+            >).
+          </p>
+          <div class="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              class="flex-1 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-lg shadow-sm transition-colors cursor-pointer"
+              @click="handleContinueSession"
+            >
+              Enter Dashboard &rarr;
+            </button>
+            <button
+              type="button"
+              class="py-1.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
+              @click="handleSignOutCurrent"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-bold text-white tracking-tight">
@@ -113,27 +166,31 @@ const quickFillRole = (selectedRole: AdminRole, demoEmail: string) => {
               <span
                 class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
               ></span>
-              Vault Secure
+              Staff Roster Only
             </span>
           </div>
           <p class="text-xs text-slate-400">
-            Sign in to manage orders, inventory, pricing, and fulfillment.
+            Sign in with a registered staff table account to access scoped
+            modules.
           </p>
         </div>
 
         <!-- Role Selector Tabs -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-slate-300"
-            >Access Level Role</label
-          >
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-300"
+              >Select Staff Account</label
+            >
+            <span class="text-[10px] text-slate-400">Database Verified</span>
+          </div>
           <div
             class="grid grid-cols-3 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-slate-800"
           >
             <button
               type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
               :class="
-                role === 'super-admin'
+                email === 'admin@rlghobby.com'
                   ? 'bg-slate-800 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               "
@@ -143,25 +200,25 @@ const quickFillRole = (selectedRole: AdminRole, demoEmail: string) => {
             </button>
             <button
               type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
               :class="
-                role === 'manager'
+                email === 'rowena.ops@rlghobby.com'
                   ? 'bg-slate-800 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               "
-              @click="quickFillRole('manager', 'manager@rlghobby.com')"
+              @click="quickFillRole('manager', 'rowena.ops@rlghobby.com')"
             >
               💼 Manager
             </button>
             <button
               type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
               :class="
-                role === 'fulfillment'
+                email === 'darwin.pack@rlghobby.com'
                   ? 'bg-slate-800 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               "
-              @click="quickFillRole('fulfillment', 'packer@rlghobby.com')"
+              @click="quickFillRole('fulfillment', 'darwin.pack@rlghobby.com')"
             >
               📦 Fulfillment
             </button>
