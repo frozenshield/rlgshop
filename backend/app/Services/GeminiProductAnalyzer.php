@@ -8,6 +8,7 @@ use App\Models\RefCondition;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class GeminiProductAnalyzer
@@ -169,6 +170,23 @@ EOT;
         }
 
         $result['image_url'] = $storedImageUrl;
+
+        // Ensure SKU is populated from suggestion or generated from title
+        $result['sku'] = $result['sku'] ?? $result['sku_suggestion'] ?? null;
+        if (empty($result['sku']) && ! empty($result['title'])) {
+            $catPrefix = 'PRD';
+            if (! empty($result['primary_category'])) {
+                $catPrefix = strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $result['primary_category']), 0, 3)) ?: 'PRD';
+            }
+            $words = preg_split('/\s+/', trim($result['title'])) ?: [];
+            $slug = strtoupper(implode('-', array_map(
+                fn ($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
+                array_slice($words, 0, 3)
+            )));
+            $rand = strtoupper(Str::random(4));
+            $result['sku'] = "{$catPrefix}-{$slug}-{$rand}";
+        }
+        $result['sku_suggestion'] = $result['sku'];
 
         return $result;
     }

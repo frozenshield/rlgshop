@@ -26,6 +26,11 @@ class DatabaseSeeder extends Seeder
             RefCategorySeeder::class,
             RefBrandSeeder::class,
             RefConditionSeeder::class,
+            RefStaffRoleSeeder::class,
+            RefModuleSeeder::class,
+            AccessMatrixSeeder::class,
+            StaffSeeder::class,
+            CustomerProfileSeeder::class,
         ]);
     }
 }

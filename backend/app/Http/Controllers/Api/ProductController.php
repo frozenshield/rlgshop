@@ -11,6 +11,7 @@ use App\Models\RefSubcategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -62,6 +63,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'title' => 'nullable|string|max:255',
+            'sku' => 'nullable|string|max:100',
             'price' => 'nullable|numeric|min:0',
             'sellingPrice' => 'nullable|numeric|min:0',
             'stock' => 'nullable|integer|min:0',
@@ -138,8 +140,19 @@ class ProductController extends Controller
         $rawStatus = strtolower($validated['status'] ?? 'active');
         $status = in_array($rawStatus, ['active', 'draft', 'archived'], true) ? $rawStatus : 'active';
 
+        // Resolve SKU — use Gemini suggestion or generate one
+        $sku = ! empty($validated['sku'])
+            ? strtoupper(trim($validated['sku']))
+            : $this->generateSku($name, $categoryId);
+
+        // Ensure uniqueness by appending a suffix if needed
+        if (Product::where('sku', $sku)->exists()) {
+            $sku = $sku.'-'.strtoupper(Str::random(4));
+        }
+
         $product = Product::create([
             'name' => $name,
+            'sku' => $sku,
             'price' => $price,
             'stock' => $stock,
             'description' => $description,
@@ -187,6 +200,7 @@ class ProductController extends Controller
     {
         $data = $request->only([
             'name',
+            'sku',
             'stock',
             'description',
             'ref_brand_id',
@@ -215,6 +229,82 @@ class ProductController extends Controller
             'message' => 'Product updated successfully.',
             'data' => $product,
         ]);
+    }
+
+    /**
+     * Check if a product with a similar name or image URL already exists.
+     * Used before saving to warn admins of potential duplicates.
+     */
+    public function checkDuplicate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name' => 'nullable|string',
+            'image_url' => 'nullable|string',
+            'description' => 'nullable|string',
+        ]);
+
+        $duplicates = collect();
+
+        // Match by identical or very similar name (case-insensitive, trimmed)
+        if (! empty($request->name)) {
+            $nameTrimmed = trim($request->name);
+            $byName = Product::where('name', 'like', '%'.substr($nameTrimmed, 0, 30).'%')
+                ->with(['category', 'brand'])
+                ->get(['id', 'sku', 'name', 'ref_category_id', 'ref_brand_id', 'image_url', 'status']);
+
+            $duplicates = $duplicates->merge($byName);
+        }
+
+        // Match by exact image URL (same photo uploaded twice)
+        if (! empty($request->image_url)) {
+            $byImage = Product::where('image_url', $request->image_url)
+                ->with(['category', 'brand'])
+                ->get(['id', 'sku', 'name', 'ref_category_id', 'ref_brand_id', 'image_url', 'status']);
+
+            $duplicates = $duplicates->merge($byImage);
+        }
+
+        $duplicates = $duplicates->unique('id')->values();
+
+        return response()->json([
+            'success' => true,
+            'has_duplicates' => $duplicates->isNotEmpty(),
+            'count' => $duplicates->count(),
+            'data' => $duplicates,
+        ]);
+    }
+
+    /**
+     * Generate a SKU code from the product name and category.
+     *
+     * Format: CAT-SLUG-XXXX  e.g. TCG-PIKACHU-V-BOXI-A3F2
+     */
+    protected function generateSku(string $productName, ?int $categoryId): string
+    {
+        // Derive a 2-4 char category prefix
+        $catPrefix = 'PRD';
+        if ($categoryId) {
+            $cat = RefCategory::find($categoryId);
+            if ($cat) {
+                // Take first letters of each word, up to 3 chars
+                $catPrefix = strtoupper(implode('', array_map(
+                    fn ($w) => $w[0] ?? '',
+                    preg_split('/[\s\-_]+/', $cat->desc) ?: []
+                )));
+                $catPrefix = substr($catPrefix, 0, 3) ?: 'PRD';
+            }
+        }
+
+        // Slug from the first 3 significant words of the product name
+        $words = preg_split('/\s+/', trim($productName)) ?: [];
+        $slug = strtoupper(implode('-', array_map(
+            fn ($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
+            array_slice($words, 0, 3)
+        )));
+
+        $random = strtoupper(Str::random(4));
+
+        return "{$catPrefix}-{$slug}-{$random}";
     }
 
     /**
