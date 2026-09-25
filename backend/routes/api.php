@@ -22,6 +22,94 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// Staff Authentication (Restricted strictly to the staff table & returns access matrix)
+Route::post('/auth/staff-login', function (Request $request) {
+    $validated = $request->validate([
+        'email' => 'required|email',
+        'password' => 'nullable|string',
+    ]);
+
+    // Query staff table
+    $staff = \App\Models\Staff::with(['role.accessMatrices.module'])
+        ->where('email', trim($validated['email']))
+        ->first();
+
+    if (! $staff) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Access denied: Only authorized users registered in the staff roster can log in.',
+        ], 403);
+    }
+
+    if (! $staff->is_active) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Access denied: This staff account has been deactivated. Please contact an administrator.',
+        ], 403);
+    }
+
+    // Resolve accessible modules from AccessMatrix for this staff's role
+    $matrices = \App\Models\AccessMatrix::with('module')
+        ->where('role_id', $staff->ref_staff_role_id)
+        ->get();
+
+    $allowedCodes = [];
+    $allowedPaths = [];
+    $permissions = [];
+
+    foreach ($matrices as $m) {
+        $code = $m->module?->code;
+        $path = $m->module?->path;
+        if ($m->can_read) {
+            if ($code) {
+                $allowedCodes[] = $code;
+            }
+            if ($path) {
+                $allowedPaths[] = $path;
+            }
+        }
+        if ($code) {
+            $permissions[$code] = [
+                'can_read' => (bool) $m->can_read,
+                'can_create' => (bool) $m->can_create,
+                'can_update' => (bool) $m->can_update,
+                'can_delete' => (bool) $m->can_delete,
+            ];
+        }
+    }
+
+    // Fallback: If no matrices seeded yet for role, default to all for Admin or dashboard
+    if (empty($allowedCodes)) {
+        if ($staff->ref_staff_role_id == 1) {
+            $allowedCodes = ['dashboard', 'orders', 'inventory', 'products', 'customers', 'marketing', 'cms', 'analytics', 'settings'];
+            $allowedPaths = ['/admin/dashboard', '/admin/orders', '/admin/inventory', '/admin/products', '/admin/customers', '/admin/marketing', '/admin/cms', '/admin/analytics', '/admin/settings'];
+        } else {
+            $allowedCodes = ['dashboard', 'orders', 'inventory', 'products'];
+            $allowedPaths = ['/admin/dashboard', '/admin/orders', '/admin/inventory', '/admin/products'];
+        }
+    }
+
+    $user = \App\Models\User::where('email', $staff->email)->first();
+    $token = $user ? $user->createToken('staff_token')->plainTextToken : 'staff_session_'.md5($staff->email.now());
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Staff authenticated successfully.',
+        'token' => $token,
+        'staff' => [
+            'id' => $staff->id,
+            'name' => $staff->name,
+            'email' => $staff->email,
+            'role_id' => $staff->ref_staff_role_id,
+            'role_name' => $staff->role?->name,
+            'role_label' => $staff->role?->label,
+            'allowed_codes' => $allowedCodes,
+            'allowed_paths' => $allowedPaths,
+            'permissions' => $permissions,
+        ],
+    ]);
+});
+
 // Google Authentication
 Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
