@@ -142,6 +142,13 @@ const handleToggleWishlist = () => {
                   <BaseBadge variant="secondary" size="sm">
                     {{ formatAgeGroup(toy.ageGroup) }}
                   </BaseBadge>
+                  <span
+                    v-if="toy.condition"
+                    class="inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs"
+                  >
+                    <span>🏷️</span>
+                    <span>{{ toy.condition }}</span>
+                  </span>
                 </div>
 
                 <h2 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight">

@@ -126,9 +126,17 @@ const handleToggleWishlist = () => {
           <span v-else class="text-rose-600 uppercase tracking-wider font-bold truncate text-[10px]">
             {{ toy.brand }}
           </span>
-          <span class="text-slate-400 text-[10px] font-medium">
-            {{ toy.stock > 0 ? 'In Stock' : 'Out of Stock' }}
-          </span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span
+              v-if="toy.condition"
+              class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200"
+            >
+              {{ toy.condition }}
+            </span>
+            <span class="text-slate-400 text-[10px] font-medium">
+              {{ toy.stock > 0 ? 'In Stock' : 'Out of Stock' }}
+            </span>
+          </div>
         </div>
 
         <h3

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <radialGradient id="buttonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="70%" stop-color="#E2E8F0" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </radialGradient>
+    <linearGradient id="redTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF3344" />
+      <stop offset="100%" stop-color="#D90429" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Ring Shadow -->
+  <circle cx="50" cy="50" r="48" fill="#1E293B" />
+
+  <!-- Top Half Red -->
+  <path d="M 4 50 A 46 46 0 0 1 96 50 Z" fill="url(#redTop)" />
+
+  <!-- Bottom Half White -->
+  <path d="M 4 50 A 46 46 0 0 0 96 50 Z" fill="#F8FAFC" />
+
+  <!-- Middle Black Belt -->
+  <line x1="4" y1="50" x2="96" y2="50" stroke="#1E293B" stroke-width="8" />
+
+  <!-- Center Outer Circle -->
+  <circle cx="50" cy="50" r="16" fill="#1E293B" />
+
+  <!-- Center Button Circle -->
+  <circle cx="50" cy="50" r="10" fill="url(#buttonGlow)" stroke="#94A3B8" stroke-width="1.5" />
+
+  <!-- Button Center Highlight -->
+  <circle cx="50" cy="50" r="5" fill="#FFFFFF" />
+</svg>
