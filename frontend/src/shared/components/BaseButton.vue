@@ -1,46 +1,44 @@
 <script setup lang="ts">
 interface Props {
-  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'soft'
-  size?: 'sm' | 'md' | 'lg'
-  disabled?: boolean
-  loading?: boolean
-  type?: 'button' | 'submit' | 'reset'
-  fullWidth?: boolean
+  variant?: "primary" | "secondary" | "accent" | "outline" | "ghost" | "soft";
+  size?: "sm" | "md" | "lg";
+  disabled?: boolean;
+  loading?: boolean;
+  type?: "button" | "submit" | "reset";
+  fullWidth?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  variant: 'primary',
-  size: 'md',
+  variant: "primary",
+  size: "md",
   disabled: false,
   loading: false,
-  type: 'button',
+  type: "button",
   fullWidth: false,
-})
+});
 
 const emit = defineEmits<{
-  (e: 'click', event: MouseEvent): void
-}>()
+  (e: "click", event: MouseEvent): void;
+}>();
 
 const variantClasses: Record<string, string> = {
   primary:
-    'bg-slate-900 hover:bg-slate-800 text-white shadow-xs active:scale-95',
+    "bg-slate-900 hover:bg-slate-800 text-white shadow-xs active:scale-95",
   secondary:
-    'bg-slate-100 hover:bg-slate-200 text-slate-800 active:scale-95 font-bold',
+    "bg-slate-100 hover:bg-slate-200 text-slate-800 active:scale-95 font-bold",
   accent:
-    'bg-rose-600 hover:bg-rose-700 text-white shadow-xs shadow-rose-600/20 active:scale-95',
+    "bg-rose-600 hover:bg-rose-700 text-white shadow-xs shadow-rose-600/20 active:scale-95",
   outline:
-    'border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 active:scale-95 bg-white',
-  ghost:
-    'text-slate-700 hover:bg-slate-100 active:scale-95',
-  soft:
-    'bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold active:scale-95',
-}
+    "border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 active:scale-95 bg-white",
+  ghost: "text-slate-700 hover:bg-slate-100 active:scale-95",
+  soft: "bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold active:scale-95",
+};
 
 const sizeClasses: Record<string, string> = {
-  sm: 'text-xs px-3 py-1.5 rounded-xl font-bold gap-1.5',
-  md: 'text-sm px-4 py-2.5 rounded-xl font-bold gap-2',
-  lg: 'text-base px-6 py-3 rounded-xl font-bold gap-2.5 shadow-sm',
-}
+  sm: "text-xs px-3 py-1.5 rounded-xl font-bold gap-1.5",
+  md: "text-sm px-4 py-2.5 rounded-xl font-bold gap-2",
+  lg: "text-base px-6 py-3 rounded-xl font-bold gap-2.5 shadow-sm",
+};
 </script>
 
 <template>
@@ -52,7 +50,9 @@ const sizeClasses: Record<string, string> = {
       sizeClasses[props.size],
       variantClasses[props.variant],
       fullWidth ? 'w-full' : '',
-      disabled || loading ? 'opacity-60 cursor-not-allowed pointer-events-none' : '',
+      disabled || loading
+        ? 'opacity-60 cursor-not-allowed pointer-events-none'
+        : '',
     ]"
     @click="(e) => emit('click', e)"
   >

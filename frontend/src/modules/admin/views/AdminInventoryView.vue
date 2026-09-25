@@ -19,28 +19,22 @@ const fetchDbProducts = async () => {
     const res = await fetch("/api/products");
     if (res.ok) {
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const dbItems: InventoryItem[] = json.data.map((p: any) => ({
+      if (json.success && Array.isArray(json.data)) {
+        adminStore.inventory = json.data.map((p: any) => ({
           id: String(p.id),
-          sku: `PRD-${p.id}`,
-          barcode: `BC-${p.id}`,
+          sku: p.sku || `PRD-${p.id}`,
+          barcode: p.barcode || (p.sku ? `BC-${p.sku}` : `BC-${p.id}`),
           name: p.name,
           category: p.category?.desc || "General",
           condition: p.condition?.desc || "Brandnew",
           stock: Number(p.stock) || 0,
           lowStockThreshold: 5,
-          costPrice: 0,
+          costPrice: Number(p.cost_price) || 0,
           sellingPrice: Number(p.price) || 0,
           vendor: p.brand?.name || "Various",
           leadTimeDays: 7,
           variants: [],
         }));
-
-        const existingIds = new Set(dbItems.map((i) => i.id));
-        const remaining = adminStore.inventory.filter(
-          (i) => !existingIds.has(i.id),
-        );
-        adminStore.inventory = [...dbItems, ...remaining];
       }
     }
   } catch (e) {
@@ -71,9 +65,52 @@ const filteredInventory = computed(() => {
   });
 });
 
-const adjustStock = (item: InventoryItem, delta: number) => {
-  const newStock = Math.max(0, item.stock + delta);
+const editingStockId = ref<string | null>(null);
+const pendingStockValue = ref<number>(0);
+const isSavingStock = ref(false);
+
+const startStockEdit = (item: InventoryItem, delta: number = 0) => {
+  editingStockId.value = item.id;
+  pendingStockValue.value = Math.max(0, item.stock + delta);
+};
+
+const adjustPendingStock = (delta: number) => {
+  pendingStockValue.value = Math.max(0, pendingStockValue.value + delta);
+};
+
+const cancelStockEdit = () => {
+  editingStockId.value = null;
+  pendingStockValue.value = 0;
+};
+
+const submitStock = async (item: InventoryItem) => {
+  const newStock = Math.max(0, Number(pendingStockValue.value) || 0);
+  isSavingStock.value = true;
+
+  // Update in local admin store
   adminStore.updateStock(item.id, newStock);
+  item.stock = newStock;
+
+  // Persist to backend database if this is a database product
+  const isDbProduct = !isNaN(Number(item.id));
+  if (isDbProduct) {
+    try {
+      await fetch(`/api/products/${item.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ stock: newStock }),
+      });
+    } catch (e) {
+      console.error("Failed to persist stock update to backend:", e);
+    }
+  }
+
+  isSavingStock.value = false;
+  editingStockId.value = null;
+  showNotification(`Restocked "${item.name}" to ${newStock} units.`);
 };
 
 const openVariants = (item: InventoryItem) => {
@@ -241,6 +278,18 @@ const showNotification = (msg: string) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
+            <tr v-if="filteredInventory.length === 0">
+              <td colspan="7" class="p-8 text-center text-slate-400">
+                <div class="text-3xl mb-2">📦</div>
+                <p class="font-bold text-slate-700 text-xs">
+                  No products in inventory yet
+                </p>
+                <p class="text-[11px] text-slate-400 mt-1">
+                  Upload products from the Product Upload page to track
+                  real-time stock.
+                </p>
+              </td>
+            </tr>
             <tr
               v-for="item in filteredInventory"
               :key="item.id"
@@ -300,50 +349,141 @@ const showNotification = (msg: string) => {
                 >
               </td>
 
-              <!-- Stock Quantity with Quick Stepper -->
+              <!-- Stock Quantity with Quick Stepper & Restock Action -->
               <td class="p-4">
                 <div class="flex items-center gap-2">
+                  <!-- Active Restock Editing Mode -->
                   <div
-                    class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden"
+                    v-if="editingStockId === item.id"
+                    class="flex items-center gap-1.5 animate-fade-in"
                   >
+                    <div
+                      class="flex items-center border-2 border-emerald-500 rounded-lg bg-white overflow-hidden shadow-xs"
+                    >
+                      <button
+                        type="button"
+                        class="px-2 py-1 hover:bg-slate-100 text-slate-700 font-bold transition-colors cursor-pointer"
+                        title="Decrease"
+                        @click="adjustPendingStock(-1)"
+                      >
+                        -
+                      </button>
+                      <input
+                        v-model.number="pendingStockValue"
+                        type="number"
+                        min="0"
+                        class="w-14 text-center font-bold text-xs py-1 text-slate-900 focus:outline-none bg-emerald-50/50"
+                        autofocus
+                        @keyup.enter="submitStock(item)"
+                        @keyup.esc="cancelStockEdit"
+                      />
+                      <button
+                        type="button"
+                        class="px-2 py-1 hover:bg-slate-100 text-slate-700 font-bold transition-colors cursor-pointer"
+                        title="Increase"
+                        @click="adjustPendingStock(1)"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <!-- Small Submit Check Button (✓) -->
                     <button
                       type="button"
-                      class="px-2 py-1 hover:bg-slate-200 text-slate-600 font-bold transition-colors cursor-pointer"
-                      @click="adjustStock(item, -1)"
+                      :disabled="isSavingStock"
+                      class="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center justify-center font-black text-sm shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Save / Confirm Restock"
+                      @click="submitStock(item)"
                     >
-                      -
+                      <svg
+                        v-if="!isSavingStock"
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="3"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span
+                        v-else
+                        class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+                      ></span>
                     </button>
-                    <span
-                      class="w-10 text-center font-bold text-xs"
-                      :class="
-                        item.stock <= item.lowStockThreshold
-                          ? 'text-rose-600'
-                          : 'text-slate-800'
-                      "
-                    >
-                      {{ item.stock }}
-                    </span>
+
+                    <!-- Small Cancel Button (✕) -->
                     <button
                       type="button"
-                      class="px-2 py-1 hover:bg-slate-200 text-slate-600 font-bold transition-colors cursor-pointer"
-                      @click="adjustStock(item, 1)"
+                      class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200 transition-colors cursor-pointer"
+                      title="Cancel Restock"
+                      @click="cancelStockEdit"
                     >
-                      +
+                      ✕
                     </button>
                   </div>
 
-                  <span
-                    v-if="item.stock <= item.lowStockThreshold"
-                    class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700 whitespace-nowrap"
-                  >
-                    Low (≤{{ item.lowStockThreshold }})
-                  </span>
-                  <span
-                    v-else
-                    class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap"
-                  >
-                    Healthy
-                  </span>
+                  <!-- Idle / Normal Display Mode -->
+                  <div v-else class="flex items-center gap-2">
+                    <div
+                      class="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden hover:border-slate-300 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        class="px-2 py-1 hover:bg-slate-200 text-slate-600 font-bold transition-colors cursor-pointer"
+                        title="Decrease stock (Restock)"
+                        @click="startStockEdit(item, -1)"
+                      >
+                        -
+                      </button>
+                      <span
+                        class="w-10 text-center font-bold text-xs cursor-pointer hover:bg-slate-100 py-1 transition-colors"
+                        :class="
+                          item.stock <= item.lowStockThreshold
+                            ? 'text-rose-600'
+                            : 'text-slate-800'
+                        "
+                        title="Click to restock / edit quantity"
+                        @click="startStockEdit(item, 0)"
+                      >
+                        {{ item.stock }}
+                      </span>
+                      <button
+                        type="button"
+                        class="px-2 py-1 hover:bg-slate-200 text-slate-600 font-bold transition-colors cursor-pointer"
+                        title="Increase stock (Restock)"
+                        @click="startStockEdit(item, 1)"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                      title="Restock this item"
+                      @click="startStockEdit(item, 0)"
+                    >
+                      <span>📦</span>
+                      <span>Restock</span>
+                    </button>
+
+                    <span
+                      v-if="item.stock <= item.lowStockThreshold"
+                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700 whitespace-nowrap"
+                    >
+                      Low (≤{{ item.lowStockThreshold }})
+                    </span>
+                    <span
+                      v-else
+                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap"
+                    >
+                      Healthy
+                    </span>
+                  </div>
                 </div>
               </td>
 
@@ -443,9 +583,12 @@ const showNotification = (msg: string) => {
                   >
                     -
                   </button>
-                  <span class="w-8 text-center font-bold text-slate-800">{{
-                    v.stock
-                  }}</span>
+                  <input
+                    v-model.number="v.stock"
+                    type="number"
+                    min="0"
+                    class="w-10 text-center font-bold text-slate-800 bg-transparent focus:outline-none"
+                  />
                   <button
                     type="button"
                     class="px-2 py-0.5 hover:bg-slate-200 text-slate-600 font-bold"

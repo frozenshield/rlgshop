@@ -1,84 +1,136 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useAdminStore } from '../admin.store'
-import type { CustomerProfile, CustomerInquiry } from '../admin.types'
-import { formatCurrency } from '@/shared/utils/currency.util'
+import { ref, computed, onMounted } from "vue";
+import { useAdminStore } from "../admin.store";
+import type { CustomerProfile, CustomerInquiry } from "../admin.types";
+import { formatCurrency } from "@/shared/utils/currency.util";
 
-const adminStore = useAdminStore()
+const adminStore = useAdminStore();
 
-const activeTab = ref<'profiles' | 'inbox'>('profiles')
-const searchQuery = ref('')
-const selectedSegment = ref<'All' | 'VIP' | 'Regular' | 'Wholesale' | 'Inactive'>('All')
+const activeTab = ref<"profiles" | "inbox">("profiles");
+const searchQuery = ref("");
+const selectedSegment = ref<
+  "All" | "VIP" | "Regular" | "Wholesale" | "Inactive"
+>("All");
+
+const fetchDbCustomers = async () => {
+  try {
+    const res = await fetch("/api/customer-profiles");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const dbCustomers: CustomerProfile[] = json.data.map((p: any) => ({
+          id: `CUST-${p.id}`,
+          name: p.name || p.user?.name || "Collector",
+          email: p.user?.email || "customer@rlghobby.com",
+          phone: p.phone || "N/A",
+          city: p.city || "Metro Manila",
+          totalOrders: p.orders_count || 1,
+          lifetimeValue: p.lifetime_value || 4500,
+          segment: (p.segment || "Regular") as any,
+          lastOrderDate: p.updated_at
+            ? p.updated_at.slice(0, 10)
+            : "2026-09-25",
+          notes: p.bio || p.notes || undefined,
+        }));
+        const dbIds = new Set(dbCustomers.map((c) => c.id));
+        const remaining = adminStore.customers.filter((c) => !dbIds.has(c.id));
+        adminStore.customers = [...dbCustomers, ...remaining];
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load customers from database", e);
+  }
+};
+
+onMounted(() => {
+  fetchDbCustomers();
+});
 
 // Profile Details Modal
-const selectedCustomer = ref<CustomerProfile | null>(null)
-const isProfileModalOpen = ref(false)
+const selectedCustomer = ref<CustomerProfile | null>(null);
+const isProfileModalOpen = ref(false);
 
 // Inbox Reply Modal
-const selectedInquiry = ref<CustomerInquiry | null>(null)
-const replyText = ref('')
-const isReplyModalOpen = ref(false)
+const selectedInquiry = ref<CustomerInquiry | null>(null);
+const replyText = ref("");
+const isReplyModalOpen = ref(false);
 
 const filteredCustomers = computed(() => {
   return adminStore.customers.filter((c) => {
-    const matchesSegment = selectedSegment.value === 'All' || c.segment === selectedSegment.value
+    const matchesSegment =
+      selectedSegment.value === "All" || c.segment === selectedSegment.value;
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       c.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      c.city.toLowerCase().includes(searchQuery.value.toLowerCase())
-    return matchesSegment && matchesSearch
-  })
-})
+      c.city.toLowerCase().includes(searchQuery.value.toLowerCase());
+    return matchesSegment && matchesSearch;
+  });
+});
 
 const openProfile = (c: CustomerProfile) => {
-  selectedCustomer.value = c
-  isProfileModalOpen.value = true
-}
+  selectedCustomer.value = c;
+  isProfileModalOpen.value = true;
+};
 
 const openReply = (inq: CustomerInquiry) => {
-  selectedInquiry.value = inq
-  replyText.value = `Hi ${inq.customerName},\n\nThank you for reaching out to RLG Hobby Shop support regarding "${inq.subject}". `
-  isReplyModalOpen.value = true
-}
+  selectedInquiry.value = inq;
+  replyText.value = `Hi ${inq.customerName},\n\nThank you for reaching out to RLG Hobby Shop support regarding "${inq.subject}". `;
+  isReplyModalOpen.value = true;
+};
 
 const sendReply = () => {
   if (selectedInquiry.value) {
-    adminStore.markInquiryStatus(selectedInquiry.value.id, 'resolved')
-    isReplyModalOpen.value = false
+    adminStore.markInquiryStatus(selectedInquiry.value.id, "resolved");
+    isReplyModalOpen.value = false;
   }
-}
+};
 
 const getSegmentBadge = (segment: string) => {
   switch (segment) {
-    case 'VIP':
-      return 'bg-amber-100 text-amber-800 border-amber-200'
-    case 'Wholesale':
-      return 'bg-purple-100 text-purple-800 border-purple-200'
-    case 'Regular':
-      return 'bg-blue-100 text-blue-800 border-blue-200'
-    case 'Inactive':
-      return 'bg-slate-100 text-slate-600 border-slate-200'
+    case "VIP":
+      return "bg-amber-100 text-amber-800 border-amber-200";
+    case "Wholesale":
+      return "bg-purple-100 text-purple-800 border-purple-200";
+    case "Regular":
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    case "Inactive":
+      return "bg-slate-100 text-slate-600 border-slate-200";
     default:
-      return 'bg-slate-100 text-slate-700'
+      return "bg-slate-100 text-slate-700";
   }
-}
+};
 </script>
 
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+    <div
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs"
+    >
       <div>
-        <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Customer Relationship Management (CRM)</h1>
-        <p class="text-xs text-slate-500">Collector profiles, purchase history LTV, behavioral segmentation, and centralized inquiry inbox.</p>
+        <h1
+          class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight"
+        >
+          Customer Relationship Management (CRM)
+        </h1>
+        <p class="text-xs text-slate-500">
+          Collector profiles, purchase history LTV, behavioral segmentation, and
+          centralized inquiry inbox.
+        </p>
       </div>
 
       <!-- Tab Switcher -->
-      <div class="flex gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+      <div
+        class="flex gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200"
+      >
         <button
           type="button"
           class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
-          :class="activeTab === 'profiles' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+          :class="
+            activeTab === 'profiles'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          "
           @click="activeTab = 'profiles'"
         >
           👥 Customer Profiles ({{ adminStore.customers.length }})
@@ -86,7 +138,11 @@ const getSegmentBadge = (segment: string) => {
         <button
           type="button"
           class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-          :class="activeTab === 'inbox' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+          :class="
+            activeTab === 'inbox'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          "
           @click="activeTab = 'inbox'"
         >
           <span>📥 Support Inbox</span>
@@ -102,7 +158,9 @@ const getSegmentBadge = (segment: string) => {
 
     <!-- TAB 1: Customer Profiles & Segmentation -->
     <div v-if="activeTab === 'profiles'" class="space-y-4">
-      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+      <div
+        class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4"
+      >
         <div class="relative w-full md:w-80">
           <input
             v-model="searchQuery"
@@ -113,13 +171,25 @@ const getSegmentBadge = (segment: string) => {
           <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
         </div>
 
-        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto">
+        <div
+          class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto"
+        >
           <button
-            v-for="seg in (['All', 'VIP', 'Regular', 'Wholesale', 'Inactive'] as const)"
+            v-for="seg in [
+              'All',
+              'VIP',
+              'Regular',
+              'Wholesale',
+              'Inactive',
+            ] as const"
             :key="seg"
             type="button"
             class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
-            :class="selectedSegment === seg ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+            :class="
+              selectedSegment === seg
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
             @click="selectedSegment = seg"
           >
             {{ seg }}
@@ -128,11 +198,15 @@ const getSegmentBadge = (segment: string) => {
       </div>
 
       <!-- Customers Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden"
+      >
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
-              <tr class="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
+              <tr
+                class="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase font-bold text-[10px] tracking-wider"
+              >
                 <th class="p-4">Customer Name</th>
                 <th class="p-4">Contact &amp; Location</th>
                 <th class="p-4">Segment Rank</th>
@@ -143,22 +217,37 @@ const getSegmentBadge = (segment: string) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="c in filteredCustomers" :key="c.id" class="hover:bg-slate-50/70 transition-colors">
+              <tr
+                v-for="c in filteredCustomers"
+                :key="c.id"
+                class="hover:bg-slate-50/70 transition-colors"
+              >
                 <td class="p-4">
-                  <span class="font-bold text-slate-900 text-xs block">{{ c.name }}</span>
-                  <span class="font-mono text-[10px] text-slate-400">{{ c.id }}</span>
+                  <span class="font-bold text-slate-900 text-xs block">{{
+                    c.name
+                  }}</span>
+                  <span class="font-mono text-[10px] text-slate-400">{{
+                    c.id
+                  }}</span>
                 </td>
                 <td class="p-4">
                   <span class="text-slate-800 block">{{ c.email }}</span>
-                  <span class="text-[11px] text-slate-400 block">{{ c.phone }} &bull; {{ c.city }}</span>
+                  <span class="text-[11px] text-slate-400 block"
+                    >{{ c.phone }} &bull; {{ c.city }}</span
+                  >
                 </td>
                 <td class="p-4">
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border" :class="getSegmentBadge(c.segment)">
+                  <span
+                    class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                    :class="getSegmentBadge(c.segment)"
+                  >
                     {{ c.segment }}
                   </span>
                 </td>
                 <td class="p-4">
-                  <span class="font-extrabold text-slate-900">{{ formatCurrency(c.lifetimeValue) }}</span>
+                  <span class="font-extrabold text-slate-900">{{
+                    formatCurrency(c.lifetimeValue)
+                  }}</span>
                 </td>
                 <td class="p-4 font-bold text-slate-700">
                   {{ c.totalOrders }} order(s)
@@ -184,7 +273,9 @@ const getSegmentBadge = (segment: string) => {
 
     <!-- TAB 2: Support & Messaging Inbox -->
     <div v-else class="space-y-4">
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100">
+      <div
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100"
+      >
         <div
           v-for="inq in adminStore.inquiries"
           :key="inq.id"
@@ -194,16 +285,32 @@ const getSegmentBadge = (segment: string) => {
             <div class="flex items-center gap-2">
               <span
                 class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                :class="inq.type === 'dispute' ? 'bg-rose-100 text-rose-800' : inq.type === 'review' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
+                :class="
+                  inq.type === 'dispute'
+                    ? 'bg-rose-100 text-rose-800'
+                    : inq.type === 'review'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-blue-100 text-blue-800'
+                "
               >
                 {{ inq.type }}
               </span>
-              <span class="text-xs font-extrabold text-slate-900">{{ inq.subject }}</span>
-              <span v-if="inq.status === 'unread'" class="w-2 h-2 rounded-full bg-rose-600" title="Unread"></span>
+              <span class="text-xs font-extrabold text-slate-900">{{
+                inq.subject
+              }}</span>
+              <span
+                v-if="inq.status === 'unread'"
+                class="w-2 h-2 rounded-full bg-rose-600"
+                title="Unread"
+              ></span>
             </div>
-            <p class="text-xs text-slate-600 line-clamp-2">"{{ inq.message }}"</p>
+            <p class="text-xs text-slate-600 line-clamp-2">
+              "{{ inq.message }}"
+            </p>
             <div class="flex items-center gap-3 text-[11px] text-slate-400">
-              <span class="font-bold text-slate-700">{{ inq.customerName }} ({{ inq.email }})</span>
+              <span class="font-bold text-slate-700"
+                >{{ inq.customerName }} ({{ inq.email }})</span
+              >
               <span>&bull;</span>
               <span>{{ inq.date }}</span>
             </div>
@@ -218,7 +325,10 @@ const getSegmentBadge = (segment: string) => {
             >
               Reply &amp; Resolve
             </button>
-            <span v-else class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            <span
+              v-else
+              class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+            >
               ✓ Resolved
             </span>
           </div>
@@ -228,14 +338,27 @@ const getSegmentBadge = (segment: string) => {
 
     <!-- Customer CRM Detail Modal -->
     <teleport to="body">
-      <div v-if="isProfileModalOpen && selectedCustomer" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div
+        v-if="isProfileModalOpen && selectedCustomer"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display"
+        >
+          <div
+            class="flex items-center justify-between pb-3 border-b border-slate-100"
+          >
             <div>
-              <h3 class="text-base font-bold text-slate-900">{{ selectedCustomer.name }}</h3>
+              <h3 class="text-base font-bold text-slate-900">
+                {{ selectedCustomer.name }}
+              </h3>
               <p class="text-xs text-slate-500">{{ selectedCustomer.email }}</p>
             </div>
-            <button type="button" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer" @click="isProfileModalOpen = false">
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              @click="isProfileModalOpen = false"
+            >
               ✕
             </button>
           </div>
@@ -243,19 +366,34 @@ const getSegmentBadge = (segment: string) => {
           <div class="space-y-3 text-xs">
             <div class="grid grid-cols-2 gap-3">
               <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span class="text-[10px] font-bold text-slate-400 uppercase">Lifetime Value (LTV)</span>
-                <p class="text-base font-black text-slate-900 mt-0.5">{{ formatCurrency(selectedCustomer.lifetimeValue) }}</p>
+                <span class="text-[10px] font-bold text-slate-400 uppercase"
+                  >Lifetime Value (LTV)</span
+                >
+                <p class="text-base font-black text-slate-900 mt-0.5">
+                  {{ formatCurrency(selectedCustomer.lifetimeValue) }}
+                </p>
               </div>
               <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span class="text-[10px] font-bold text-slate-400 uppercase">Orders Completed</span>
-                <p class="text-base font-black text-slate-900 mt-0.5">{{ selectedCustomer.totalOrders }}</p>
+                <span class="text-[10px] font-bold text-slate-400 uppercase"
+                  >Orders Completed</span
+                >
+                <p class="text-base font-black text-slate-900 mt-0.5">
+                  {{ selectedCustomer.totalOrders }}
+                </p>
               </div>
             </div>
 
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-              <span class="text-[10px] font-bold text-slate-400 uppercase">Collector Behavioral Segment</span>
+            <div
+              class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1"
+            >
+              <span class="text-[10px] font-bold text-slate-400 uppercase"
+                >Collector Behavioral Segment</span
+              >
               <div class="pt-1">
-                <select v-model="selectedCustomer.segment" class="text-xs font-bold p-1.5 rounded-lg border border-slate-300 bg-white">
+                <select
+                  v-model="selectedCustomer.segment"
+                  class="text-xs font-bold p-1.5 rounded-lg border border-slate-300 bg-white"
+                >
                   <option value="VIP">👑 VIP Collector</option>
                   <option value="Regular">Regular Buyer</option>
                   <option value="Wholesale">💼 Wholesale Partner</option>
@@ -264,14 +402,23 @@ const getSegmentBadge = (segment: string) => {
               </div>
             </div>
 
-            <div v-if="selectedCustomer.notes" class="p-3 bg-amber-50 rounded-xl border border-amber-200/80">
-              <span class="text-[10px] font-bold text-amber-800 uppercase">Collector Internal Notes</span>
+            <div
+              v-if="selectedCustomer.notes"
+              class="p-3 bg-amber-50 rounded-xl border border-amber-200/80"
+            >
+              <span class="text-[10px] font-bold text-amber-800 uppercase"
+                >Collector Internal Notes</span
+              >
               <p class="text-amber-900 mt-0.5">{{ selectedCustomer.notes }}</p>
             </div>
           </div>
 
           <div class="pt-2 border-t border-slate-100 flex justify-end">
-            <button type="button" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer" @click="isProfileModalOpen = false">
+            <button
+              type="button"
+              class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer"
+              @click="isProfileModalOpen = false"
+            >
               Save Profile
             </button>
           </div>
@@ -281,25 +428,44 @@ const getSegmentBadge = (segment: string) => {
 
     <!-- Reply to Inquiry Modal -->
     <teleport to="body">
-      <div v-if="isReplyModalOpen && selectedInquiry" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div
+        v-if="isReplyModalOpen && selectedInquiry"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display"
+        >
+          <div
+            class="flex items-center justify-between pb-3 border-b border-slate-100"
+          >
             <div>
-              <h3 class="text-base font-bold text-slate-900">Reply to {{ selectedInquiry.customerName }}</h3>
-              <p class="text-xs text-slate-500">Subject: {{ selectedInquiry.subject }}</p>
+              <h3 class="text-base font-bold text-slate-900">
+                Reply to {{ selectedInquiry.customerName }}
+              </h3>
+              <p class="text-xs text-slate-500">
+                Subject: {{ selectedInquiry.subject }}
+              </p>
             </div>
-            <button type="button" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer" @click="isReplyModalOpen = false">
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              @click="isReplyModalOpen = false"
+            >
               ✕
             </button>
           </div>
 
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+          <div
+            class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600"
+          >
             <span class="font-bold text-slate-800">Original Inquiry:</span>
             <p class="mt-1">"{{ selectedInquiry.message }}"</p>
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Official Support Response</label>
+            <label class="block text-xs font-bold text-slate-700 mb-1"
+              >Official Support Response</label
+            >
             <textarea
               v-model="replyText"
               rows="5"
@@ -308,8 +474,14 @@ const getSegmentBadge = (segment: string) => {
           </div>
 
           <div class="flex justify-between items-center pt-2">
-            <span class="text-[11px] text-slate-400">Will send email response to {{ selectedInquiry.email }}</span>
-            <button type="button" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer" @click="sendReply">
+            <span class="text-[11px] text-slate-400"
+              >Will send email response to {{ selectedInquiry.email }}</span
+            >
+            <button
+              type="button"
+              class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+              @click="sendReply"
+            >
               Send &amp; Resolve Ticket
             </button>
           </div>

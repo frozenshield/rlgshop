@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
-use App\Models\AccessMatrix;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
@@ -42,14 +43,10 @@ Route::get('/staff-roles', function () {
 Route::get('/modules', function () {
     return response()->json(RefModule::all());
 });
-Route::get('/access-matrix', function (Request $request) {
-    $query = AccessMatrix::with(['role', 'module']);
-    if ($request->filled('role_id')) {
-        $query->where('role_id', $request->integer('role_id'));
-    }
-
-    return response()->json($query->get());
-});
+Route::get('/access-matrix', [AccessMatrixController::class, 'index']);
+Route::put('/access-matrix/{access_matrix}', [AccessMatrixController::class, 'update']);
+Route::get('/staff-modules', [AccessMatrixController::class, 'getStaffModules']);
+Route::get('/staff/{staff}/modules', [AccessMatrixController::class, 'getStaffModules']);
 
 // Products Catalog API
 Route::apiResource('products', ProductController::class);
@@ -59,6 +56,11 @@ Route::apiResource('staff', StaffController::class);
 
 // Customer Profiles CRM & Management API
 Route::apiResource('customer-profiles', CustomerProfileController::class);
+
+// Promotional Discount Codes Engine API
+Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode']);
+Route::post('/promo-codes/{promo_code}/toggle', [PromoCodeController::class, 'toggle']);
+Route::apiResource('promo-codes', PromoCodeController::class);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {

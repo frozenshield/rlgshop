@@ -29,29 +29,29 @@ const decrement = () => {
 </script>
 
 <template>
-  <div class="flex items-center gap-3.5 py-3 border-b border-slate-100 group">
+  <div class="flex items-center gap-3.5 py-3 border-b border-slate-800/80 group">
     <!-- Thumbnail -->
     <img
       :src="item.toy.imageUrl"
       :alt="item.toy.name"
-      class="w-16 h-16 rounded-xl object-cover bg-amber-50 border border-slate-100 flex-shrink-0"
+      class="w-16 h-16 rounded-xl object-cover bg-slate-950 border border-slate-800 flex-shrink-0"
     />
 
     <!-- Info -->
     <div class="flex-1 min-w-0">
-      <h4 class="text-xs sm:text-sm font-bold text-slate-800 line-clamp-1 group-hover:text-red-600 transition-colors">
+      <h4 class="text-xs sm:text-sm font-bold text-white line-clamp-1 group-hover:text-amber-400 transition-colors">
         {{ item.toy.name }}
       </h4>
       <p class="text-[11px] text-slate-400 font-semibold mb-1">
-        Age: {{ item.toy.ageGroup }} | {{ item.toy.brand }}
+        Age: {{ item.toy.ageGroup }} | <span class="text-indigo-400 font-bold">{{ item.toy.brand }}</span>
       </p>
       <div class="flex items-center gap-2">
-        <span class="text-xs sm:text-sm font-extrabold text-red-600 font-display">
+        <span class="text-xs sm:text-sm font-extrabold text-white font-mono">
           {{ formatCurrency(item.toy.price) }}
         </span>
         <span
           v-if="item.toy.originalPrice"
-          class="text-[11px] text-slate-400 line-through"
+          class="text-[11px] text-slate-500 line-through font-mono"
         >
           {{ formatCurrency(item.toy.originalPrice) }}
         </span>
@@ -60,23 +60,23 @@ const decrement = () => {
 
     <!-- Stepper Quantity & Delete -->
     <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-      <div class="flex items-center border border-slate-200 rounded-xl bg-slate-50/70 p-0.5">
+      <div class="flex items-center border border-slate-700 rounded-xl bg-slate-800/80 p-0.5">
         <button
           type="button"
-          class="w-6 h-6 rounded-lg bg-white shadow-xs hover:bg-red-50 hover:text-red-600 text-slate-600 text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
+          class="w-6 h-6 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
           title="Decrease"
           aria-label="Decrease quantity"
           @click="decrement"
         >
           -
         </button>
-        <span class="w-7 text-center text-xs font-bold text-slate-800">
+        <span class="w-7 text-center text-xs font-bold text-white font-mono">
           {{ item.quantity }}
         </span>
         <button
           type="button"
           :disabled="item.quantity >= item.toy.stock"
-          class="w-6 h-6 rounded-lg bg-white shadow-xs hover:bg-red-50 hover:text-red-600 text-slate-600 text-xs font-bold flex items-center justify-center transition-colors disabled:opacity-40 cursor-pointer"
+          class="w-6 h-6 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-white text-xs font-bold flex items-center justify-center transition-colors disabled:opacity-30 cursor-pointer"
           title="Increase"
           aria-label="Increase quantity"
           @click="increment"
@@ -88,7 +88,7 @@ const decrement = () => {
       <!-- Remove Button -->
       <button
         type="button"
-        class="text-[11px] text-slate-400 hover:text-red-600 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+        class="text-[11px] text-slate-400 hover:text-rose-400 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
         @click="emit('remove', item.toy.id)"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

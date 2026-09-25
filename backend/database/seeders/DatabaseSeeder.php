@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             AccessMatrixSeeder::class,
             StaffSeeder::class,
             CustomerProfileSeeder::class,
+            PromoCodeSeeder::class,
         ]);
     }
 }

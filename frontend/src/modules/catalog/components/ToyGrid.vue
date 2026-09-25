@@ -32,19 +32,19 @@ const emit = defineEmits<{
     <!-- Empty State -->
     <div
       v-else
-      class="bg-white rounded-3xl p-12 text-center border border-amber-200/80 shadow-sm max-w-lg mx-auto my-8 space-y-4"
+      class="bg-slate-900/90 rounded-3xl p-12 text-center border border-slate-800 shadow-xl max-w-lg mx-auto my-8 space-y-4 backdrop-blur-md"
     >
       <div class="text-6xl animate-bounce">🔍</div>
-      <h3 class="text-xl font-bold font-display text-slate-800">
+      <h3 class="text-xl font-bold font-display text-white">
         No Products Matched Your Filters
       </h3>
-      <p class="text-xs text-slate-500 max-w-sm mx-auto">
+      <p class="text-xs text-slate-400 max-w-sm mx-auto">
         Try adjusting your budget slider, selecting a different category, or
         clearing your search term to discover more items!
       </p>
       <button
         type="button"
-        class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-2xl shadow-md transition-all cursor-pointer"
+        class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl shadow-lg shadow-amber-400/25 border border-amber-300 transition-all cursor-pointer"
         @click="emit('reset-filters')"
       >
         Reset All Filters

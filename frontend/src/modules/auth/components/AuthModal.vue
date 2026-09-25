@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useStorage } from "@vueuse/core";
+import { useAuthStore } from "../auth.store";
 
 interface Props {
   isOpen: boolean;
@@ -10,7 +11,10 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "success", message: string): void;
 }>();
+
+const authStore = useAuthStore();
 
 // ─── Tab state ────────────────────────────────────────────────────────────────
 type Tab = "login" | "register";
@@ -81,6 +85,8 @@ const handleLogin = async () => {
       loginError.value = data?.message ?? "Invalid email or password.";
     } else {
       authToken.value = data.token;
+      authStore.setAuth(data.token, data.user);
+      emit("success", `Welcome back, ${data.user?.name || "Collector"}! 👋`);
       emit("close");
     }
   } catch {
@@ -127,6 +133,8 @@ const handleRegister = async () => {
         data?.message ?? "Registration failed. Please try again.";
     } else {
       authToken.value = data.token;
+      authStore.setAuth(data.token, data.user);
+      emit("success", "Account created successfully! Welcome to RLG Shop 🎉");
       emit("close");
     }
   } catch {

@@ -28,7 +28,7 @@ const activeImage = ref("");
 
 const tcgInfo = computed(() => {
   if (props.toy?.category === "tcg" && props.toy.tcgSeries) {
-    return TCG_SERIES_DATA.find((s) => s.id === props.toy.tcgSeries);
+    return TCG_SERIES_DATA.find((s) => s.id === props.toy?.tcgSeries);
   }
   return null;
 });
@@ -76,17 +76,17 @@ const handleToggleWishlist = () => {
     >
       <div
         v-if="isOpen && toy"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto font-display"
+        class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto font-display"
         @click="emit('close')"
       >
         <div
-          class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 transform transition-all my-8 max-h-[90vh] overflow-y-auto"
+          class="bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-800 transform transition-all my-8 max-h-[90vh] overflow-y-auto text-slate-100"
           @click.stop
         >
           <!-- Close Button -->
           <button
             type="button"
-            class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer z-10"
+            class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-10 border border-slate-700"
             @click="emit('close')"
           >
             ✕
@@ -96,7 +96,7 @@ const handleToggleWishlist = () => {
             <!-- Left: Toy Image & Gallery -->
             <div class="space-y-3">
               <div
-                class="aspect-square rounded-2xl overflow-hidden bg-slate-100/70 border border-slate-200 relative"
+                class="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative"
               >
                 <img
                   :src="currentImage"
@@ -106,13 +106,13 @@ const handleToggleWishlist = () => {
                 <div class="absolute top-3 left-3 flex flex-col gap-1">
                   <span
                     v-if="toy.isBestSeller"
-                    class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-amber-500 text-slate-950 uppercase tracking-wider shadow-2xs"
+                    class="text-[10px] font-black px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 uppercase tracking-wider shadow-md shadow-amber-400/25"
                   >
                     🔥 Best Seller
                   </span>
                   <span
                     v-if="toy.discountPercent"
-                    class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-2xs"
+                    class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-sm"
                   >
                     -{{ toy.discountPercent }}% OFF
                   </span>
@@ -128,11 +128,11 @@ const handleToggleWishlist = () => {
                   v-for="(img, idx) in toy.galleryImages"
                   :key="idx"
                   :src="img"
-                  class="w-14 h-14 rounded-xl object-cover border-2 cursor-pointer transition-all"
+                  class="w-14 h-14 rounded-xl object-cover border-2 cursor-pointer transition-all bg-slate-950"
                   :class="
                     currentImage === img
-                      ? 'border-rose-600 scale-105'
-                      : 'border-slate-200 opacity-70 hover:opacity-100'
+                      ? 'border-amber-400 scale-105'
+                      : 'border-slate-800 opacity-70 hover:opacity-100'
                   "
                   @click="activeImage = img"
                 />
@@ -145,15 +145,14 @@ const handleToggleWishlist = () => {
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
                   <span
                     v-if="tcgInfo"
-                    class="inline-flex items-center gap-1 font-bold text-xs px-2.5 py-0.5 rounded-md border shadow-2xs"
-                    :class="tcgInfo.bgClass"
+                    class="inline-flex items-center gap-1 font-bold text-xs px-2.5 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-950/80 text-indigo-300 shadow-2xs"
                   >
                     <span>{{ tcgInfo.icon }}</span>
                     <span>{{ tcgInfo.name }}</span>
                   </span>
                   <span
                     v-else
-                    class="text-xs font-bold text-rose-600 uppercase tracking-wider"
+                    class="text-xs font-bold text-indigo-400 uppercase tracking-wider"
                   >
                     {{ toy.brand }}
                   </span>
@@ -162,7 +161,7 @@ const handleToggleWishlist = () => {
                   </BaseBadge>
                   <span
                     v-if="toy.condition"
-                    class="inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs"
+                    class="inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-md bg-slate-800 text-amber-300 border border-slate-700 shadow-2xs"
                   >
                     <span>🏷️</span>
                     <span>{{ toy.condition }}</span>
@@ -170,7 +169,7 @@ const handleToggleWishlist = () => {
                 </div>
 
                 <h2
-                  class="text-xl sm:text-2xl font-black text-slate-900 leading-tight"
+                  class="text-xl sm:text-2xl font-black text-white leading-tight"
                 >
                   {{ toy.name }}
                 </h2>
@@ -186,20 +185,20 @@ const handleToggleWishlist = () => {
 
               <!-- Price Box -->
               <div
-                class="flex items-baseline gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200"
+                class="flex items-baseline gap-3 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800"
               >
-                <span class="text-2xl font-black text-slate-900">
+                <span class="text-2xl font-black text-white font-mono">
                   {{ formatCurrency(toy.price) }}
                 </span>
                 <span
                   v-if="toy.originalPrice"
-                  class="text-sm text-slate-400 line-through"
+                  class="text-sm text-slate-500 line-through font-mono"
                 >
                   {{ formatCurrency(toy.originalPrice) }}
                 </span>
                 <span
                   v-if="toy.stock > 0"
-                  class="text-xs font-bold text-emerald-600 ml-auto"
+                  class="text-xs font-bold text-emerald-400 ml-auto"
                 >
                   ✓ In Stock ({{ toy.stock }} available)
                 </span>
@@ -207,7 +206,7 @@ const handleToggleWishlist = () => {
 
               <!-- Description -->
               <p
-                class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal"
+                class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal"
               >
                 {{ toy.description }}
               </p>
@@ -215,18 +214,18 @@ const handleToggleWishlist = () => {
               <!-- Key Features List -->
               <div v-if="toy.features && toy.features.length > 0">
                 <h4
-                  class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
+                  class="text-xs font-bold text-slate-200 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
                 >
                   <span>✨</span>
                   <span>Collector Specifications:</span>
                 </h4>
-                <ul class="text-xs text-slate-600 space-y-1">
+                <ul class="text-xs text-slate-400 space-y-1">
                   <li
                     v-for="(feat, i) in toy.features"
                     :key="i"
                     class="flex items-center gap-2"
                   >
-                    <span class="text-emerald-500 font-bold">✓</span>
+                    <span class="text-indigo-400 font-bold">✓</span>
                     <span>{{ feat }}</span>
                   </li>
                 </ul>
@@ -235,41 +234,40 @@ const handleToggleWishlist = () => {
               <!-- Safety Warning if any -->
               <div
                 v-if="toy.safetyWarning"
-                class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-semibold flex items-center gap-2"
+                class="p-2.5 rounded-xl bg-slate-950 border border-amber-500/30 text-[11px] text-amber-300 font-semibold flex items-center gap-2"
               >
                 <span>⚠️</span>
                 <span>{{ toy.safetyWarning }}</span>
               </div>
 
-              <!-- Quantity Selector & Add to Cart Action -->
+              <!-- Quantity Selector & Add to Cart Action (10% High-Contrast Accent) -->
               <div class="pt-2 flex items-center gap-3">
                 <div
-                  class="flex items-center border border-slate-200 rounded-2xl p-1 bg-slate-50"
+                  class="flex items-center border border-slate-700 rounded-2xl p-1 bg-slate-950"
                 >
                   <button
                     type="button"
-                    class="w-8 h-8 rounded-xl bg-white shadow-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer transition-colors"
+                    class="w-8 h-8 rounded-xl bg-slate-800 shadow-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center justify-center cursor-pointer transition-colors"
                     @click="decrementQty"
                   >
                     -
                   </button>
-                  <span
-                    class="w-10 text-center font-bold text-sm text-slate-800"
-                  >
+                  <span class="w-10 text-center font-bold text-sm text-white">
                     {{ quantity }}
                   </span>
                   <button
                     type="button"
-                    class="w-8 h-8 rounded-xl bg-white shadow-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer transition-colors"
+                    class="w-8 h-8 rounded-xl bg-slate-800 shadow-xs font-bold text-slate-200 hover:bg-slate-700 flex items-center justify-center cursor-pointer transition-colors"
                     @click="incrementQty"
                   >
                     +
                   </button>
                 </div>
 
+                <!-- 10% High-Contrast Accent Button -->
                 <button
                   type="button"
-                  class="flex-1 py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-2xl shadow-sm transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  class="flex-1 py-3 px-6 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-2xl shadow-lg shadow-amber-400/25 border border-amber-300 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                   @click="handleAddToCart"
                 >
                   <svg
@@ -281,7 +279,7 @@ const handleToggleWishlist = () => {
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
-                      stroke-width="2"
+                      stroke-width="2.5"
                       d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                     />
                   </svg>
@@ -290,7 +288,7 @@ const handleToggleWishlist = () => {
 
                 <button
                   type="button"
-                  class="w-11 h-11 rounded-2xl border border-slate-200 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                  class="w-11 h-11 rounded-2xl border border-slate-700 bg-slate-950 flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
                   :title="
                     wishlistStore.isFavorite(toy.id)
                       ? 'Remove from Wishlist'
@@ -302,7 +300,7 @@ const handleToggleWishlist = () => {
                     class="w-5 h-5 transition-colors"
                     :class="
                       wishlistStore.isFavorite(toy.id)
-                        ? 'text-rose-600 fill-rose-600'
+                        ? 'text-amber-400 fill-amber-400'
                         : 'text-slate-400'
                     "
                     fill="none"

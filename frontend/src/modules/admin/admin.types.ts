@@ -1,5 +1,36 @@
 export type AdminRole = "super-admin" | "manager" | "fulfillment";
 
+export interface StaffModulePermission {
+  id: number;
+  matrix_id: number;
+  code: string;
+  name: string;
+  path: string;
+  description?: string;
+  can_read: boolean;
+  can_create: boolean;
+  can_update: boolean;
+  can_delete: boolean;
+}
+
+export interface StaffModulesResponse {
+  success: boolean;
+  role: {
+    id: number;
+    name: string;
+    label?: string;
+    permissions_label?: string;
+  };
+  staff?: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  modules: StaffModulePermission[];
+  allowed_paths: string[];
+  allowed_codes: string[];
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -7,6 +38,8 @@ export interface AdminUser {
   role: AdminRole;
   avatarUrl?: string;
   lastLogin: string;
+  allowedPaths?: string[];
+  allowedCodes?: string[];
 }
 
 export type OrderStatus =
@@ -131,12 +164,15 @@ export interface CMSBanner {
 }
 
 export interface StaffMember {
-  id: string;
+  id: string | number;
   name: string;
   email: string;
-  role: "Super Admin" | "Store Manager" | "Fulfillment Staff";
+  role: string;
+  roleLabel?: string;
+  refStaffRoleId?: number;
   permissions: string[];
   isActive: boolean;
+  roleDetails?: any;
 }
 
 export interface StoreSettings {

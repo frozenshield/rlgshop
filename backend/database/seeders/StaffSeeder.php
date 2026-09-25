@@ -35,8 +35,20 @@ class StaffSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'name' => 'Store Manager Demo',
+                'email' => 'manager@rlghobby.com',
+                'ref_staff_role_id' => $managerRole->id,
+                'is_active' => true,
+            ],
+            [
                 'name' => 'Darwin Gomez',
                 'email' => 'darwin.pack@rlghobby.com',
+                'ref_staff_role_id' => $fulfillmentRole->id,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Fulfillment Packer Demo',
+                'email' => 'packer@rlghobby.com',
                 'ref_staff_role_id' => $fulfillmentRole->id,
                 'is_active' => true,
             ],

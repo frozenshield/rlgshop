@@ -40,11 +40,11 @@ const handleToggleWishlist = () => {
 
 <template>
   <div
-    class="bg-white rounded-2xl p-4 border border-slate-200/90 hover:border-slate-300 hobby-card-shadow hobby-card-hover flex flex-col justify-between relative group font-display"
+    class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 hover:border-indigo-500/50 hobby-card-shadow hobby-card-hover flex flex-col justify-between relative group font-display backdrop-blur-xs transition-all duration-300"
   >
     <!-- Top Image Container -->
     <div
-      class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100/70 mb-3.5"
+      class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950/80 border border-slate-800/80 mb-3.5"
     >
       <img
         :src="toy.imageUrl"
@@ -57,19 +57,19 @@ const handleToggleWishlist = () => {
       <div class="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
         <span
           v-if="toy.isBestSeller"
-          class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 uppercase tracking-wider shadow-2xs"
+          class="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 uppercase tracking-wider shadow-md shadow-amber-400/30"
         >
           🔥 Best Seller
         </span>
         <span
           v-else-if="toy.isNewArrival"
-          class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-wider shadow-2xs"
+          class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-600 text-white uppercase tracking-wider shadow-sm shadow-indigo-600/30"
         >
           ✨ New
         </span>
         <span
           v-if="toy.discountPercent"
-          class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-2xs"
+          class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-sm"
         >
           -{{ toy.discountPercent }}%
         </span>
@@ -78,7 +78,7 @@ const handleToggleWishlist = () => {
       <!-- Floating Wishlist Heart Top Right -->
       <button
         type="button"
-        class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 backdrop-blur-xs flex items-center justify-center text-slate-400 hover:text-rose-600 hover:scale-110 shadow-xs transition-all z-10 cursor-pointer border border-slate-100"
+        class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/90 backdrop-blur-md flex items-center justify-center text-slate-400 hover:text-amber-400 hover:scale-110 shadow-md transition-all z-10 cursor-pointer border border-slate-700"
         :title="
           wishlistStore.isFavorite(toy.id)
             ? 'Remove from Wishlist'
@@ -90,7 +90,7 @@ const handleToggleWishlist = () => {
           class="w-4 h-4 transition-colors"
           :class="
             wishlistStore.isFavorite(toy.id)
-              ? 'text-rose-600 fill-rose-600'
+              ? 'text-amber-400 fill-amber-400'
               : ''
           "
           fill="none"
@@ -112,7 +112,7 @@ const handleToggleWishlist = () => {
       >
         <button
           type="button"
-          class="bg-slate-900/90 hover:bg-slate-900 backdrop-blur-xs text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-md transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+          class="bg-slate-900/95 hover:bg-slate-800 border border-slate-700 backdrop-blur-md text-slate-200 text-xs font-bold py-2 px-3.5 rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
           @click.stop="emit('quick-view', toy)"
         >
           <span>🔍</span>
@@ -129,22 +129,21 @@ const handleToggleWishlist = () => {
         >
           <span
             v-if="tcgInfo"
-            class="inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-md border shadow-2xs"
-            :class="tcgInfo.bgClass"
+            class="inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-950/60 text-indigo-300 shadow-2xs"
           >
             <span>{{ tcgInfo.icon }}</span>
             <span>{{ tcgInfo.shortName }}</span>
           </span>
           <span
             v-else
-            class="text-rose-600 uppercase tracking-wider font-bold truncate text-[10px]"
+            class="text-indigo-400 uppercase tracking-wider font-bold truncate text-[10px]"
           >
             {{ toy.brand }}
           </span>
           <div class="flex items-center gap-1.5 shrink-0">
             <span
               v-if="toy.condition"
-              class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200"
+              class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-800 text-amber-300 border border-slate-700"
             >
               {{ toy.condition }}
             </span>
@@ -155,7 +154,7 @@ const handleToggleWishlist = () => {
         </div>
 
         <h3
-          class="text-sm font-bold text-slate-800 line-clamp-2 mt-1 group-hover:text-rose-600 transition-colors cursor-pointer"
+          class="text-sm font-bold text-white line-clamp-2 mt-1 group-hover:text-amber-400 transition-colors cursor-pointer"
           @click="emit('quick-view', toy)"
         >
           {{ toy.name }}
@@ -171,25 +170,26 @@ const handleToggleWishlist = () => {
         </div>
       </div>
 
-      <!-- Price & Add Action -->
+      <!-- Price & Add Action (10% High-Contrast Accent Button) -->
       <div
-        class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto"
+        class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2 mt-auto"
       >
         <div class="flex flex-col">
-          <span class="text-base font-black text-slate-900 leading-none">
+          <span class="text-base font-black text-white leading-none font-mono">
             {{ formatCurrency(toy.price) }}
           </span>
           <span
             v-if="toy.originalPrice"
-            class="text-[11px] text-slate-400 line-through mt-0.5"
+            class="text-[11px] text-slate-500 line-through mt-0.5 font-mono"
           >
             {{ formatCurrency(toy.originalPrice) }}
           </span>
         </div>
 
+        <!-- 10% High Contrast Accent: Electric Amber Add to Cart Button -->
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl shadow-md shadow-amber-400/25 border border-amber-300 active:scale-95 transition-all cursor-pointer"
           @click="handleAddToCart"
         >
           <svg
@@ -201,7 +201,7 @@ const handleToggleWishlist = () => {
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              stroke-width="2"
+              stroke-width="2.5"
               d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
             />
           </svg>

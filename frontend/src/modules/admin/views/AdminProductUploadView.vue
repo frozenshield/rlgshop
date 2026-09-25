@@ -56,7 +56,7 @@ const title = ref("");
 const sku = ref("");
 const condition = ref("");
 
-// Rich text description simulation
+// Description (plain text)
 const description = ref("");
 
 // Media Gallery
@@ -201,6 +201,7 @@ const runAiAnalysis = async (source: File | string, mediaItemId: string) => {
       sellingPrice.value = Number(data.suggested_price);
     }
     if (data.sku_suggestion) sku.value = data.sku_suggestion;
+    if (data.sku) sku.value = data.sku;
     if (data.condition) condition.value = data.condition;
 
     // Update with server stored image URL if returned
@@ -304,6 +305,7 @@ const handleSaveProduct = async () => {
 
     const payload = {
       name: title.value.trim(),
+      sku: sku.value ? sku.value.trim() : null,
       price: Number(sellingPrice.value) || 0,
       stock: Number(stock.value) || 0,
       description: description.value,
@@ -342,10 +344,15 @@ const handleSaveProduct = async () => {
 
     const savedProduct = res.data;
 
+    // Update SKU ref if server generated or assigned one
+    if (savedProduct.sku) {
+      sku.value = savedProduct.sku;
+    }
+
     // Also add to inventory state in store
     adminStore.addInventoryItem({
-      sku: sku.value || `PRD-${savedProduct.id}`,
-      barcode: sku.value || `BC-${savedProduct.id}`,
+      sku: savedProduct.sku || sku.value || `PRD-${savedProduct.id}`,
+      barcode: savedProduct.sku || sku.value || `BC-${savedProduct.id}`,
       name: savedProduct.name,
       category: primaryCategory.value,
       condition: condition.value,
@@ -515,68 +522,17 @@ const handleSaveProduct = async () => {
             />
           </div>
 
-          <!-- WYSIWYG Editor Simulation -->
+          <!-- Description (plain text) -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1"
-              >Rich Description (WYSIWYG)</label
+              >Description</label
             >
-            <div class="border border-slate-200 rounded-xl overflow-hidden">
-              <!-- Toolbar -->
-              <div
-                class="flex items-center gap-1 bg-slate-50 p-2 border-b border-slate-200 text-xs text-slate-700 select-none"
-              >
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded font-bold"
-                >
-                  B
-                </button>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded italic"
-                >
-                  I
-                </button>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded underline"
-                >
-                  U
-                </button>
-                <span class="w-[1px] h-4 bg-slate-300 mx-1"></span>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded"
-                >
-                  H2
-                </button>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded"
-                >
-                  H3
-                </button>
-                <span class="w-[1px] h-4 bg-slate-300 mx-1"></span>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded"
-                >
-                  &bull; Bullet List
-                </button>
-                <button
-                  type="button"
-                  class="p-1 px-2 hover:bg-slate-200 rounded"
-                >
-                  1. Number List
-                </button>
-              </div>
-              <textarea
-                v-model="description"
-                rows="5"
-                placeholder="Detailed product description, features, box contents..."
-                class="w-full p-3 text-xs font-mono text-slate-700 focus:outline-none"
-              ></textarea>
-            </div>
+            <textarea
+              v-model="description"
+              rows="5"
+              placeholder="Detailed product description, features, box contents..."
+              class="w-full text-xs text-slate-700 p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 resize-y transition-all"
+            ></textarea>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">

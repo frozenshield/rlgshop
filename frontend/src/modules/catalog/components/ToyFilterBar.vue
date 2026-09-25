@@ -44,7 +44,7 @@ const handleAgeClick = (age: AgeGroup | "all") => {
 
 <template>
   <div
-    class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4 font-display"
+    class="bg-slate-900/90 rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4 font-display backdrop-blur-md text-slate-200"
   >
     <!-- Row 1: Main Categories Chips -->
     <div>
@@ -64,8 +64,8 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           :class="[
             'px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2',
             store.selectedCategory === 'all'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'bg-slate-950 text-slate-300 hover:bg-indigo-950/60 hover:text-white border border-slate-800',
           ]"
           @click="handleCategoryClick('all')"
         >
@@ -80,8 +80,8 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           :class="[
             'px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2',
             store.selectedCategory === cat.id
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'bg-slate-950 text-slate-300 hover:bg-indigo-950/60 hover:text-white border border-slate-800',
           ]"
           @click="handleCategoryClick(cat.id)"
         >
@@ -91,16 +91,16 @@ const handleAgeClick = (age: AgeGroup | "all") => {
       </div>
     </div>
 
-    <!-- Row 1.5: TCG Subcategories (Shown when TCG is selected or whenever trainer wants TCG series) -->
+    <!-- Row 1.5: TCG Subcategories -->
     <div
       v-if="
         store.selectedCategory === 'tcg' || store.selectedTcgSeries !== 'all'
       "
-      class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200/80 animate-fade-in space-y-2"
+      class="bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-500/30 animate-fade-in space-y-2"
     >
       <div class="flex items-center justify-between">
         <div
-          class="flex items-center gap-1.5 text-xs font-extrabold text-blue-900 uppercase tracking-wider"
+          class="flex items-center gap-1.5 text-xs font-extrabold text-indigo-300 uppercase tracking-wider"
         >
           <span>🃏</span>
           <span>TCG Franchises &amp; Card Series:</span>
@@ -108,7 +108,7 @@ const handleAgeClick = (age: AgeGroup | "all") => {
         <button
           v-if="store.selectedTcgSeries !== 'all'"
           type="button"
-          class="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+          class="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
           @click="handleTcgSeriesClick('all')"
         >
           Show All TCG Cards
@@ -121,8 +121,8 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           :class="[
             'px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5',
             store.selectedTcgSeries === 'all'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-blue-900 hover:bg-blue-100/70 border border-blue-200',
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-950 text-indigo-300 hover:bg-slate-900 border border-indigo-500/30',
           ]"
           @click="handleTcgSeriesClick('all')"
         >
@@ -137,8 +137,8 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           :class="[
             'px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5',
             store.selectedTcgSeries === series.id
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-slate-700 hover:bg-blue-100/70 border border-blue-200',
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-950 text-slate-300 hover:bg-slate-900 border border-slate-800',
           ]"
           @click="handleTcgSeriesClick(series.id)"
         >
@@ -148,42 +148,17 @@ const handleAgeClick = (age: AgeGroup | "all") => {
       </div>
     </div>
 
-    <!-- Row 2: Age Group, Price Slider, Sort & Quick Toggles -->
+    <!-- Row 2: Price Slider, Sort & Quick Toggles (3-column layout without Rank/Grade) -->
     <div
-      class="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-5 items-center"
+      class="pt-3 border-t border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-5 items-center"
     >
-      <!-- Age Group / Rank Filter -->
-      <div>
-        <label
-          class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2"
-        >
-          Rank / Grade
-        </label>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="age in ageGroups"
-            :key="age.id"
-            type="button"
-            :class="[
-              'px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer',
-              store.selectedAgeGroup === age.id
-                ? 'bg-slate-900 text-white font-bold shadow-2xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-            ]"
-            @click="handleAgeClick(age.id)"
-          >
-            {{ age.label }}
-          </button>
-        </div>
-      </div>
-
       <!-- Max Price Slider -->
       <div>
         <div
           class="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5"
         >
           <span class="uppercase tracking-wider">Max Budget</span>
-          <span class="text-rose-600 font-bold text-sm">{{
+          <span class="text-amber-400 font-bold text-sm font-mono">{{
             formatCurrency(store.maxPriceFilter)
           }}</span>
         </div>
@@ -193,10 +168,10 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           min="500"
           max="15000"
           step="250"
-          class="w-full accent-rose-600 cursor-pointer"
+          class="w-full accent-amber-400 cursor-pointer"
         />
         <div
-          class="flex justify-between text-[10px] text-slate-400 font-semibold"
+          class="flex justify-between text-[10px] text-slate-500 font-semibold font-mono"
         >
           <span>{{ formatCurrency(500) }}</span>
           <span>{{ formatCurrency(15000) }}</span>
@@ -212,7 +187,7 @@ const handleAgeClick = (age: AgeGroup | "all") => {
         </label>
         <select
           v-model="store.sortBy"
-          class="w-full bg-slate-100 text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+          class="w-full bg-slate-950 text-xs font-semibold text-white rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
         >
           <option value="featured">⚡ Featured &amp; Hot Drops</option>
           <option value="price-asc">💵 Price: Low to High</option>
@@ -227,13 +202,13 @@ const handleAgeClick = (age: AgeGroup | "all") => {
       <!-- Quick Toggles & Reset -->
       <div class="flex flex-col justify-end space-y-2">
         <div
-          class="flex items-center justify-between gap-3 text-xs font-semibold text-slate-600"
+          class="flex items-center justify-between gap-3 text-xs font-semibold text-slate-300"
         >
           <label class="inline-flex items-center gap-1.5 cursor-pointer">
             <input
               v-model="store.onlyDiscounted"
               type="checkbox"
-              class="rounded text-rose-600 focus:ring-rose-500 accent-rose-600"
+              class="rounded text-amber-400 focus:ring-amber-400 accent-amber-400"
             />
             <span>On Sale Deals</span>
           </label>
@@ -242,7 +217,7 @@ const handleAgeClick = (age: AgeGroup | "all") => {
             <input
               v-model="store.onlyInStock"
               type="checkbox"
-              class="rounded text-rose-600 focus:ring-rose-500 accent-rose-600"
+              class="rounded text-amber-400 focus:ring-amber-400 accent-amber-400"
             />
             <span>In Stock Only</span>
           </label>
@@ -251,7 +226,7 @@ const handleAgeClick = (age: AgeGroup | "all") => {
         <button
           v-if="hasActiveFilters"
           type="button"
-          class="text-xs font-bold text-rose-600 hover:text-rose-700 underline text-right cursor-pointer"
+          class="text-xs font-bold text-amber-400 hover:text-amber-300 underline text-right cursor-pointer"
           @click="store.resetFilters"
         >
           Reset All Filters
