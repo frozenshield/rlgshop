@@ -17,9 +17,17 @@ class Product extends Model
         'name',
         'stock',
         'description',
+        'ref_brand_id',
         'ref_category_id',
         'ref_subcategory_id',
+        'ref_condition_id',
+        'condition_id',
         'price',
+        'weight',
+        'length',
+        'width',
+        'height',
+        'status',
         'rating',
         'review_count',
         'image_url',
@@ -30,11 +38,51 @@ class Product extends Model
     {
         return [
             'stock' => 'integer',
+            'ref_brand_id' => 'integer',
+            'ref_category_id' => 'integer',
+            'ref_subcategory_id' => 'integer',
+            'ref_condition_id' => 'integer',
             'price' => 'decimal:2',
+            'weight' => 'decimal:2',
+            'length' => 'decimal:2',
+            'width' => 'decimal:2',
+            'height' => 'decimal:2',
             'rating' => 'decimal:2',
             'review_count' => 'integer',
             'gallery_images' => 'array',
         ];
+    }
+
+    /**
+     * Get the brand of this product.
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(RefBrand::class, 'ref_brand_id');
+    }
+
+    /**
+     * Get the condition of this product.
+     */
+    public function condition(): BelongsTo
+    {
+        return $this->belongsTo(RefCondition::class, 'ref_condition_id');
+    }
+
+    /**
+     * Compatibility alias getter for condition_id.
+     */
+    public function getConditionIdAttribute(): ?int
+    {
+        return $this->attributes['ref_condition_id'] ?? null;
+    }
+
+    /**
+     * Compatibility alias setter for condition_id.
+     */
+    public function setConditionIdAttribute(?int $value): void
+    {
+        $this->attributes['ref_condition_id'] = $value;
     }
 
     /**

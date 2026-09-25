@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Models\RefBrand;
 use App\Models\RefCategory;
+use App\Models\RefCondition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +16,12 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 Route::post('/ai/analyze-product-image', [AiProductController::class, 'analyzeImage']);
 Route::get('/categories', function () {
     return response()->json(RefCategory::with('subcategories')->get());
+});
+Route::get('/brands', function () {
+    return response()->json(RefBrand::orderBy('name')->get());
+});
+Route::get('/conditions', function () {
+    return response()->json(RefCondition::all());
 });
 
 // Authenticated user & actions

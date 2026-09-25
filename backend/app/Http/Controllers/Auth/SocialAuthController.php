@@ -26,7 +26,8 @@ class SocialAuthController extends Controller
             $googleUser = Socialite::driver('google')->stateless()->user();
         } catch (\Throwable $e) {
             $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
-            return redirect()->to("{$frontendUrl}/login?error=" . urlencode('Google sign-in failed. Please try again.'));
+
+            return redirect()->to("{$frontendUrl}/login?error=".urlencode('Google sign-in failed. Please try again.'));
         }
 
         // Find existing user by google_id or by email
@@ -56,6 +57,7 @@ class SocialAuthController extends Controller
 
         // Redirect back to Vue frontend with token
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
         return redirect()->to("{$frontendUrl}/auth/callback?token={$token}");
     }
 }

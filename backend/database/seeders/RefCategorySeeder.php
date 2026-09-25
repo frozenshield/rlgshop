@@ -13,43 +13,47 @@ class RefCategorySeeder extends Seeder
      */
     public function run(): void
     {
-        $categories = [
+        $data = [
             'TCG (Trading Cards)' => [
-                'Pokémon TCG',
-                'One Piece Card Game',
-                'Hololive Official Card Game',
-                'Duel Masters TCG',
-                'Weiß Schwarz',
-                'Yu-Gi-Oh!',
+                'Pokemon',
+                'Yugioh',
+                'Duel Master',
+                'One Piece',
+                'Gundam',
+                'Hololive',
+                'Dragon Ball',
+                'Weiss Schwarz',
+                'Battle Spirit',
+            ],
+            'Gunpla' => [
+                'High Grade (HG)',
+                'Real Grade (RG)',
+                'Master Grade (MG)',
+                'Perfect Grade (PG)',
+                'Super Deformed (SD)',
+                'Entry Grade (EG)',
+                'Option Parts & Decals',
             ],
             'Anime Figures' => [
                 'Scale Figures',
                 'Nendoroids',
                 'Pop Up Parade',
-                'Action Figures',
+                'Action Figures / Figma',
                 'Prize Figures',
+                'Statues & Busts',
             ],
-            'Gunpla & Model Kits' => [
-                'High Grade (HG)',
-                'Real Grade (RG)',
-                'Master Grade (MG)',
-                'Perfect Grade (PG)',
-            ],
-            'Anime Merchandise' => [
-                'Plushies',
-                'Apparel',
-                'Keychains & Pins',
-                'Collector Accessories',
-            ],
-            'Hobby Supplies' => [
-                'Card Sleeves & Binders',
-                'Deck Boxes',
-                'Toploaders & Acrylic Cases',
-                'Display Stands',
+            'Anime Merch Collectibles' => [
+                'Plushies & Nesoberi',
+                'Acrylic Stands',
+                'Keychains & Straps',
+                'Badges & Pins',
+                'Apparel & T-Shirts',
+                'Posters & Wall Scrolls',
+                'Stationery & Clear Files',
             ],
         ];
 
-        foreach ($categories as $catName => $subcategories) {
+        foreach ($data as $catName => $subcategories) {
             $cat = RefCategory::firstOrCreate(['desc' => $catName]);
 
             foreach ($subcategories as $subName) {

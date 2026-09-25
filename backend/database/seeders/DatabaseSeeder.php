@@ -22,6 +22,10 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Test User']
         );
 
-        $this->call(RefCategorySeeder::class);
+        $this->call([
+            RefCategorySeeder::class,
+            RefBrandSeeder::class,
+            RefConditionSeeder::class,
+        ]);
     }
 }

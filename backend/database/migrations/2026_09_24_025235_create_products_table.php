@@ -16,9 +16,16 @@ return new class extends Migration
             $table->string('name');
             $table->integer('stock')->default(0);
             $table->text('description')->nullable();
+            $table->foreignId('ref_brand_id')->nullable()->constrained('ref_brands')->nullOnDelete();
             $table->foreignId('ref_category_id')->constrained('ref_categories')->cascadeOnDelete();
             $table->foreignId('ref_subcategory_id')->nullable()->constrained('ref_subcategories')->nullOnDelete();
+            $table->foreignId('ref_condition_id')->nullable()->constrained('ref_conditions')->nullOnDelete();
             $table->decimal('price', 10, 2);
+            $table->decimal('weight', 8, 2)->nullable();
+            $table->decimal('length', 8, 2)->nullable();
+            $table->decimal('width', 8, 2)->nullable();
+            $table->decimal('height', 8, 2)->nullable();
+            $table->enum('status', ['active', 'draft', 'archived'])->default('active');
             $table->decimal('rating', 3, 2)->default(0.00);
             $table->unsignedInteger('review_count')->default(0);
             $table->string('image_url')->nullable();
