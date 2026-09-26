@@ -14,6 +14,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
   const searchQuery = ref("");
   const selectedCategory = ref<ToyCategory | "all">("all");
   const selectedTcgSeries = ref<TcgSubCategory | "all">("all");
+  const selectedPokemonSeries = ref<string | "all">("all");
+  const selectedPokemonSet = ref<string | "all">("all");
   const selectedAgeGroup = ref<AgeGroup | "all">("all");
   const maxPriceFilter = ref<number>(15000);
   const minRatingFilter = ref<number>(0);
@@ -42,6 +44,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     selectedCategory.value = cat;
     if (cat !== "tcg") {
       selectedTcgSeries.value = "all";
+      selectedPokemonSeries.value = "all";
+      selectedPokemonSet.value = "all";
     }
   };
 
@@ -50,6 +54,19 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     if (series !== "all") {
       selectedCategory.value = "tcg";
     }
+    if (series !== "pokemon") {
+      selectedPokemonSeries.value = "all";
+      selectedPokemonSet.value = "all";
+    }
+  };
+
+  const setPokemonSeries = (series: string | "all") => {
+    selectedPokemonSeries.value = series;
+    selectedPokemonSet.value = "all";
+  };
+
+  const setPokemonSet = (setId: string | "all") => {
+    selectedPokemonSet.value = setId;
   };
 
   const setAgeGroup = (age: AgeGroup | "all") => {
@@ -64,6 +81,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     searchQuery.value = "";
     selectedCategory.value = "all";
     selectedTcgSeries.value = "all";
+    selectedPokemonSeries.value = "all";
+    selectedPokemonSet.value = "all";
     selectedAgeGroup.value = "all";
     maxPriceFilter.value = 15000;
     minRatingFilter.value = 0;
@@ -77,6 +96,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     searchQuery,
     selectedCategory,
     selectedTcgSeries,
+    selectedPokemonSeries,
+    selectedPokemonSet,
     selectedAgeGroup,
     maxPriceFilter,
     minRatingFilter,
@@ -90,6 +111,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     closeDetailModal,
     setCategory,
     setTcgSeries,
+    setPokemonSeries,
+    setPokemonSet,
     setAgeGroup,
     setSearchQuery,
     resetFilters,

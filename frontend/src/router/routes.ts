@@ -60,7 +60,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/admin",
     component: () => import("@/modules/admin/AdminLayout.vue"),
-    redirect: "/admin/login",
+    redirect: "/admin/dashboard",
     meta: {
       isAdmin: true,
     },

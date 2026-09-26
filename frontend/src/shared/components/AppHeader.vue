@@ -270,7 +270,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             "
             @click="navigateToCategory('anime-figures')"
           >
-            <span>🤖 Gunpla &amp; Figures</span>
+            <span>🤖 Gunpla Figures</span>
           </button>
 
           <!-- Hobby Supplies Button -->
@@ -284,7 +284,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             "
             @click="navigateToCategory('anime-merchandise')"
           >
-            <span>🛡️ Supplies</span>
+            <span>🛡️ Anime Merchandise</span>
           </button>
 
           <!-- Smart Hobby Finder Trigger Button -->

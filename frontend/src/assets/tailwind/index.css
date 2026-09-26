@@ -71,3 +71,21 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Form control and modal contrast enforcement for light surfaces */
+.bg-white,
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+.bg-white input:not([type="checkbox"]):not([type="radio"]),
+.bg-white select,
+.bg-white textarea {
+  color: #0f172a;
+}
+
+.bg-white input::placeholder,
+.bg-white textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}

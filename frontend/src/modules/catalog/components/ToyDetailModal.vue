@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import type { ToyProduct } from "@/shared/types/toy.types";
 import { TCG_SERIES_DATA } from "@/shared/constants/categories.data";
 import { formatCurrency, formatAgeGroup } from "@/shared/utils/currency.util";
+import { formatProductDescription } from "@/shared/utils/descriptionFormatter";
 import { useCartStore } from "@/modules/cart/cart.store";
 import { useWishlistStore } from "@/modules/wishlist/wishlist.store";
 import BaseBadge from "@/shared/components/BaseBadge.vue";
@@ -36,6 +37,10 @@ const tcgInfo = computed(() => {
 const currentImage = computed(() => {
   if (activeImage.value) return activeImage.value;
   return props.toy?.imageUrl || "";
+});
+
+const formattedDescription = computed(() => {
+  return formatProductDescription(props.toy?.description);
 });
 
 const incrementQty = () => {
@@ -204,12 +209,11 @@ const handleToggleWishlist = () => {
                 </span>
               </div>
 
-              <!-- Description -->
-              <p
-                class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal"
-              >
-                {{ toy.description }}
-              </p>
+              <!-- Description with formatted HTML and icons -->
+              <div
+                class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal space-y-1"
+                v-html="formattedDescription"
+              ></div>
 
               <!-- Key Features List -->
               <div v-if="toy.features && toy.features.length > 0">

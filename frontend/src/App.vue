@@ -10,6 +10,7 @@ import UserProfileModal from "./modules/auth/components/UserProfileModal.vue";
 import UserSettingsModal from "./modules/auth/components/UserSettingsModal.vue";
 import AppToast from "./shared/components/AppToast.vue";
 import ToyShopParallaxBackground from "./shared/components/ToyShopParallaxBackground.vue";
+import StorefrontAiChatbot from "./shared/components/StorefrontAiChatbot.vue";
 
 const route = useRoute();
 const isAdminRoute = computed(() => route.path.startsWith("/admin"));
@@ -117,6 +118,9 @@ const closeAdvisorModal = () => {
       :type="toastType"
       @close="toastVisible = false"
     />
+
+    <!-- Global Storefront AI Chatbot (Aiko) -->
+    <StorefrontAiChatbot v-if="!isAdminRoute" />
 
     <!-- Global Storefront Footer -->
     <AppFooter v-if="!isAdminRoute" class="relative z-20" />

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAdminStore } from "../admin.store";
+import type { RefPokemonSetItem } from "@/shared/types/toy.types";
+import { formatProductDescription } from "@/shared/utils/descriptionFormatter";
 
 const router = useRouter();
 const adminStore = useAdminStore();
+const showDescriptionPreview = ref(true);
 
 interface CategoryItem {
   id: number;
@@ -25,13 +28,70 @@ interface ConditionItem {
 const dbCategories = ref<CategoryItem[]>([]);
 const dbBrands = ref<BrandItem[]>([]);
 const dbConditions = ref<ConditionItem[]>([]);
+const dbPokemonSets = ref<RefPokemonSetItem[]>([]);
+const selectedPokemonSeries = ref("");
+const selectedPokemonSet = ref("");
+const refPokemonSetId = ref<number | null>(null);
+
+// Get unique series list for the Series dropdown
+const availablePokemonSeries = computed(() => {
+  const seriesSet = new Set<string>();
+  for (const s of dbPokemonSets.value) {
+    if (s.series) {
+      seriesSet.add(s.series);
+    }
+  }
+  return Array.from(seriesSet);
+});
+
+// Group sets by generation series (filtered by selectedPokemonSeries if selected)
+const groupedPokemonSets = computed(() => {
+  const groups: { series: string; sets: RefPokemonSetItem[] }[] = [];
+  const map = new Map<string, RefPokemonSetItem[]>();
+
+  const setsToGroup = selectedPokemonSeries.value
+    ? dbPokemonSets.value.filter(
+        (s) => s.series === selectedPokemonSeries.value,
+      )
+    : dbPokemonSets.value;
+
+  for (const s of setsToGroup) {
+    const seriesName = s.series || "Other Sets";
+    if (!map.has(seriesName)) {
+      map.set(seriesName, []);
+    }
+    map.get(seriesName)!.push(s);
+  }
+
+  for (const [series, sets] of map.entries()) {
+    groups.push({ series, sets });
+  }
+
+  return groups;
+});
+
+// Selected Pokemon Set Object
+const currentSelectedPokemonSetObj = computed(() => {
+  if (refPokemonSetId.value) {
+    return dbPokemonSets.value.find((s) => s.id === refPokemonSetId.value);
+  }
+  if (selectedPokemonSet.value) {
+    return dbPokemonSets.value.find(
+      (s) =>
+        s.japanese_set === selectedPokemonSet.value ||
+        s.japanese_code === selectedPokemonSet.value,
+    );
+  }
+  return null;
+});
 
 const fetchTaxonomy = async () => {
   try {
-    const [catRes, brandRes, condRes] = await Promise.all([
+    const [catRes, brandRes, condRes, setsRes] = await Promise.all([
       fetch("/api/categories"),
       fetch("/api/brands"),
       fetch("/api/conditions"),
+      fetch("/api/pokemon-sets"),
     ]);
     if (catRes.ok) {
       dbCategories.value = await catRes.json();
@@ -41,6 +101,12 @@ const fetchTaxonomy = async () => {
     }
     if (condRes.ok) {
       dbConditions.value = await condRes.json();
+    }
+    if (setsRes.ok) {
+      const sJson = await setsRes.json();
+      if (sJson.success && Array.isArray(sJson.data)) {
+        dbPokemonSets.value = sJson.data;
+      }
     }
   } catch (e) {
     console.error("Failed to load taxonomy from API", e);
@@ -204,6 +270,55 @@ const runAiAnalysis = async (source: File | string, mediaItemId: string) => {
     if (data.sku) sku.value = data.sku;
     if (data.condition) condition.value = data.condition;
 
+    // Pokemon TCG Set Series & Expansion Detection (applicable only for Pokemon TCG)
+    if (data.is_pokemon_tcg) {
+      primaryCategory.value = "TCG (Trading Cards)";
+      secondaryCategory.value = "Pokémon";
+      if (!brandVendor.value || brandVendor.value === "Import") {
+        brandVendor.value = "The Pokémon Company";
+      }
+
+      if (data.pokemon_series) {
+        selectedPokemonSeries.value = data.pokemon_series;
+      }
+
+      if (data.ref_pokemon_set_id) {
+        refPokemonSetId.value = Number(data.ref_pokemon_set_id);
+        const matched = dbPokemonSets.value.find(
+          (s) => s.id === refPokemonSetId.value,
+        );
+        if (matched) {
+          selectedPokemonSet.value = matched.japanese_set;
+          if (matched.series) {
+            selectedPokemonSeries.value = matched.series;
+          }
+        }
+      } else if (data.pokemon_japanese_set || data.pokemon_set_dropdown_value) {
+        const setName =
+          data.pokemon_japanese_set || data.pokemon_set_dropdown_value;
+        const matched = dbPokemonSets.value.find(
+          (s) =>
+            s.japanese_set.toLowerCase() === setName.toLowerCase() ||
+            (s.japanese_code &&
+              s.japanese_code.toLowerCase() === setName.toLowerCase()),
+        );
+        if (matched) {
+          refPokemonSetId.value = matched.id;
+          selectedPokemonSet.value = matched.japanese_set;
+          if (matched.series) {
+            selectedPokemonSeries.value = matched.series;
+          }
+        } else {
+          selectedPokemonSet.value = setName;
+        }
+      }
+    } else {
+      // Clear Pokemon fields if not Pokemon TCG (e.g. Gunpla, Anime Figure)
+      selectedPokemonSeries.value = "";
+      selectedPokemonSet.value = "";
+      refPokemonSetId.value = null;
+    }
+
     // Update with server stored image URL if returned
     if (data.image_url) {
       const found = mediaList.value.find((m) => m.id === mediaItemId);
@@ -239,6 +354,26 @@ const currentSubcategories = computed(() => {
   return selectedCat?.subcategories || [];
 });
 
+const isPokemonTcg = computed(() => {
+  const p = primaryCategory.value.toLowerCase();
+  const s = secondaryCategory.value.toLowerCase();
+  const b = brandVendor.value.toLowerCase();
+  const t = title.value.toLowerCase();
+
+  return (
+    ((p.includes("tcg") || p.includes("trading") || p.includes("card")) &&
+      (s.includes("poke") ||
+        s.includes("poké") ||
+        b.includes("poke") ||
+        b.includes("poké") ||
+        t.includes("poke") ||
+        t.includes("poké"))) ||
+    ((s.includes("poke") || s.includes("poké")) && !!p) ||
+    !!selectedPokemonSeries.value ||
+    !!selectedPokemonSet.value
+  );
+});
+
 const tagsInput = ref("");
 const tags = computed(() =>
   tagsInput.value
@@ -246,6 +381,48 @@ const tags = computed(() =>
     .map((t) => t.trim())
     .filter(Boolean),
 );
+
+watch(selectedPokemonSet, (newSet) => {
+  if (newSet) {
+    const matched = dbPokemonSets.value.find(
+      (s) => s.japanese_set === newSet || s.japanese_code === newSet,
+    );
+    if (matched) {
+      refPokemonSetId.value = matched.id;
+      if (matched.series && !selectedPokemonSeries.value) {
+        selectedPokemonSeries.value = matched.series;
+      }
+    }
+    const existing = tagsInput.value
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (!existing.includes(newSet)) {
+      existing.push(newSet);
+    }
+    if (matched?.japanese_code && !existing.includes(matched.japanese_code)) {
+      existing.push(matched.japanese_code);
+    }
+    if (matched?.english_set && !existing.includes(matched.english_set)) {
+      existing.push(matched.english_set);
+    }
+    tagsInput.value = existing.join(", ");
+  } else {
+    refPokemonSetId.value = null;
+  }
+});
+
+watch(selectedPokemonSeries, (newSeries) => {
+  if (newSeries && selectedPokemonSet.value) {
+    const current = dbPokemonSets.value.find(
+      (s) => s.japanese_set === selectedPokemonSet.value,
+    );
+    if (current && current.series !== newSeries) {
+      selectedPokemonSet.value = "";
+      refPokemonSetId.value = null;
+    }
+  }
+});
 
 // Shipping & Physical Specs
 const weightGrams = ref<number | "">("");
@@ -318,6 +495,8 @@ const handleSaveProduct = async () => {
       ref_condition_id: conditionIdVal,
       condition_id: conditionIdVal,
       condition: condition.value,
+      ref_pokemon_set_id: isPokemonTcg.value ? refPokemonSetId.value : null,
+      pokemon_set: isPokemonTcg.value ? selectedPokemonSet.value : null,
       weight: Number(weightGrams.value) || null,
       length: Number(dimensionLength.value) || null,
       width: Number(dimensionWidth.value) || null,
@@ -524,15 +703,51 @@ const handleSaveProduct = async () => {
 
           <!-- Description (plain text) -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1"
-              >Description</label
-            >
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700">
+                Description (Normal text & tabs saved in DB)
+              </label>
+              <button
+                v-if="description"
+                type="button"
+                @click="showDescriptionPreview = !showDescriptionPreview"
+                class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+              >
+                <span>{{
+                  showDescriptionPreview
+                    ? "Hide Storefront Preview"
+                    : "👁️ Preview Storefront (HTML & Icons)"
+                }}</span>
+              </button>
+            </div>
             <textarea
               v-model="description"
               rows="5"
-              placeholder="Detailed product description, features, box contents..."
-              class="w-full text-xs text-slate-700 p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 resize-y transition-all"
+              placeholder="Detailed product description, features, box contents (spacing and tabs supported)..."
+              class="w-full text-xs text-slate-700 p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 resize-y transition-all font-mono"
             ></textarea>
+
+            <!-- Storefront preview with icons and styled sections -->
+            <div
+              v-if="showDescriptionPreview && description"
+              class="mt-2.5 p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 shadow-sm"
+            >
+              <div
+                class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-2.5 flex items-center justify-between border-b border-slate-800 pb-2"
+              >
+                <span class="flex items-center gap-1.5">
+                  <span>🛍️</span>
+                  <span>Storefront Preview (Dynamic HTML & Icons)</span>
+                </span>
+                <span class="text-[10px] text-slate-400 font-normal">
+                  Plain text in DB → Rendered with icons & badges on storefront
+                </span>
+              </div>
+              <div
+                class="text-xs text-slate-300 leading-relaxed font-normal space-y-1"
+                v-html="formatProductDescription(description)"
+              ></div>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
@@ -951,6 +1166,118 @@ const handleSaveProduct = async () => {
                 :value="sub.desc"
               />
             </datalist>
+          </div>
+
+          <!-- Pokemon TCG Set Series & Expansion Dropdown (Ref Data from Backend ref_pokemon_set) -->
+          <div
+            v-if="isPokemonTcg"
+            class="p-4 bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-2xl border border-amber-200/90 shadow-xs space-y-3 animate-fade-in text-xs"
+          >
+            <div
+              class="flex items-center justify-between border-b border-amber-200/70 pb-2"
+            >
+              <label
+                class="font-black text-amber-950 text-xs flex items-center gap-1.5"
+              >
+                <span class="text-sm">⚡</span>
+                <span>Pokémon TCG Set &amp; Series</span>
+              </label>
+              <span
+                class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold"
+              >
+                {{ dbPokemonSets.length }} Reference Sets
+              </span>
+            </div>
+
+            <!-- Series Dropdown -->
+            <div>
+              <label class="block font-bold text-amber-950 text-[11px] mb-1">
+                Generation Series *
+              </label>
+              <select
+                v-model="selectedPokemonSeries"
+                class="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500/20"
+              >
+                <option value="">All Pokémon Series Generations</option>
+                <option
+                  v-for="sName in availablePokemonSeries"
+                  :key="sName"
+                  :value="sName"
+                >
+                  {{ sName }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Expansion / Set Dropdown -->
+            <div>
+              <label class="block font-bold text-amber-950 text-[11px] mb-1">
+                Japanese Expansion / Set *
+              </label>
+              <select
+                v-model="selectedPokemonSet"
+                class="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500/20"
+              >
+                <option value="">Select Japanese Pokémon Set...</option>
+                <optgroup
+                  v-for="grp in groupedPokemonSets"
+                  :key="grp.series"
+                  :label="grp.series"
+                >
+                  <option
+                    v-for="s in grp.sets"
+                    :key="s.id"
+                    :value="s.japanese_set"
+                  >
+                    {{ s.japanese_set
+                    }}{{ s.japanese_code ? ` [${s.japanese_code}]` : "" }}
+                  </option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- Real-time Matched Set Preview Badge -->
+            <div
+              v-if="currentSelectedPokemonSetObj"
+              class="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-1.5 shadow-2xs animate-fade-in"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-extrabold text-amber-950 text-xs">
+                  {{ currentSelectedPokemonSetObj.japanese_set }}
+                </span>
+                <span
+                  v-if="currentSelectedPokemonSetObj.japanese_code"
+                  class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-mono text-[10px] font-bold"
+                >
+                  {{ currentSelectedPokemonSetObj.japanese_code }}
+                </span>
+              </div>
+              <p class="text-[11px] text-amber-950">
+                <span class="font-semibold text-amber-700"
+                  >English Equivalent:</span
+                >
+                <span class="font-bold text-slate-900 ml-1">
+                  {{ currentSelectedPokemonSetObj.english_set }}
+                </span>
+              </p>
+              <div
+                class="flex items-center justify-between text-[10px] text-amber-800 pt-1 border-t border-amber-100"
+              >
+                <span>
+                  {{ currentSelectedPokemonSetObj.series }}
+                  {{
+                    currentSelectedPokemonSetObj.series_years
+                      ? `(${currentSelectedPokemonSetObj.series_years})`
+                      : ""
+                  }}
+                </span>
+                <span
+                  class="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 font-medium"
+                >
+                  {{ currentSelectedPokemonSetObj.set_type }}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div>

@@ -12,6 +12,8 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
       "Relive the original Kanto journey with 9 booster packs of Scarlet & Violet 151, an exclusive Snorlax illustration rare promo card, 65 premium card sleeves, 45 Energy cards, and a collector deck box!",
     category: "tcg",
     tcgSeries: "pokemon",
+    pokemonSetSeries: "Scarlet & Violet",
+    pokemonSetCode: "SV2a",
     ageGroup: "6-8",
     pokemonType: "Pokémon TCG ⚡",
     price: 49.99,
@@ -26,7 +28,13 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?w=600&auto=format&fit=crop&q=80",
     ],
-    tags: ["Best Seller", "Pokémon TCG", "151", "Booster Box"],
+    tags: [
+      "Best Seller",
+      "Pokémon TCG",
+      "151",
+      "Booster Box",
+      "Scarlet & Violet",
+    ],
     isFeatured: true,
     isBestSeller: true,
     features: [
@@ -44,6 +52,8 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
       "Ignite your collection with the ultimate Charizard ex box! Includes 3 etched foil promo cards (Charmander, Charmeleon, and Charizard ex), 10 Pokémon TCG booster packs, and an illuminated card display figure stand.",
     category: "tcg",
     tcgSeries: "pokemon",
+    pokemonSetSeries: "Scarlet & Violet",
+    pokemonSetCode: "SV3",
     ageGroup: "9-12",
     pokemonType: "Pokémon TCG 🔥",
     price: 79.99,
@@ -58,7 +68,13 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=600&auto=format&fit=crop&q=80",
     ],
-    tags: ["Charizard ex", "Premium TCG", "Collector Edition"],
+    tags: [
+      "Charizard ex",
+      "Premium TCG",
+      "Collector Edition",
+      "Ruler of the Black Flame",
+      "Scarlet & Violet",
+    ],
     isFeatured: true,
     isBestSeller: true,
     features: [
@@ -76,6 +92,8 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
       "Uncover the legendary Galarian Gallery! Features 5 Crown Zenith booster packs, an oversized foil promo card featuring Lucario VSTAR, and a collector enamel pin.",
     category: "tcg",
     tcgSeries: "pokemon",
+    pokemonSetSeries: "Sword & Shield",
+    pokemonSetCode: "S12a",
     ageGroup: "6-8",
     pokemonType: "Pokémon TCG 🥊",
     price: 39.99,
@@ -90,7 +108,13 @@ export const MOCK_TOYS_DATA: ToyProduct[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80",
     ],
-    tags: ["Crown Zenith", "Pokémon TCG", "Lucario VSTAR"],
+    tags: [
+      "Crown Zenith",
+      "Pokémon TCG",
+      "Lucario VSTAR",
+      "Sword & Shield",
+      "VSTAR Universe",
+    ],
     features: [
       "5 Pokémon TCG: Crown Zenith booster packs",
       "1 etched foil promo card featuring Lucario VSTAR",

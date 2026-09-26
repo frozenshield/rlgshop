@@ -2,24 +2,21 @@
 import { ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAdminStore } from "./admin.store";
-import type { AdminRole } from "./admin.types";
 
 const router = useRouter();
 const route = useRoute();
 const adminStore = useAdminStore();
 
-const email = ref("admin@rlghobby.com");
-const password = ref("AdminPass2026!");
-const role = ref<AdminRole>("super-admin");
-const rememberMe = ref(true);
+const username = ref("");
+const password = ref("");
+const rememberMe = ref(false);
 const showPassword = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref("");
 
 const handleLogin = async () => {
-  if (!email.value || !password.value) {
-    errorMessage.value =
-      "Please provide both administrator email and security password.";
+  if (!username.value.trim() || !password.value) {
+    errorMessage.value = "Please enter both username and password.";
     return;
   }
 
@@ -27,10 +24,17 @@ const handleLogin = async () => {
   errorMessage.value = "";
 
   try {
-    await adminStore.login(email.value, password.value);
-    const redirectTarget =
-      (route.query.redirect as string) || "/admin/dashboard";
-    router.push(redirectTarget);
+    await adminStore.login(username.value.trim(), password.value);
+    let redirectTarget = (route.query.redirect as string) || "/admin/dashboard";
+    if (
+      !redirectTarget ||
+      redirectTarget === "/admin" ||
+      redirectTarget === "/admin/" ||
+      redirectTarget.startsWith("/admin/login")
+    ) {
+      redirectTarget = "/admin/dashboard";
+    }
+    await router.replace(redirectTarget);
   } catch (e: any) {
     errorMessage.value =
       e?.message ||
@@ -38,21 +42,6 @@ const handleLogin = async () => {
   } finally {
     isLoading.value = false;
   }
-};
-
-const quickFillRole = (selectedRole: AdminRole, demoEmail: string) => {
-  role.value = selectedRole;
-  email.value = demoEmail;
-  password.value = "AdminPass2026!";
-  errorMessage.value = "";
-};
-
-const handleContinueSession = () => {
-  router.push("/admin/dashboard");
-};
-
-const handleSignOutCurrent = () => {
-  adminStore.logout();
 };
 </script>
 
@@ -112,53 +101,10 @@ const handleSignOutCurrent = () => {
       <div
         class="bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 space-y-6 relative"
       >
-        <!-- Currently Active Session Banner (if already logged in) -->
-        <div
-          v-if="adminStore.isAuthenticated && adminStore.currentAdmin"
-          class="p-3.5 rounded-2xl bg-indigo-950/70 border border-indigo-500/30 text-xs space-y-2.5"
-        >
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-indigo-200 flex items-center gap-1.5">
-              <span>👤</span> Active Session Detected
-            </span>
-            <span
-              class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold"
-            >
-              Logged In
-            </span>
-          </div>
-          <p class="text-slate-300 text-[11px]">
-            Currently authenticated as
-            <strong class="text-white">{{
-              adminStore.currentAdmin.name
-            }}</strong>
-            (<span class="text-indigo-300 font-medium">{{
-              adminStore.currentAdmin.roleLabel || adminStore.currentAdmin.role
-            }}</span
-            >).
-          </p>
-          <div class="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              class="flex-1 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-lg shadow-sm transition-colors cursor-pointer"
-              @click="handleContinueSession"
-            >
-              Enter Dashboard &rarr;
-            </button>
-            <button
-              type="button"
-              class="py-1.5 px-3 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
-              @click="handleSignOutCurrent"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-bold text-white tracking-tight">
-              Staff Authentication
+              Staff Login
             </h2>
             <span
               class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -166,63 +112,12 @@ const handleSignOutCurrent = () => {
               <span
                 class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
               ></span>
-              Staff Roster Only
+              Vault Secure
             </span>
           </div>
           <p class="text-xs text-slate-400">
-            Sign in with a registered staff table account to access scoped
-            modules.
+            Sign in with your staff account to access the command center.
           </p>
-        </div>
-
-        <!-- Role Selector Tabs -->
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <label class="block text-xs font-bold text-slate-300"
-              >Select Staff Account</label
-            >
-            <span class="text-[10px] text-slate-400">Database Verified</span>
-          </div>
-          <div
-            class="grid grid-cols-3 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-slate-800"
-          >
-            <button
-              type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
-              :class="
-                email === 'admin@rlghobby.com'
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
-              "
-              @click="quickFillRole('super-admin', 'admin@rlghobby.com')"
-            >
-              👑 Super Admin
-            </button>
-            <button
-              type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
-              :class="
-                email === 'rowena.ops@rlghobby.com'
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
-              "
-              @click="quickFillRole('manager', 'rowena.ops@rlghobby.com')"
-            >
-              💼 Manager
-            </button>
-            <button
-              type="button"
-              class="py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center"
-              :class="
-                email === 'darwin.pack@rlghobby.com'
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
-              "
-              @click="quickFillRole('fulfillment', 'darwin.pack@rlghobby.com')"
-            >
-              📦 Fulfillment
-            </button>
-          </div>
         </div>
 
         <!-- Error Alert -->
@@ -236,33 +131,31 @@ const handleSignOutCurrent = () => {
 
         <!-- Form Inputs -->
         <form @submit.prevent="handleLogin" class="space-y-4">
+          <!-- Username / Email Field -->
           <div class="space-y-1">
             <label class="block text-xs font-bold text-slate-300"
-              >Staff Email</label
+              >Username or Email</label
             >
             <div class="relative">
               <input
-                v-model="email"
-                type="email"
+                v-model="username"
+                type="text"
                 required
-                placeholder="staff@rlghobby.com"
+                autocomplete="username"
+                placeholder="Enter username or email"
                 class="w-full text-xs px-3.5 py-3 rounded-xl bg-slate-950/90 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30 transition-all pl-10"
               />
               <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm"
-                >✉️</span
+                >👤</span
               >
             </div>
           </div>
 
+          <!-- Password Field -->
           <div class="space-y-1">
             <div class="flex items-center justify-between">
               <label class="block text-xs font-bold text-slate-300"
-                >Security Password</label
-              >
-              <a
-                href="#"
-                class="text-[11px] font-semibold text-rose-400 hover:underline"
-                >Reset key?</a
+                >Password</label
               >
             </div>
             <div class="relative">
@@ -270,7 +163,8 @@ const handleSignOutCurrent = () => {
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 required
-                placeholder="••••••••••••"
+                autocomplete="current-password"
+                placeholder="Enter your password"
                 class="w-full text-xs px-3.5 py-3 rounded-xl bg-slate-950/90 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30 transition-all pl-10 pr-10"
               />
               <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm"
@@ -296,12 +190,12 @@ const handleSignOutCurrent = () => {
                 type="checkbox"
                 class="rounded accent-rose-600 w-4 h-4 cursor-pointer"
               />
-              <span>Remember station for 30 days</span>
+              <span>Remember me</span>
             </label>
-            <span class="text-[11px] text-slate-400 font-mono">v4.2.0-PRO</span>
+            <span class="text-[11px] text-slate-500 font-mono">v4.2.0-PRO</span>
           </div>
 
-          <!-- Submit Button -->
+          <!-- Ordinary Login Button -->
           <button
             type="submit"
             :disabled="isLoading"
@@ -327,32 +221,9 @@ const handleSignOutCurrent = () => {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            <span>{{
-              isLoading
-                ? "Verifying Credentials..."
-                : "Access Command Center &rarr;"
-            }}</span>
+            <span>{{ isLoading ? "Logging in..." : "Log In" }}</span>
           </button>
         </form>
-
-        <!-- Quick 1-Click Demo Shortcut -->
-        <div class="pt-2 border-t border-slate-800/80 text-center">
-          <p class="text-[11px] text-slate-400 mb-2">
-            Development Demo Quick-Pass:
-          </p>
-          <button
-            type="button"
-            class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-1.5"
-            @click="
-              () => {
-                quickFillRole('super-admin', 'admin@rlghobby.com');
-                handleLogin();
-              }
-            "
-          >
-            <span>⚡ Instant One-Click Admin Access</span>
-          </button>
-        </div>
       </div>
 
       <!-- Footer Info & Return to Store -->

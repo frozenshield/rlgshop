@@ -10,8 +10,26 @@ const adminStore = useAdminStore();
 const isSidebarCollapsed = ref(false);
 const isMobileMenuOpen = ref(false);
 
-// Guard: if no admin session, redirect to login
+// Guard: if no admin session, hydrate from localStorage first, only redirect if truly unauthenticated
 onMounted(() => {
+  if (!adminStore.currentAdmin) {
+    const raw = localStorage.getItem("rlg-admin-session");
+    if (raw && raw !== "null" && raw !== "undefined") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          (parsed.id || parsed.email)
+        ) {
+          adminStore.currentAdmin = parsed;
+        }
+      } catch (e) {
+        console.warn("Failed to parse admin session on mount", e);
+      }
+    }
+  }
+
   if (!adminStore.currentAdmin) {
     router.replace("/admin/login");
   } else {
@@ -22,7 +40,7 @@ onMounted(() => {
 
 const handleSignOut = () => {
   adminStore.logout();
-  router.push("/admin/login");
+  router.replace("/admin/login");
 };
 
 // Master list of all admin sidebar modules
@@ -224,8 +242,8 @@ watchEffect(() => {
         </router-link>
       </nav>
 
-      <!-- Bottom Staff Profile & Quick Logout -->
-      <div class="p-3 border-t border-slate-800/80">
+      <!-- Bottom Staff Profile & Dedicated Logout -->
+      <div class="p-3 border-t border-slate-800/80 space-y-2">
         <div
           class="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800/60"
           :class="isSidebarCollapsed ? 'justify-center' : ''"
@@ -245,16 +263,30 @@ watchEffect(() => {
               {{ roleLabel }}
             </p>
           </div>
-          <button
-            v-if="!isSidebarCollapsed"
-            type="button"
-            class="text-slate-400 hover:text-rose-400 p-1 rounded transition-colors cursor-pointer text-xs"
-            title="Sign out"
-            @click="handleSignOut"
-          >
-            🚪
-          </button>
         </div>
+
+        <!-- Sidebar Log Out Button -->
+        <button
+          type="button"
+          class="w-full py-2 px-3 rounded-xl bg-slate-900/90 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-800/80 hover:border-rose-700/40 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          :title="isSidebarCollapsed ? 'Log Out' : ''"
+          @click="handleSignOut"
+        >
+          <svg
+            class="w-4 h-4 text-rose-500 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
+          </svg>
+          <span v-if="!isSidebarCollapsed">Log Out</span>
+        </button>
       </div>
     </aside>
 
@@ -317,14 +349,27 @@ watchEffect(() => {
             <span>+ Add Product</span>
           </router-link>
 
-          <!-- Logout Button Mobile -->
+          <!-- Logout Button (Top Header) -->
           <button
             type="button"
-            class="md:hidden p-2 text-slate-500 hover:text-rose-600"
-            title="Sign out"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 transition-colors border border-rose-200 cursor-pointer shadow-xs"
+            title="Log out and end session"
             @click="handleSignOut"
           >
-            🚪
+            <svg
+              class="w-4 h-4 text-rose-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            <span>Logout</span>
           </button>
         </div>
       </header>

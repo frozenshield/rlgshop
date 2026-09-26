@@ -42,11 +42,32 @@ export interface ToyProduct {
   imageUrl: string;
   galleryImages: string[];
   tags: string[];
+  pokemonSetSeries?: string; // e.g. "Scarlet & Violet", "Sword & Shield"
+  pokemonSetCode?: string; // e.g. "SV2a", "SV1", "S12a"
   isFeatured?: boolean;
   isBestSeller?: boolean;
   isNewArrival?: boolean;
   safetyWarning?: string;
   features: string[];
+}
+
+export interface RefPokemonSetItem {
+  id: number;
+  series: string;
+  series_years: string;
+  japanese_set: string;
+  japanese_code: string | null;
+  english_set: string;
+  set_type: string;
+  notes?: string | null;
+  release_order: number;
+}
+
+export interface RefPokemonSeriesItem {
+  series: string;
+  series_years: string;
+  sets_count: number;
+  min_order: number;
 }
 
 export interface CartItem {

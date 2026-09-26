@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
-import { useStorage } from "@vueuse/core";
+import { ref, computed, watch } from "vue";
+import { useStorage, StorageSerializers } from "@vueuse/core";
 import type {
   AdminRole,
   AdminUser,
@@ -18,9 +18,45 @@ import type {
   StaffModulesResponse,
 } from "./admin.types";
 
+const getStoredAdminSession = (): AdminUser | null => {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  const raw = localStorage.getItem("rlg-admin-session");
+  if (!raw || raw === "null" || raw === "undefined") return null;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (parsed && typeof parsed === "object" && (parsed.id || parsed.email)) {
+      if (parsed.id === "ADM-1001" && parsed.lastLogin === "Active Now") {
+        localStorage.removeItem("rlg-admin-session");
+        return null;
+      }
+      return parsed as AdminUser;
+    }
+  } catch (e) {
+    console.warn("Failed to parse admin session from localStorage", e);
+  }
+  return null;
+};
+
 export const useAdminStore = defineStore("adminStore", () => {
-  // Current logged in admin session (defaults to null - requires authentication)
-  const currentAdmin = useStorage<AdminUser | null>("rlg-admin-session", null);
+  // Current logged in admin session (persisted via localStorage with explicit JSON object serializer)
+  const currentAdmin = useStorage<AdminUser | null>(
+    "rlg-admin-session",
+    getStoredAdminSession(),
+    undefined,
+    {
+      serializer: StorageSerializers.object,
+      mergeDefaults: false,
+    },
+  );
+
+  // Safeguard: parse string if legacy unparsed value was stored
+  if (typeof currentAdmin.value === "string") {
+    try {
+      currentAdmin.value = JSON.parse(currentAdmin.value);
+    } catch {
+      currentAdmin.value = null;
+    }
+  }
 
   // Clear legacy mock session that was auto-seeded by default
   if (
@@ -33,7 +69,11 @@ export const useAdminStore = defineStore("adminStore", () => {
   }
 
   const isAuthenticated = computed(() => {
-    return !!currentAdmin.value && !!currentAdmin.value.email;
+    return (
+      !!currentAdmin.value &&
+      typeof currentAdmin.value === "object" &&
+      !!currentAdmin.value.email
+    );
   });
 
   const KNOWN_ROSTER: Record<
@@ -51,7 +91,19 @@ export const useAdminStore = defineStore("adminStore", () => {
       roleLabel: "Super Admin (Unrestricted)",
       roleId: 1,
     },
+    admin: {
+      name: "Admin Chief",
+      role: "super-admin",
+      roleLabel: "Super Admin (Unrestricted)",
+      roleId: 1,
+    },
     "russelluisg@gmail.com": {
+      name: "Russel Luis Gementiza",
+      role: "super-admin",
+      roleLabel: "Super Admin (Unrestricted)",
+      roleId: 1,
+    },
+    russelluisg: {
       name: "Russel Luis Gementiza",
       role: "super-admin",
       roleLabel: "Super Admin (Unrestricted)",
@@ -63,7 +115,19 @@ export const useAdminStore = defineStore("adminStore", () => {
       roleLabel: "Store Manager (Catalog & Operations)",
       roleId: 2,
     },
+    "rowena.ops": {
+      name: "Rowena Santos",
+      role: "manager",
+      roleLabel: "Store Manager (Catalog & Operations)",
+      roleId: 2,
+    },
     "manager@rlghobby.com": {
+      name: "Store Manager Demo",
+      role: "manager",
+      roleLabel: "Store Manager (Catalog & Operations)",
+      roleId: 2,
+    },
+    manager: {
       name: "Store Manager Demo",
       role: "manager",
       roleLabel: "Store Manager (Catalog & Operations)",
@@ -75,7 +139,19 @@ export const useAdminStore = defineStore("adminStore", () => {
       roleLabel: "Fulfillment Staff (Packing & Shipping only)",
       roleId: 3,
     },
+    "darwin.pack": {
+      name: "Darwin Gomez",
+      role: "fulfillment",
+      roleLabel: "Fulfillment Staff (Packing & Shipping only)",
+      roleId: 3,
+    },
     "packer@rlghobby.com": {
+      name: "Fulfillment Packer Demo",
+      role: "fulfillment",
+      roleLabel: "Fulfillment Staff (Packing & Shipping only)",
+      roleId: 3,
+    },
+    packer: {
       name: "Fulfillment Packer Demo",
       role: "fulfillment",
       roleLabel: "Fulfillment Staff (Packing & Shipping only)",
@@ -149,6 +225,27 @@ export const useAdminStore = defineStore("adminStore", () => {
         ? DEFAULT_ROLE_CODES[currentAdmin.value.role] || []
         : []),
   );
+
+  // Keep permissions synced when currentAdmin changes or hydrates
+  watch(
+    () => currentAdmin.value,
+    (admin) => {
+      if (admin && typeof admin === "object") {
+        if (admin.allowedPaths && admin.allowedPaths.length > 0) {
+          allowedModulePaths.value = admin.allowedPaths;
+        } else if (admin.role && DEFAULT_ROLE_PATHS[admin.role]) {
+          allowedModulePaths.value = DEFAULT_ROLE_PATHS[admin.role];
+        }
+        if (admin.allowedCodes && admin.allowedCodes.length > 0) {
+          allowedModuleCodes.value = admin.allowedCodes;
+        } else if (admin.role && DEFAULT_ROLE_CODES[admin.role]) {
+          allowedModuleCodes.value = DEFAULT_ROLE_CODES[admin.role];
+        }
+      }
+    },
+    { immediate: true },
+  );
+
   const staffPermissions = ref<StaffModulePermission[]>([]);
   const isPermissionsLoaded = ref(false);
 
@@ -711,7 +808,11 @@ export const useAdminStore = defineStore("adminStore", () => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ email: trimmedEmail, password }),
+        body: JSON.stringify({
+          username: trimmedEmail,
+          email: trimmedEmail,
+          password,
+        }),
       });
 
       const data = await res.json().catch(() => null);
@@ -738,7 +839,7 @@ export const useAdminStore = defineStore("adminStore", () => {
         mappedRole = "fulfillment";
       }
 
-      currentAdmin.value = {
+      const sessionData: AdminUser = {
         id: "STF-" + staff.id,
         name: staff.name,
         email: staff.email,
@@ -749,6 +850,13 @@ export const useAdminStore = defineStore("adminStore", () => {
         allowedCodes: staff.allowed_codes || [],
         allowedPaths: staff.allowed_paths || [],
       };
+
+      currentAdmin.value = sessionData;
+      try {
+        localStorage.setItem("rlg-admin-session", JSON.stringify(sessionData));
+      } catch (e) {
+        console.warn("Could not write session to localStorage", e);
+      }
 
       allowedModuleCodes.value = staff.allowed_codes || [];
       allowedModulePaths.value = staff.allowed_paths || [];
@@ -771,7 +879,13 @@ export const useAdminStore = defineStore("adminStore", () => {
       return true;
     } catch (err: any) {
       // If error message came from backend response, bubble it up directly!
-      if (err?.message && err.message.toLowerCase().includes("access denied")) {
+      if (
+        err?.message &&
+        (err.message.toLowerCase().includes("access denied") ||
+          err.message.toLowerCase().includes("password") ||
+          err.message.toLowerCase().includes("credentials") ||
+          err.message.toLowerCase().includes("deactivated"))
+      ) {
         throw err;
       }
 
@@ -784,7 +898,7 @@ export const useAdminStore = defineStore("adminStore", () => {
       }
 
       // In offline mode with valid staff roster email:
-      currentAdmin.value = {
+      const fallbackSession: AdminUser = {
         id: "STF-" + rosterEntry.roleId,
         name: rosterEntry.name,
         email: trimmedEmail,
@@ -794,6 +908,16 @@ export const useAdminStore = defineStore("adminStore", () => {
         allowedCodes: DEFAULT_ROLE_CODES[rosterEntry.role],
         allowedPaths: DEFAULT_ROLE_PATHS[rosterEntry.role],
       };
+      currentAdmin.value = fallbackSession;
+      try {
+        localStorage.setItem(
+          "rlg-admin-session",
+          JSON.stringify(fallbackSession),
+        );
+      } catch (e) {
+        console.warn("Could not write session to localStorage", e);
+      }
+
       allowedModuleCodes.value = DEFAULT_ROLE_CODES[rosterEntry.role];
       allowedModulePaths.value = DEFAULT_ROLE_PATHS[rosterEntry.role];
       isPermissionsLoaded.value = true;

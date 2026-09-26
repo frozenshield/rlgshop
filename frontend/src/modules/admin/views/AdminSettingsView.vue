@@ -26,6 +26,8 @@ const staffRoles = ref<StaffRole[]>([]);
 const isAddStaffOpen = ref(false);
 const newStaffName = ref("");
 const newStaffEmail = ref("");
+const newStaffPassword = ref("");
+const showNewStaffPassword = ref(false);
 const newStaffRoleId = ref<number>(3);
 const isSubmittingStaff = ref(false);
 
@@ -33,6 +35,8 @@ const isSubmittingStaff = ref(false);
 const isEditStaffOpen = ref(false);
 const editingStaff = ref<StaffMember | null>(null);
 const editStaffRoleId = ref<number>(3);
+const editStaffPassword = ref("");
+const showEditStaffPassword = ref(false);
 const editStaffActive = ref(true);
 const isUpdatingStaff = ref(false);
 
@@ -114,18 +118,23 @@ const addStaff = async () => {
 
   isSubmittingStaff.value = true;
   try {
+    const payload: any = {
+      name: newStaffName.value.trim(),
+      email: newStaffEmail.value.trim(),
+      ref_staff_role_id: newStaffRoleId.value,
+      is_active: true,
+    };
+    if (newStaffPassword.value.trim()) {
+      payload.password = newStaffPassword.value.trim();
+    }
+
     const res = await fetch("/api/staff", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        name: newStaffName.value.trim(),
-        email: newStaffEmail.value.trim(),
-        ref_staff_role_id: newStaffRoleId.value,
-        is_active: true,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const json = await res.json();
@@ -138,6 +147,7 @@ const addStaff = async () => {
     isAddStaffOpen.value = false;
     newStaffName.value = "";
     newStaffEmail.value = "";
+    newStaffPassword.value = "";
     showFeedback(
       `New staff account for "${json.data?.name}" created successfully.`,
     );
@@ -158,6 +168,7 @@ const openEditStaff = (staff: StaffMember) => {
         ? 2
         : 3);
   editStaffActive.value = staff.isActive;
+  editStaffPassword.value = "";
   isEditStaffOpen.value = true;
 };
 
@@ -165,21 +176,27 @@ const saveEditStaff = async () => {
   if (!editingStaff.value) return;
   isUpdatingStaff.value = true;
   try {
+    const payload: any = {
+      ref_staff_role_id: editStaffRoleId.value,
+      is_active: editStaffActive.value,
+    };
+    if (editStaffPassword.value.trim()) {
+      payload.password = editStaffPassword.value.trim();
+    }
+
     const res = await fetch(`/api/staff/${editingStaff.value.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        ref_staff_role_id: editStaffRoleId.value,
-        is_active: editStaffActive.value,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (res.ok) {
       await fetchStaff();
       isEditStaffOpen.value = false;
+      editStaffPassword.value = "";
       showFeedback(`Updated permissions for ${editingStaff.value.name}.`);
     } else {
       const json = await res.json();
@@ -670,7 +687,7 @@ const showFeedback = (msg: string) => {
             <input
               v-model.number="adminStore.settings.flatShippingRate"
               type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-200 font-bold"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
             />
           </div>
 
@@ -681,7 +698,7 @@ const showFeedback = (msg: string) => {
             <input
               v-model.number="adminStore.settings.freeShippingThreshold"
               type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-200 font-bold"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
             />
           </div>
 
@@ -692,7 +709,7 @@ const showFeedback = (msg: string) => {
             <input
               v-model.number="adminStore.settings.taxRatePercent"
               type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-200 font-bold"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
             />
           </div>
         </div>
@@ -736,7 +753,7 @@ const showFeedback = (msg: string) => {
             <input
               v-model="adminStore.settings.storeName"
               type="text"
-              class="w-full p-2.5 rounded-xl border border-slate-200 font-bold"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
             />
           </div>
 
@@ -746,11 +763,17 @@ const showFeedback = (msg: string) => {
             >
             <select
               v-model="adminStore.settings.currency"
-              class="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-bold"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold focus:outline-none focus:border-slate-800"
             >
-              <option value="PHP">Philippine Peso (PHP ₱)</option>
-              <option value="USD">US Dollar (USD $)</option>
-              <option value="JPY">Japanese Yen (JPY ¥)</option>
+              <option value="PHP" class="text-slate-900 bg-white">
+                Philippine Peso (PHP ₱)
+              </option>
+              <option value="USD" class="text-slate-900 bg-white">
+                US Dollar (USD $)
+              </option>
+              <option value="JPY" class="text-slate-900 bg-white">
+                Japanese Yen (JPY ¥)
+              </option>
             </select>
           </div>
 
@@ -796,7 +819,7 @@ const showFeedback = (msg: string) => {
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
       >
         <div
-          class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display"
+          class="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display [color-scheme:light]"
         >
           <div
             class="flex items-center justify-between pb-3 border-b border-slate-100"
@@ -809,7 +832,7 @@ const showFeedback = (msg: string) => {
             </div>
             <button
               type="button"
-              class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
               @click="isAddStaffOpen = false"
             >
               ✕
@@ -818,50 +841,77 @@ const showFeedback = (msg: string) => {
 
           <div class="space-y-3 text-xs">
             <div>
-              <label class="block font-bold text-slate-700 mb-1"
+              <label class="block font-bold text-slate-800 mb-1"
                 >Full Name</label
               >
               <input
                 v-model="newStaffName"
                 type="text"
                 placeholder="e.g. Gabriel Santos"
-                class="w-full p-2.5 rounded-xl border border-slate-300"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
               />
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1"
+              <label class="block font-bold text-slate-800 mb-1"
                 >Work Email</label
               >
               <input
                 v-model="newStaffEmail"
                 type="email"
                 placeholder="staff@rlghobby.com"
-                class="w-full p-2.5 rounded-xl border border-slate-300"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
               />
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1"
+              <label class="block font-bold text-slate-800 mb-1"
                 >Role Designation</label
               >
               <select
                 v-model="newStaffRoleId"
-                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
               >
                 <option
                   v-for="role in staffRoles"
                   :key="role.id"
                   :value="role.id"
+                  class="text-slate-900 bg-white font-medium"
                 >
                   {{ role.label || role.name }}
                 </option>
               </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Security Password</label
+              >
+              <div class="relative">
+                <input
+                  v-model="newStaffPassword"
+                  :type="showNewStaffPassword ? 'text' : 'password'"
+                  placeholder="Set login password (default: AdminPass2026!)"
+                  class="w-full p-2.5 pr-9 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-700 text-xs cursor-pointer"
+                  @click="showNewStaffPassword = !showNewStaffPassword"
+                >
+                  {{ showNewStaffPassword ? "🙈" : "👁️" }}
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-600 font-medium mt-1">
+                Enter a custom password or leave blank for default (<span
+                  class="font-mono text-slate-900 font-bold"
+                  >AdminPass2026!</span
+                >).
+              </p>
             </div>
           </div>
 
           <div class="flex gap-3 pt-3">
             <button
               type="button"
-              class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
+              class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
               @click="isAddStaffOpen = false"
             >
               Cancel
@@ -892,7 +942,7 @@ const showFeedback = (msg: string) => {
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
       >
         <div
-          class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display animate-scale-up"
+          class="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display animate-scale-up [color-scheme:light]"
         >
           <div
             class="flex items-center justify-between pb-3 border-b border-slate-100"
@@ -907,7 +957,7 @@ const showFeedback = (msg: string) => {
             </div>
             <button
               type="button"
-              class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
               @click="isEditStaffOpen = false"
             >
               ✕
@@ -918,29 +968,30 @@ const showFeedback = (msg: string) => {
             <div
               class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-0.5"
             >
-              <span class="text-[10px] font-bold uppercase text-slate-400"
+              <span class="text-[10px] font-bold uppercase text-slate-500"
                 >Staff Member</span
               >
               <p class="font-bold text-slate-900 text-xs">
                 {{ editingStaff.name }}
               </p>
-              <p class="text-[11px] text-slate-500 font-mono">
+              <p class="text-[11px] text-slate-600 font-mono">
                 {{ editingStaff.email }}
               </p>
             </div>
 
             <div>
-              <label class="block font-bold text-slate-700 mb-1"
+              <label class="block font-bold text-slate-800 mb-1"
                 >Role Designation</label
               >
               <select
                 v-model="editStaffRoleId"
-                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
               >
                 <option
                   v-for="role in staffRoles"
                   :key="role.id"
                   :value="role.id"
+                  class="text-slate-900 bg-white font-medium"
                 >
                   {{ role.label || role.name }}
                 </option>
@@ -948,7 +999,7 @@ const showFeedback = (msg: string) => {
             </div>
 
             <div>
-              <label class="block font-bold text-slate-700 mb-1"
+              <label class="block font-bold text-slate-800 mb-1"
                 >Account Status</label
               >
               <div class="flex items-center gap-4 pt-1">
@@ -972,12 +1023,36 @@ const showFeedback = (msg: string) => {
                 </label>
               </div>
             </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Update Password</label
+              >
+              <div class="relative">
+                <input
+                  v-model="editStaffPassword"
+                  :type="showEditStaffPassword ? 'text' : 'password'"
+                  placeholder="Leave blank to keep current password"
+                  class="w-full p-2.5 pr-9 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-700 text-xs cursor-pointer"
+                  @click="showEditStaffPassword = !showEditStaffPassword"
+                >
+                  {{ showEditStaffPassword ? "🙈" : "👁️" }}
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-600 font-medium mt-1">
+                Enter a new password to reset, or leave blank to keep unchanged.
+              </p>
+            </div>
           </div>
 
           <div class="flex gap-3 pt-3">
             <button
               type="button"
-              class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
+              class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
               @click="isEditStaffOpen = false"
             >
               Cancel

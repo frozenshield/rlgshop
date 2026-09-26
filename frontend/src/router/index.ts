@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { routes } from "./routes";
+import { useAdminStore } from "@/modules/admin/admin.store";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,41 +21,76 @@ router.beforeEach((to, from, next) => {
   const isAdminRoute = to.path.startsWith("/admin");
   const isAdminLogin = to.path === "/admin/login";
 
-  // When visiting /admin directly, always route to /admin/login first
+  // Verify stored admin session from both in-memory store and localStorage
+  let isAdminAuthenticated = false;
+  let parsedSession: any = null;
+
+  try {
+    const adminStore = useAdminStore();
+    if (adminStore.isAuthenticated && adminStore.currentAdmin) {
+      isAdminAuthenticated = true;
+      parsedSession = adminStore.currentAdmin;
+    }
+  } catch {
+    // Pinia not yet initialized fallback
+  }
+
+  if (!isAdminAuthenticated) {
+    const rawAdminSession = localStorage.getItem("rlg-admin-session");
+    if (
+      rawAdminSession &&
+      rawAdminSession !== "null" &&
+      rawAdminSession !== "undefined"
+    ) {
+      try {
+        const raw =
+          typeof rawAdminSession === "string"
+            ? JSON.parse(rawAdminSession)
+            : rawAdminSession;
+        if (raw && typeof raw === "object" && (raw.id || raw.email)) {
+          parsedSession = raw;
+          isAdminAuthenticated = true;
+          try {
+            const adminStore = useAdminStore();
+            adminStore.currentAdmin = raw;
+          } catch {
+            // Pinia not yet initialized
+          }
+        }
+      } catch {
+        isAdminAuthenticated = false;
+      }
+    }
+  }
+
+  // When visiting /admin root directly:
   if (to.path === "/admin" || to.path === "/admin/") {
+    if (isAdminAuthenticated) {
+      return next({ path: "/admin/dashboard" });
+    }
     return next({ path: "/admin/login" });
   }
 
-  // Allow unrestricted access to the admin login page
+  // If already authenticated and visiting /admin/login, forward straight to dashboard
   if (isAdminLogin) {
-    return next();
-  }
-
-  // Verify stored admin session from localStorage
-  let isAdminAuthenticated = false;
-  let parsedSession: any = null;
-  const rawAdminSession = localStorage.getItem("rlg-admin-session");
-  if (
-    rawAdminSession &&
-    rawAdminSession !== "null" &&
-    rawAdminSession !== "undefined"
-  ) {
-    try {
-      parsedSession = JSON.parse(rawAdminSession);
-      if (parsedSession && (parsedSession.id || parsedSession.email)) {
-        isAdminAuthenticated = true;
-      }
-    } catch {
-      isAdminAuthenticated = false;
+    if (isAdminAuthenticated) {
+      return next({ path: "/admin/dashboard" });
     }
+    return next();
   }
 
   if (isAdminRoute) {
     // If not logged in, redirect to login page
     if (!isAdminAuthenticated) {
+      const redirectTarget =
+        to.fullPath !== "/admin" &&
+        to.fullPath !== "/admin/" &&
+        to.fullPath !== "/admin/login"
+          ? to.fullPath
+          : "/admin/dashboard";
       return next({
         path: "/admin/login",
-        query: { redirect: to.fullPath },
+        query: { redirect: redirectTarget },
       });
     }
 
