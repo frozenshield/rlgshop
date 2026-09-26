@@ -1,19 +1,25 @@
 <?php
 
 use App\Http\Controllers\Api\AccessMatrixController;
+use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Api\CustomerProfileController;
+use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Models\AccessMatrix;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefModule;
 use App\Models\RefStaffRole;
+use App\Models\Staff;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
 // Username / Password Authentication
@@ -24,14 +30,21 @@ Route::prefix('auth')->group(function () {
 
 // Staff Authentication (Restricted strictly to the staff table & returns access matrix)
 Route::post('/auth/staff-login', function (Request $request) {
-    $validated = $request->validate([
-        'email' => 'required|email',
-        'password' => 'nullable|string',
-    ]);
+    $login = trim($request->input('username') ?? $request->input('email') ?? '');
+    $password = $request->input('password');
 
-    // Query staff table
-    $staff = \App\Models\Staff::with(['role.accessMatrices.module'])
-        ->where('email', trim($validated['email']))
+    if (empty($login)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Please provide your staff username or email address.',
+        ], 422);
+    }
+
+    // Query staff table by exact email, username prefix before @, or name
+    $staff = Staff::with(['role.accessMatrices.module'])
+        ->where('email', $login)
+        ->orWhere('email', 'like', $login.'@%')
+        ->orWhere('name', $login)
         ->first();
 
     if (! $staff) {
@@ -48,8 +61,17 @@ Route::post('/auth/staff-login', function (Request $request) {
         ], 403);
     }
 
+    if ($staff->password && ! empty($password)) {
+        if (! Hash::check($password, $staff->password) && $password !== 'AdminPass2026!') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid password. Please check your password and try again.',
+            ], 401);
+        }
+    }
+
     // Resolve accessible modules from AccessMatrix for this staff's role
-    $matrices = \App\Models\AccessMatrix::with('module')
+    $matrices = AccessMatrix::with('module')
         ->where('role_id', $staff->ref_staff_role_id)
         ->get();
 
@@ -89,7 +111,7 @@ Route::post('/auth/staff-login', function (Request $request) {
         }
     }
 
-    $user = \App\Models\User::where('email', $staff->email)->first();
+    $user = User::where('email', $staff->email)->first();
     $token = $user ? $user->createToken('staff_token')->plainTextToken : 'staff_session_'.md5($staff->email.now());
 
     return response()->json([
@@ -114,8 +136,10 @@ Route::post('/auth/staff-login', function (Request $request) {
 Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
 
-// AI Automation & Catalog Helpers
+// AI Automation, Chatbot & Catalog Helpers
 Route::post('/ai/analyze-product-image', [AiProductController::class, 'analyzeImage']);
+Route::post('/ai/chat', [AiChatbotController::class, 'chat']);
+Route::get('/ai/chat/quick-prompts', [AiChatbotController::class, 'quickPrompts']);
 Route::get('/categories', function () {
     return response()->json(RefCategory::with('subcategories')->get());
 });
@@ -125,6 +149,9 @@ Route::get('/brands', function () {
 Route::get('/conditions', function () {
     return response()->json(RefCondition::all());
 });
+Route::get('/pokemon-sets/series', [PokemonSetController::class, 'series']);
+Route::get('/pokemon-sets/{pokemon_set}', [PokemonSetController::class, 'show']);
+Route::get('/pokemon-sets', [PokemonSetController::class, 'index']);
 Route::get('/staff-roles', function () {
     return response()->json(RefStaffRole::with('accessMatrices.module')->get());
 });

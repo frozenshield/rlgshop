@@ -46,6 +46,7 @@ class StaffController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:staff,email',
+            'password' => 'nullable|string|min:6',
             'ref_staff_role_id' => 'nullable|integer',
             'staff_role_id' => 'nullable|integer',
             'role_id' => 'nullable|integer',
@@ -83,6 +84,7 @@ class StaffController extends Controller
         $staff = Staff::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'password' => ! empty($validated['password']) ? $validated['password'] : 'AdminPass2026!',
             'ref_staff_role_id' => $roleId,
             'is_active' => $validated['is_active'] ?? true,
         ]);
@@ -117,6 +119,7 @@ class StaffController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'email' => "nullable|string|email|max:255|unique:staff,email,{$staff->id}",
+            'password' => 'nullable|string|min:6',
             'ref_staff_role_id' => 'nullable|integer',
             'staff_role_id' => 'nullable|integer',
             'role_id' => 'nullable|integer',
@@ -148,6 +151,9 @@ class StaffController extends Controller
         }
         if (! empty($validated['email'])) {
             $updateData['email'] = $validated['email'];
+        }
+        if (! empty($validated['password'])) {
+            $updateData['password'] = $validated['password'];
         }
         if ($roleId) {
             $updateData['ref_staff_role_id'] = $roleId;

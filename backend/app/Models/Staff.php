@@ -15,8 +15,13 @@ class Staff extends Model
     protected $fillable = [
         'name',
         'email',
+        'password',
         'ref_staff_role_id',
         'is_active',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 
     protected $appends = [
@@ -30,6 +35,7 @@ class Staff extends Model
         return [
             'ref_staff_role_id' => 'integer',
             'is_active' => 'boolean',
+            'password' => 'hashed',
         ];
     }
 

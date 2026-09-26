@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
+use App\Models\RefPokemonSet;
 use App\Models\RefSubcategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'subcategory', 'brand', 'condition']);
+        $query = Product::with(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
 
         if ($request->filled('status')) {
             $query->where('status', strtolower($request->string('status')));
@@ -92,12 +93,15 @@ class ProductController extends Controller
             'status' => 'nullable|string',
             'image_url' => 'nullable|string',
             'gallery_images' => 'nullable|array',
+            'ref_pokemon_set_id' => 'nullable|integer',
+            'pokemon_set_id' => 'nullable|integer',
+            'pokemon_set' => 'nullable|string',
         ]);
 
         $name = $validated['name'] ?? $validated['title'] ?? 'Untitled Product';
         $price = $validated['price'] ?? $validated['sellingPrice'] ?? 0.00;
         $stock = $validated['stock'] ?? 0;
-        $description = $validated['description'] ?? null;
+        $description = ! empty($validated['description']) ? $this->cleanPlainTextDescription((string) $validated['description']) : null;
 
         // Resolve Category
         $categoryId = $validated['ref_category_id'] ?? $validated['category_id'] ?? null;
@@ -130,6 +134,17 @@ class ProductController extends Controller
             $conditionId = $cond?->id;
         }
 
+        // Resolve Pokemon Set ID
+        $pokemonSetId = $validated['ref_pokemon_set_id'] ?? $validated['pokemon_set_id'] ?? null;
+        if (! $pokemonSetId && ! empty($validated['pokemon_set'])) {
+            $setName = $validated['pokemon_set'];
+            $setRecord = RefPokemonSet::where('japanese_set', $setName)
+                ->orWhere('japanese_code', $setName)
+                ->orWhere('english_set', $setName)
+                ->first();
+            $pokemonSetId = $setRecord?->id;
+        }
+
         // Resolve Dimensions & Weight
         $weight = $validated['weight'] ?? $validated['weightGrams'] ?? null;
         $length = $validated['length'] ?? $validated['dimensionLength'] ?? null;
@@ -160,6 +175,7 @@ class ProductController extends Controller
             'ref_subcategory_id' => $subcategoryId,
             'ref_brand_id' => $brandId,
             'ref_condition_id' => $conditionId,
+            'ref_pokemon_set_id' => $pokemonSetId,
             'weight' => $weight,
             'length' => $length,
             'width' => $width,
@@ -169,7 +185,7 @@ class ProductController extends Controller
             'gallery_images' => $validated['gallery_images'] ?? null,
         ]);
 
-        $product->load(['category', 'subcategory', 'brand', 'condition']);
+        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
 
         Log::info('Product created in database', ['product_id' => $product->id, 'name' => $product->name]);
 
@@ -185,7 +201,7 @@ class ProductController extends Controller
      */
     public function show(Product $product): JsonResponse
     {
-        $product->load(['category', 'subcategory', 'brand', 'condition', 'reviews']);
+        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet', 'reviews']);
 
         return response()->json([
             'success' => true,
@@ -207,6 +223,7 @@ class ProductController extends Controller
             'ref_category_id',
             'ref_subcategory_id',
             'ref_condition_id',
+            'ref_pokemon_set_id',
             'price',
             'weight',
             'length',
@@ -217,12 +234,25 @@ class ProductController extends Controller
             'gallery_images',
         ]);
 
+        if ($request->has('pokemon_set') && ! isset($data['ref_pokemon_set_id'])) {
+            $setName = $request->input('pokemon_set');
+            $setRecord = RefPokemonSet::where('japanese_set', $setName)
+                ->orWhere('japanese_code', $setName)
+                ->orWhere('english_set', $setName)
+                ->first();
+            $data['ref_pokemon_set_id'] = $setRecord?->id;
+        }
+
+        if (isset($data['description']) && ! empty($data['description'])) {
+            $data['description'] = $this->cleanPlainTextDescription((string) $data['description']);
+        }
+
         if (isset($data['status'])) {
             $data['status'] = strtolower($data['status']);
         }
 
         $product->update($data);
-        $product->load(['category', 'subcategory', 'brand', 'condition']);
+        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
 
         return response()->json([
             'success' => true,
@@ -318,5 +348,35 @@ class ProductController extends Controller
             'success' => true,
             'message' => 'Product deleted successfully.',
         ]);
+    }
+
+    /**
+     * Ensure product description is saved as clean normal text using tabs and spacing without HTML tags.
+     */
+    protected function cleanPlainTextDescription(string $desc): string
+    {
+        // Convert headers into line headings
+        $desc = preg_replace('/<h[1-6][^>]*>(.*?)<\/h[1-6]>/is', "\n\n$1\n", $desc);
+
+        // Convert list items into tabbed bullet points
+        $desc = preg_replace('/<li[^>]*>(.*?)<\/li>/is', "\t• $1\n", $desc);
+
+        // Convert paragraph and break tags into clean line breaks
+        $desc = preg_replace('/<br\s*\/?>/i', "\n", $desc);
+        $desc = preg_replace('/<\/(p|div)>/i', "\n\n", $desc);
+
+        // Strip any remaining HTML tags completely
+        $desc = strip_tags($desc);
+
+        // Decode HTML entities
+        $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Normalize non-breaking spaces
+        $desc = str_replace("\xc2\xa0", ' ', $desc);
+
+        // Trim multiple consecutive blank lines
+        $desc = preg_replace("/\n{3,}/", "\n\n", $desc);
+
+        return trim($desc);
     }
 }

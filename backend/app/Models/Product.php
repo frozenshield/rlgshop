@@ -22,6 +22,7 @@ class Product extends Model
         'ref_category_id',
         'ref_subcategory_id',
         'ref_condition_id',
+        'ref_pokemon_set_id',
         'condition_id',
         'price',
         'weight',
@@ -43,6 +44,7 @@ class Product extends Model
             'ref_category_id' => 'integer',
             'ref_subcategory_id' => 'integer',
             'ref_condition_id' => 'integer',
+            'ref_pokemon_set_id' => 'integer',
             'price' => 'decimal:2',
             'weight' => 'decimal:2',
             'length' => 'decimal:2',
@@ -108,5 +110,13 @@ class Product extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Get the Pokemon set reference if applicable.
+     */
+    public function pokemonSet(): BelongsTo
+    {
+        return $this->belongsTo(RefPokemonSet::class, 'ref_pokemon_set_id');
     }
 }

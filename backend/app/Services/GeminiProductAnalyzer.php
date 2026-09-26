@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
+use App\Models\RefPokemonSet;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -61,7 +62,7 @@ Respond ONLY with a JSON object strictly adhering to this structure:
 {
   "title": "Full specific product title (include franchise, edition, character, or grade)",
   "short_summary": "1-2 sentence catchy summary highlighting key appeal",
-  "description": "Engaging, well-structured HTML description using <h3>, <p>, <ul>, <li> tags explaining what the item is, what is included, authenticity, and highlights",
+  "description": "Clean, structured normal plain text using ONLY standard spacing, line breaks, and tabs (DO NOT include any HTML tags like <p>, <h3>, <ul>, <li>). Format with capitalized section headers followed by indented items using tabs and spacing (e.g. OVERVIEW, KEY FEATURES, SPECIFICATIONS, BOX CONTENTS)",
   "primary_category": "Name of best matching category from list above",
   "secondary_category": "Name of best matching subcategory from list above",
   "ref_category_id": <matching category id integer or null>,
@@ -82,6 +83,11 @@ Respond ONLY with a JSON object strictly adhering to this structure:
   "suggested_price": <reasonable estimated price in Philippine Pesos (PHP) as a number, e.g. 3500>,
   "sku_suggestion": "A clean suggested SKU code, e.g. TCG-PKM-SV8-BOX or FIG-NEN-FRIEREN",
   "barcode_suggestion": "Suggested UPC/JAN code if visible on the box, otherwise null",
+  "is_pokemon_tcg": <true ONLY if this product is a Pokémon card/booster box/pack/tin, false for Gundam/Anime figures/One Piece/other items>,
+  "pokemon_series": "Exact Pokémon generation series name if is_pokemon_tcg=true (e.g. 'Scarlet & Violet', 'Sword & Shield', 'Sun & Moon', 'XY', 'Black & White'), otherwise null",
+  "pokemon_japanese_set": "Japanese expansion or subset name if is_pokemon_tcg=true (e.g. 'Pokémon Card 151', 'Super Electric Breaker', 'Eevee Heroes', 'VSTAR Universe'), otherwise null",
+  "pokemon_set_code": "Japanese set code visible on the card or box (e.g. SV2a, SV8, SV7a, S6a, S12a, SV4a) if is_pokemon_tcg=true, otherwise null",
+  "pokemon_english_set": "English set equivalent name if is_pokemon_tcg=true, otherwise null",
   "seo_title": "SEO title under 60 characters",
   "seo_description": "SEO meta description under 155 characters"
 }
@@ -171,6 +177,11 @@ EOT;
 
         $result['image_url'] = $storedImageUrl;
 
+        // Ensure description is saved as clean plain text with tabs and spacing (strip any HTML tags)
+        if (! empty($result['description'])) {
+            $result['description'] = $this->formatPlainTextDescription((string) $result['description']);
+        }
+
         // Ensure SKU is populated from suggestion or generated from title
         $result['sku'] = $result['sku'] ?? $result['sku_suggestion'] ?? null;
         if (empty($result['sku']) && ! empty($result['title'])) {
@@ -187,6 +198,100 @@ EOT;
             $result['sku'] = "{$catPrefix}-{$slug}-{$rand}";
         }
         $result['sku_suggestion'] = $result['sku'];
+
+        // Determine if product is Pokemon TCG (strictly applicable only to Pokemon TCG)
+        $isPokemonTcg = (bool) ($result['is_pokemon_tcg'] ?? false);
+        $fullText = ($result['title'] ?? '').' '.($result['brand'] ?? '').' '.($result['primary_category'] ?? '').' '.($result['secondary_category'] ?? '').' '.implode(' ', (array) ($result['tags'] ?? ''));
+
+        if (! $isPokemonTcg && (stripos($fullText, 'pokemon') !== false || stripos($fullText, 'pokémon') !== false)) {
+            if (stripos($fullText, 'card') !== false || stripos($fullText, 'tcg') !== false || stripos($fullText, 'booster') !== false || stripos($fullText, 'pack') !== false || stripos($fullText, 'box') !== false) {
+                $isPokemonTcg = true;
+            }
+        }
+
+        if ($isPokemonTcg) {
+            $pokemonCode = $result['pokemon_set_code'] ?? null;
+            $pokemonJpSet = $result['pokemon_japanese_set'] ?? null;
+            $setMatch = null;
+
+            // 1. Try matching by returned set code
+            if (! empty($pokemonCode)) {
+                $setMatch = RefPokemonSet::where('japanese_code', 'like', "%{$pokemonCode}%")->first();
+            }
+
+            // 2. Try matching by returned Japanese set name
+            if (! $setMatch && ! empty($pokemonJpSet)) {
+                $setMatch = RefPokemonSet::where('japanese_set', 'like', "%{$pokemonJpSet}%")->first();
+            }
+
+            // 3. Extract standard set code regex from title / text (e.g. SV2a, SV8, S6a, SM11b, CP6)
+            if (! $setMatch && preg_match('/\b(SV\d+[a-z]?|S\d+[a-z]?|SM\d+[a-z]?|XY\d+|BW\d+|CP\d+)\b/i', $fullText, $codeMatch)) {
+                $extractedCode = strtoupper($codeMatch[1]);
+                $setMatch = RefPokemonSet::where('japanese_code', 'like', "%{$extractedCode}%")->first();
+            }
+
+            // 4. Match distinctive set names from full title/text
+            if (! $setMatch) {
+                $distSetNames = [
+                    '151', 'eevee heroes', 'vstar universe', 'shiny treasure', 'clay burst',
+                    'snow hazard', 'triplet beat', 'raging surf', 'stellar miracle', 'paradise dragona',
+                    'super electric breaker', 'dream league', 'tag all stars', 'vmax climax', 'shiny star v',
+                    'ruler of the black flame', 'wild force', 'cyber judge', 'crimson haze', 'mask of change',
+                    'night wanderer', 'lost abyss', 'dark phantasma', 'time gazer', 'space juggler',
+                    'battle region', 'star birth', 'fusion arts', 'blue sky stream', 'skyscraping perfection',
+                ];
+
+                foreach ($distSetNames as $name) {
+                    if (stripos($fullText, $name) !== false) {
+                        $setMatch = RefPokemonSet::where('japanese_set', 'like', "%{$name}%")->first();
+                        if ($setMatch) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if ($setMatch) {
+                $result['is_pokemon_tcg'] = true;
+                $result['ref_pokemon_set_id'] = $setMatch->id;
+                $result['pokemon_series'] = $setMatch->series;
+                $result['pokemon_series_years'] = $setMatch->series_years;
+                $result['pokemon_japanese_set'] = $setMatch->japanese_set;
+                $result['pokemon_set_code'] = $setMatch->japanese_code;
+                $result['pokemon_english_set'] = $setMatch->english_set;
+                $result['pokemon_set_type'] = $setMatch->set_type;
+                $result['pokemon_set_dropdown_value'] = $setMatch->japanese_set;
+                $result['pokemon_set_match'] = [
+                    'id' => $setMatch->id,
+                    'series' => $setMatch->series,
+                    'series_years' => $setMatch->series_years,
+                    'japanese_set' => $setMatch->japanese_set,
+                    'japanese_code' => $setMatch->japanese_code,
+                    'english_set' => $setMatch->english_set,
+                    'set_type' => $setMatch->set_type,
+                ];
+
+                // Ensure category and subcategory are set cleanly
+                $result['primary_category'] = 'TCG (Trading Cards)';
+                $result['secondary_category'] = 'Pokémon';
+            } else {
+                $result['is_pokemon_tcg'] = true;
+                $result['ref_pokemon_set_id'] = null;
+                $result['pokemon_series'] = $result['pokemon_series'] ?? 'Scarlet & Violet';
+                $result['pokemon_set_dropdown_value'] = null;
+            }
+        } else {
+            // Explicitly set null for non-Pokemon TCG products
+            $result['is_pokemon_tcg'] = false;
+            $result['ref_pokemon_set_id'] = null;
+            $result['pokemon_series'] = null;
+            $result['pokemon_series_years'] = null;
+            $result['pokemon_japanese_set'] = null;
+            $result['pokemon_set_code'] = null;
+            $result['pokemon_english_set'] = null;
+            $result['pokemon_set_dropdown_value'] = null;
+            $result['pokemon_set_match'] = null;
+        }
 
         return $result;
     }
@@ -278,5 +383,36 @@ EOT;
         }
 
         return $conditions->map(fn ($c) => "- {$c->desc} (ID: {$c->id})")->join("\n");
+    }
+
+    /**
+     * Converts any HTML or structured text into clean, normal text using tabs and spacing without HTML tags.
+     */
+    protected function formatPlainTextDescription(string $desc): string
+    {
+        // Convert headers into uppercase line headings
+        $desc = preg_replace('/<h[1-6][^>]*>(.*?)<\/h[1-6]>/is', "\n\n$1\n", $desc);
+
+        // Convert list items into tabbed bullet points
+        $desc = preg_replace('/<li[^>]*>(.*?)<\/li>/is', "\t• $1\n", $desc);
+
+        // Convert paragraph and break tags into clean line breaks
+        $desc = preg_replace('/<br\s*\/?>/i', "\n", $desc);
+        $desc = preg_replace('/<\/p>/i', "\n\n", $desc);
+        $desc = preg_replace('/<\/div>/i', "\n", $desc);
+
+        // Strip any remaining HTML tags completely
+        $desc = strip_tags($desc);
+
+        // Decode HTML entities (e.g. &amp;, &nbsp;, &quot;)
+        $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Replace non-breaking spaces with normal spaces
+        $desc = str_replace("\xc2\xa0", ' ', $desc);
+
+        // Ensure clean line breaks and trim extra blank lines (max 2 consecutive newlines)
+        $desc = preg_replace("/\n{3,}/", "\n\n", $desc);
+
+        return trim($desc);
     }
 }
