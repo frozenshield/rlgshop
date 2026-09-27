@@ -40,6 +40,18 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/orders",
+    name: "orders",
+    component: () => import("@/modules/orders/CustomerOrdersView.vue"),
+    meta: {
+      title: "My Orders & Package Tracking | RLG Hobby Shop",
+    },
+  },
+  {
+    path: "/track-order",
+    redirect: "/orders",
+  },
+  {
     path: "/auth/callback",
     name: "auth-callback",
     component: AuthCallbackView,

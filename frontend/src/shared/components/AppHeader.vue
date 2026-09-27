@@ -296,6 +296,15 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             <span>🎯</span>
             <span>Hobby Matcher</span>
           </button>
+
+          <!-- Track Order Link -->
+          <router-link
+            to="/orders"
+            class="px-3 py-2 rounded-xl text-slate-300 hover:text-amber-400 hover:bg-slate-800/60 transition-colors flex items-center gap-1.5 text-xs font-bold"
+          >
+            <span>📦</span>
+            <span>Track Order</span>
+          </router-link>
         </nav>
 
         <!-- Search Bar with Live Popover -->
@@ -523,6 +532,33 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
                       >&rarr;</span
                     >
                   </button>
+
+                  <!-- Option: Orders & Tracking -->
+                  <router-link
+                    to="/orders"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer group"
+                    @click="isUserMenuOpen = false"
+                  >
+                    <span
+                      class="w-7 h-7 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform"
+                    >
+                      📦
+                    </span>
+                    <div class="text-left flex-1">
+                      <div
+                        class="text-white group-hover:text-amber-300 transition-colors"
+                      >
+                        Orders &amp; Tracking
+                      </div>
+                      <div class="text-[10px] text-slate-400 font-normal">
+                        Package status, history &amp; receipts
+                      </div>
+                    </div>
+                    <span
+                      class="text-xs text-slate-500 group-hover:text-amber-400"
+                      >&rarr;</span
+                    >
+                  </router-link>
 
                   <!-- Option 2: Setting -->
                   <button
@@ -766,6 +802,15 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
         >
           🛡️ Hobby Supplies
         </button>
+
+        <router-link
+          to="/orders"
+          class="block px-4 py-2 rounded-xl text-sm font-bold text-slate-200 hover:bg-slate-800 flex items-center gap-2"
+          @click="isMobileMenuOpen = false"
+        >
+          <span>📦</span>
+          <span>Track My Order</span>
+        </router-link>
 
         <router-link
           to="/wishlist"

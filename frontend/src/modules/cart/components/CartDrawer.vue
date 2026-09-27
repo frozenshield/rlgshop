@@ -9,6 +9,9 @@ import { formatCurrency } from "@/shared/utils/currency.util";
 const router = useRouter();
 const {
   items,
+  selectedItems,
+  selectedItemCount,
+  isAllSelected,
   isDrawerOpen,
   subtotal,
   promoDiscount,
@@ -17,6 +20,8 @@ const {
   promoInput,
   promoStatus,
   closeDrawer,
+  toggleSelectItem,
+  toggleSelectAll,
   updateQuantity,
   removeItem,
   clearCart,
@@ -116,14 +121,48 @@ const handleExploreToys = () => {
             </div>
 
             <!-- Items List -->
-            <div v-else class="divide-y divide-slate-800/80">
-              <CartItemRow
-                v-for="item in items"
-                :key="item.toy.id"
-                :item="item"
-                @update-quantity="updateQuantity"
-                @remove="removeItem"
-              />
+            <div v-else class="space-y-1">
+              <!-- Select All Toolbar -->
+              <div
+                class="py-2 px-1 border-b border-slate-800/80 flex items-center justify-between text-xs"
+              >
+                <label
+                  class="flex items-center gap-2 cursor-pointer font-bold text-slate-300 hover:text-white select-none"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="isAllSelected"
+                    class="w-4 h-4 rounded text-amber-400 bg-slate-800 border-slate-700 focus:ring-amber-400 cursor-pointer accent-amber-400"
+                    @change="toggleSelectAll()"
+                  />
+                  <span
+                    >Select All ({{ selectedItems.length }}/{{
+                      items.length
+                    }})</span
+                  >
+                </label>
+
+                <span
+                  v-if="selectedItems.length < items.length"
+                  class="text-[11px] text-amber-400 font-medium"
+                >
+                  Only selected items check out
+                </span>
+                <span v-else class="text-[11px] text-slate-400">
+                  All items selected
+                </span>
+              </div>
+
+              <div class="divide-y divide-slate-800/80">
+                <CartItemRow
+                  v-for="item in items"
+                  :key="item.toy.id"
+                  :item="item"
+                  @update-quantity="updateQuantity"
+                  @remove="removeItem"
+                  @toggle-select="toggleSelectItem"
+                />
+              </div>
             </div>
           </div>
 
@@ -217,9 +256,14 @@ const handleExploreToys = () => {
                 variant="primary"
                 size="lg"
                 fullWidth
+                :disabled="selectedItems.length === 0"
                 @click="handleProceedToCheckout"
               >
-                Proceed to Checkout &rarr;
+                {{
+                  selectedItems.length === 0
+                    ? "Select Items to Checkout"
+                    : `Proceed to Checkout (${selectedItemCount} items) →`
+                }}
               </BaseButton>
 
               <button

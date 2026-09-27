@@ -19,6 +19,7 @@ use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefModule;
 use App\Models\RefOrderStatus;
+use App\Models\RefPaymentMethod;
 use App\Models\RefShippingCarrier;
 use App\Models\RefStaffRole;
 use App\Models\Staff;
@@ -201,6 +202,34 @@ Route::get('/ref-order-statuses', function () {
 });
 Route::get('/ref-shipping-carriers', function () {
     return response()->json(RefShippingCarrier::where('is_active', true)->orderBy('id')->get());
+});
+Route::get('/ref-payment-methods', function (Request $request) {
+    $status = $request->query('status');
+    $query = RefPaymentMethod::query();
+
+    if ($status === 'active') {
+        $query->where('status', 'active');
+    } elseif ($status === 'inactive') {
+        $query->where('status', 'inactive');
+    } elseif ($status !== 'all' && ! $request->has('status')) {
+        // default to active unless requested otherwise or requesting all
+        $query->where('status', 'active');
+    }
+
+    return response()->json($query->orderBy('id')->get());
+});
+Route::patch('/ref-payment-methods/{ref_payment_method}/status', function (Request $request, RefPaymentMethod $refPaymentMethod) {
+    $validated = $request->validate([
+        'status' => 'required|in:active,inactive',
+    ]);
+
+    $refPaymentMethod->update(['status' => $validated['status']]);
+
+    return response()->json([
+        'success' => true,
+        'message' => "Payment method status updated to {$validated['status']}.",
+        'data' => $refPaymentMethod,
+    ]);
 });
 
 // Customer Orders & Fulfillment Lifecycle API

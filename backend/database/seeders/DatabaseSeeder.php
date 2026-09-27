@@ -36,7 +36,9 @@ class DatabaseSeeder extends Seeder
             RefPokemonSetSeeder::class,
             RefOrderStatusSeeder::class,
             RefShippingCarrierSeeder::class,
+            RefPaymentMethodSeeder::class,
             CustomerOrderSeeder::class,
+            CustomerMessageReviewSeeder::class,
         ]);
     }
 }

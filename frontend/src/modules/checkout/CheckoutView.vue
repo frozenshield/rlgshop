@@ -63,23 +63,41 @@ const handleSubmitOrder = async (data: CheckoutFormData) => {
 
       <!-- Empty Cart Guard -->
       <div
-        v-if="cartStore.items.length === 0 && !checkoutStore.isSuccessModalOpen"
+        v-if="
+          cartStore.selectedItems.length === 0 &&
+          !checkoutStore.isSuccessModalOpen
+        "
         class="bg-white rounded-3xl p-12 text-center border border-amber-200/80 shadow-sm max-w-lg mx-auto space-y-4"
       >
         <div class="text-5xl">🎒</div>
         <h3 class="text-xl font-bold text-slate-800">
-          Your Poké-Bag is Currently Empty
+          {{
+            cartStore.items.length === 0
+              ? "Your Poké-Bag is Currently Empty"
+              : "No Items Selected for Checkout"
+          }}
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          Please catch items from our catalog before proceeding to trainer
-          checkout.
+          {{
+            cartStore.items.length === 0
+              ? "Please catch items from our catalog before proceeding to trainer checkout."
+              : "Please select which items you would like to proceed with in your cart."
+          }}
         </p>
         <BaseButton
           variant="primary"
           size="md"
-          @click="router.push('/catalog')"
+          @click="
+            cartStore.items.length === 0
+              ? router.push('/catalog')
+              : cartStore.openDrawer()
+          "
         >
-          Browse Pokémon Catalog 🔴
+          {{
+            cartStore.items.length === 0
+              ? "Browse Pokémon Catalog 🔴"
+              : "Open Cart & Select Items 🛒"
+          }}
         </BaseButton>
       </div>
 

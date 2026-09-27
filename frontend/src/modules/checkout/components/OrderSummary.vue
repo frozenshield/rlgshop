@@ -42,7 +42,7 @@ const orderTotal = computed(() => {
       <span
         class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200"
       >
-        {{ cartStore.totalItemCount }} items
+        {{ cartStore.selectedItemCount }} items
       </span>
     </div>
 
@@ -51,7 +51,7 @@ const orderTotal = computed(() => {
       class="space-y-3 max-h-56 overflow-y-auto pr-1 divide-y divide-slate-50"
     >
       <div
-        v-for="item in cartStore.items"
+        v-for="item in cartStore.selectedItems"
         :key="item.toy.id"
         class="flex items-center gap-3 pt-2"
       >

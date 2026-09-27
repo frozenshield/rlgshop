@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useCatalogStore } from "../catalog/catalog.store";
 import HeroBanner from "./components/HeroBanner.vue";
@@ -15,6 +15,94 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const catalogStore = useCatalogStore();
+
+interface StoreReview {
+  id: number;
+  user_id: number;
+  product_id: number;
+  stars: number;
+  message: string;
+  image?: string | null;
+  staff_reply?: string | null;
+  user?: {
+    name?: string;
+    email?: string;
+    customer_profile?: { segment?: string };
+  };
+  product?: { name?: string; image_url?: string };
+  staff?: { name?: string };
+  created_at?: string;
+}
+
+const liveReviews = ref<StoreReview[]>([]);
+const isReviewsLoading = ref(false);
+
+const fetchLiveReviews = async () => {
+  isReviewsLoading.value = true;
+  try {
+    const res = await fetch("/api/customer-reviews");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        liveReviews.value = json.data;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch live reviews for home page", e);
+  } finally {
+    isReviewsLoading.value = false;
+  }
+};
+
+const defaultReviews: StoreReview[] = [
+  {
+    id: 1,
+    user_id: 3,
+    product_id: 1,
+    stars: 5,
+    message:
+      "The Scarlet & Violet 151 Elite Trainer Box and OP-05 booster box arrived in factory-sealed mint condition.",
+    image: null,
+    staff_reply:
+      "Thank you Marcus! We take extra care in packaging all collectible booster boxes.",
+    user: { name: "Marcus Tan", customer_profile: { segment: "VIP" } },
+    product: { name: "Pokémon TCG 151" },
+  },
+  {
+    id: 2,
+    user_id: 4,
+    product_id: 1,
+    stars: 5,
+    message:
+      "Fast delivery with J&T Express and very accommodating customer support team. Cards are 100% authentic!",
+    image: null,
+    staff_reply: "Much appreciated Elena! Enjoy your collection.",
+    user: { name: "Elena Reyes", customer_profile: { segment: "Regular" } },
+    product: { name: "Japanese TCG Booster" },
+  },
+  {
+    id: 3,
+    user_id: 5,
+    product_id: 1,
+    stars: 4,
+    message:
+      "Great booster box selection. Looking forward to more Japanese expansions and singles restocks.",
+    image: null,
+    staff_reply: null,
+    user: { name: "David Cruz", customer_profile: { segment: "Regular" } },
+    product: { name: "Leafeon GX 012/066 RR" },
+  },
+];
+
+const displayedReviews = computed<StoreReview[]>(() => {
+  return liveReviews.value.length > 0
+    ? liveReviews.value.slice(0, 3)
+    : defaultReviews;
+});
+
+onMounted(() => {
+  fetchLiveReviews();
+});
 
 // Layer 1: Best Selling Collectibles
 const bestSellingToys = computed<ToyProduct[]>(() => {
@@ -330,68 +418,86 @@ const goToCatalog = (
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+          <!-- Real Reviews from customer_review DB Table -->
           <div
-            class="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 shadow-md space-y-3"
+            v-for="(rev, idx) in displayedReviews"
+            :key="rev.id"
+            class="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 shadow-md space-y-3 flex flex-col justify-between"
           >
-            <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
-            <p class="text-xs text-slate-300 leading-relaxed font-medium">
-              "The Scarlet &amp; Violet 151 Elite Trainer Box and OP-05 booster
-              box arrived in factory-sealed mint condition. The double-boxed
-              packaging protected the corners perfectly!"
-            </p>
-            <div class="flex items-center gap-2.5 pt-1">
-              <span
-                class="w-8 h-8 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center"
-                >MT</span
-              >
-              <div>
-                <h5 class="text-xs font-bold text-white">Marcus T.</h5>
-                <p class="text-[10px] text-slate-400">TCG Sealed Collector</p>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex text-amber-400 text-sm tracking-wider">
+                  {{ "★".repeat(rev.stars) }}{{ "☆".repeat(5 - rev.stars) }}
+                </div>
+                <span
+                  class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                >
+                  Verified Buyer
+                </span>
               </div>
-            </div>
-          </div>
 
-          <div
-            class="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 shadow-md space-y-3"
-          >
-            <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
-            <p class="text-xs text-slate-300 leading-relaxed font-medium">
-              "Got the Luffy Gear 5 figure and Gunpla kits. 100% authentic
-              licensed goods with pristine runners and flawless paint
-              applications. Best hobby shop online!"
-            </p>
-            <div class="flex items-center gap-2.5 pt-1">
-              <span
-                class="w-8 h-8 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center"
-                >ER</span
+              <!-- Product Reviewed Pill -->
+              <p
+                v-if="rev.product?.name"
+                class="text-[11px] font-bold text-indigo-300 truncate"
               >
-              <div>
-                <h5 class="text-xs font-bold text-white">Elena R.</h5>
-                <p class="text-[10px] text-slate-400">
-                  Gunpla &amp; Figure Hobbyist
+                Item: {{ rev.product.name }}
+              </p>
+
+              <!-- Review Message -->
+              <p class="text-xs text-slate-300 leading-relaxed font-medium">
+                "{{ rev.message }}"
+              </p>
+
+              <!-- Photo Attachment if available -->
+              <div v-if="rev.image" class="pt-1">
+                <img
+                  :src="rev.image"
+                  alt="Customer Review Photo"
+                  class="w-16 h-16 rounded-xl object-contain bg-slate-900 border border-slate-700 p-1"
+                />
+              </div>
+
+              <!-- Staff Reply Badge & Text -->
+              <div
+                v-if="rev.staff_reply"
+                class="mt-2 p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-500/30 text-[11px] space-y-1"
+              >
+                <div
+                  class="font-extrabold text-[10px] text-indigo-300 uppercase tracking-wider flex items-center gap-1"
+                >
+                  <span>💬</span>
+                  <span>Staff Response:</span>
+                </div>
+                <p class="text-slate-300 text-[11px] italic">
+                  "{{ rev.staff_reply }}"
                 </p>
               </div>
             </div>
-          </div>
 
-          <div
-            class="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 shadow-md space-y-3"
-          >
-            <div class="flex text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
-            <p class="text-xs text-slate-300 leading-relaxed font-medium">
-              "The Hobby Matcher quiz recommended the ideal deck sleeves and
-              Charizard collection box for a tournament gift. Fast delivery and
-              stellar customer service!"
-            </p>
-            <div class="flex items-center gap-2.5 pt-1">
+            <!-- Customer Avatar & Name -->
+            <div
+              class="flex items-center gap-2.5 pt-2 border-t border-slate-800/80 mt-auto"
+            >
               <span
-                class="w-8 h-8 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center"
-                >DC</span
+                class="w-8 h-8 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center flex-shrink-0"
               >
-              <div>
-                <h5 class="text-xs font-bold text-white">David C.</h5>
+                {{
+                  rev.user?.name
+                    ? rev.user.name.slice(0, 2).toUpperCase()
+                    : "CO"
+                }}
+              </span>
+              <div class="min-w-0">
+                <h5 class="text-xs font-bold text-white truncate">
+                  {{ rev.user?.name || "Collector" }}
+                </h5>
                 <p class="text-[10px] text-slate-400">
-                  Competitive Card Player
+                  {{
+                    rev.user?.customer_profile?.segment
+                      ? `${rev.user.customer_profile.segment} Member`
+                      : "Verified Collector"
+                  }}
                 </p>
               </div>
             </div>
