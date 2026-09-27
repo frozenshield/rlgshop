@@ -3,27 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AiChatRequest;
 use App\Services\StorefrontChatbotService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class AiChatbotController extends Controller
 {
-    /**
-     * Send a customer query to the storefront AI assistant (Aiko).
-     */
-    public function chat(Request $request, StorefrontChatbotService $service): JsonResponse
+    public function __construct(
+        protected StorefrontChatbotService $chatbotService
+    ) {}
+
+    public function chat(AiChatRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'message' => 'required|string|min:1|max:1000',
-            'history' => 'nullable|array',
-            'history.*.role' => 'nullable|string',
-            'history.*.content' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         try {
-            $response = $service->reply(
+            $response = $this->chatbotService->reply(
                 trim($validated['message']),
                 $validated['history'] ?? []
             );
@@ -40,9 +36,6 @@ class AiChatbotController extends Controller
         }
     }
 
-    /**
-     * Get starter quick prompts for the customer storefront chat widget.
-     */
     public function quickPrompts(): JsonResponse
     {
         return response()->json([

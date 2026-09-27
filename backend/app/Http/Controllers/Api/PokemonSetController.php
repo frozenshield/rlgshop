@@ -4,64 +4,35 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RefPokemonSet;
+use App\Services\PokemonSetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PokemonSetController extends Controller
 {
-    /**
-     * Display a listing of Pokemon sets with optional filtering and search.
-     */
+    public function __construct(
+        protected PokemonSetService $pokemonSetService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $query = RefPokemonSet::query();
-
-        if ($request->filled('series')) {
-            $query->bySeries($request->input('series'));
-        }
-
-        if ($request->filled('set_type')) {
-            $query->where('set_type', $request->input('set_type'));
-        }
-
-        if ($request->filled('search')) {
-            $query->search($request->input('search'));
-        }
-
-        if ($request->filled('code')) {
-            $code = trim($request->input('code'));
-            $query->where('japanese_code', 'like', "%{$code}%");
-        }
-
-        $query->orderBy('release_order', 'asc');
-
-        if ($request->boolean('paginate', false)) {
-            $perPage = (int) $request->input('per_page', 25);
-            $sets = $query->paginate($perPage);
-        } else {
-            $sets = $query->get();
-        }
+        $sets = $this->pokemonSetService->getSets($request->all());
 
         return response()->json([
             'success' => true,
-            'count' => is_countable($sets) ? count($sets) : $sets->total(),
+            'count' => $sets->count(),
             'data' => $sets,
         ]);
     }
 
-    /**
-     * Display the specified Pokemon set.
-     */
-    public function show(string $idOrCode): JsonResponse
+    public function show(string $pokemon_set): JsonResponse
     {
-        $set = RefPokemonSet::where('id', $idOrCode)
-            ->orWhere('japanese_code', $idOrCode)
-            ->first();
+        $set = $this->pokemonSetService->show($pokemon_set);
 
-        if (! $set) {
+        if (!$set) {
             return response()->json([
                 'success' => false,
-                'message' => "Pokémon set '{$idOrCode}' not found.",
+                'message' => 'Pokemon set not found.',
             ], 404);
         }
 
@@ -71,17 +42,9 @@ class PokemonSetController extends Controller
         ]);
     }
 
-    /**
-     * Get distinct series list with summary metadata.
-     */
     public function series(): JsonResponse
     {
-        $series = RefPokemonSet::select('series', 'series_years')
-            ->selectRaw('count(*) as sets_count')
-            ->selectRaw('min(release_order) as min_order')
-            ->groupBy('series', 'series_years')
-            ->orderBy('min_order', 'asc')
-            ->get();
+        $series = $this->pokemonSetService->getSeries();
 
         return response()->json([
             'success' => true,

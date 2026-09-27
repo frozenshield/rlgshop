@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class ValidatePromoCodeRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'code' => 'required|string',
+            'cart_total' => 'nullable|numeric|min:0',
+        ];
+    }
+}
