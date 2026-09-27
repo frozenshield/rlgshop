@@ -109,7 +109,7 @@ class CustomerOrderTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonPath('success', true);
-        $this->assertEquals('Ash Ketchum', $response->json('data.customer_name'));
+        $this->assertEquals('Ash Ketchum', $response->json('data.customer_profile.name'));
         $this->assertEquals(7499.00, (float) $response->json('data.total_amount'));
 
         $this->assertDatabaseHas('customer_orders', [

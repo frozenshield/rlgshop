@@ -3,191 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CheckDuplicateProductRequest;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
-use App\Models\RefBrand;
-use App\Models\RefCategory;
-use App\Models\RefCondition;
-use App\Models\RefPokemonSet;
-use App\Models\RefSubcategory;
+use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of products.
-     */
+    public function __construct(
+        protected ProductService $productService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
-
-        if ($request->filled('status')) {
-            $query->where('status', strtolower($request->string('status')));
-        }
-
-        if ($request->filled('category_id')) {
-            $query->where('ref_category_id', $request->integer('category_id'));
-        }
-
-        if ($request->filled('brand_id')) {
-            $query->where('ref_brand_id', $request->integer('brand_id'));
-        }
-
-        if ($request->filled('condition_id')) {
-            $query->where('ref_condition_id', $request->integer('condition_id'));
-        }
-
-        if ($request->filled('search')) {
-            $term = $request->string('search');
-            $query->where(function ($q) use ($term): void {
-                $q->where('name', 'like', "%{$term}%")
-                    ->orWhere('description', 'like', "%{$term}%");
-            });
-        }
-
-        $products = $query->orderBy('id', 'desc')->get();
+        $products = $this->productService->getProducts($request->all());
 
         return response()->json([
             'success' => true,
             'count' => $products->count(),
-            'data' => $products,
+            'total' => $products->total(),
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+            'data' => $products->items(),
         ]);
     }
 
-    /**
-     * Store a newly created product in storage.
-     */
-    public function store(Request $request): JsonResponse
+    public function store(StoreProductRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'title' => 'nullable|string|max:255',
-            'sku' => 'nullable|string|max:100',
-            'price' => 'nullable|numeric|min:0',
-            'sellingPrice' => 'nullable|numeric|min:0',
-            'stock' => 'nullable|integer|min:0',
-            'description' => 'nullable|string',
-            'ref_category_id' => 'nullable|integer',
-            'category_id' => 'nullable|integer',
-            'category' => 'nullable|string',
-            'ref_subcategory_id' => 'nullable|integer',
-            'subcategory_id' => 'nullable|integer',
-            'subcategory' => 'nullable|string',
-            'ref_brand_id' => 'nullable|integer',
-            'brand_id' => 'nullable|integer',
-            'brand' => 'nullable|string',
-            'vendor' => 'nullable|string',
-            'ref_condition_id' => 'nullable|integer',
-            'condition_id' => 'nullable|integer',
-            'condition' => 'nullable|string',
-            'weight' => 'nullable|numeric|min:0',
-            'weightGrams' => 'nullable|numeric|min:0',
-            'length' => 'nullable|numeric|min:0',
-            'dimensionLength' => 'nullable|numeric|min:0',
-            'width' => 'nullable|numeric|min:0',
-            'dimensionWidth' => 'nullable|numeric|min:0',
-            'height' => 'nullable|numeric|min:0',
-            'dimensionHeight' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string',
-            'image_url' => 'nullable|string',
-            'gallery_images' => 'nullable|array',
-            'ref_pokemon_set_id' => 'nullable|integer',
-            'pokemon_set_id' => 'nullable|integer',
-            'pokemon_set' => 'nullable|string',
-        ]);
-
-        $name = $validated['name'] ?? $validated['title'] ?? 'Untitled Product';
-        $price = $validated['price'] ?? $validated['sellingPrice'] ?? 0.00;
-        $stock = $validated['stock'] ?? 0;
-        $description = ! empty($validated['description']) ? $this->cleanPlainTextDescription((string) $validated['description']) : null;
-
-        // Resolve Category
-        $categoryId = $validated['ref_category_id'] ?? $validated['category_id'] ?? null;
-        if (! $categoryId && ! empty($validated['category'])) {
-            $cat = RefCategory::where('desc', $validated['category'])->first();
-            $categoryId = $cat?->id;
-        }
-
-        // Resolve Subcategory
-        $subcategoryId = $validated['ref_subcategory_id'] ?? $validated['subcategory_id'] ?? null;
-        if (! $subcategoryId && ! empty($validated['subcategory'])) {
-            $sub = RefSubcategory::where('desc', $validated['subcategory'])->first();
-            $subcategoryId = $sub?->id;
-        }
-
-        // Resolve Brand
-        $brandId = $validated['ref_brand_id'] ?? $validated['brand_id'] ?? null;
-        if (! $brandId && ! empty($validated['brand'])) {
-            $brand = RefBrand::where('name', $validated['brand'])->first();
-            $brandId = $brand?->id;
-        } elseif (! $brandId && ! empty($validated['vendor'])) {
-            $brand = RefBrand::where('name', $validated['vendor'])->first();
-            $brandId = $brand?->id;
-        }
-
-        // Resolve Condition
-        $conditionId = $validated['ref_condition_id'] ?? $validated['condition_id'] ?? null;
-        if (! $conditionId && ! empty($validated['condition'])) {
-            $cond = RefCondition::where('desc', $validated['condition'])->first();
-            $conditionId = $cond?->id;
-        }
-
-        // Resolve Pokemon Set ID
-        $pokemonSetId = $validated['ref_pokemon_set_id'] ?? $validated['pokemon_set_id'] ?? null;
-        if (! $pokemonSetId && ! empty($validated['pokemon_set'])) {
-            $setName = $validated['pokemon_set'];
-            $setRecord = RefPokemonSet::where('japanese_set', $setName)
-                ->orWhere('japanese_code', $setName)
-                ->orWhere('english_set', $setName)
-                ->first();
-            $pokemonSetId = $setRecord?->id;
-        }
-
-        // Resolve Dimensions & Weight
-        $weight = $validated['weight'] ?? $validated['weightGrams'] ?? null;
-        $length = $validated['length'] ?? $validated['dimensionLength'] ?? null;
-        $width = $validated['width'] ?? $validated['dimensionWidth'] ?? null;
-        $height = $validated['height'] ?? $validated['dimensionHeight'] ?? null;
-
-        // Resolve Publishing Status
-        $rawStatus = strtolower($validated['status'] ?? 'active');
-        $status = in_array($rawStatus, ['active', 'draft', 'archived'], true) ? $rawStatus : 'active';
-
-        // Resolve SKU — use Gemini suggestion or generate one
-        $sku = ! empty($validated['sku'])
-            ? strtoupper(trim($validated['sku']))
-            : $this->generateSku($name, $categoryId);
-
-        // Ensure uniqueness by appending a suffix if needed
-        if (Product::where('sku', $sku)->exists()) {
-            $sku = $sku.'-'.strtoupper(Str::random(4));
-        }
-
-        $product = Product::create([
-            'name' => $name,
-            'sku' => $sku,
-            'price' => $price,
-            'stock' => $stock,
-            'description' => $description,
-            'ref_category_id' => $categoryId,
-            'ref_subcategory_id' => $subcategoryId,
-            'ref_brand_id' => $brandId,
-            'ref_condition_id' => $conditionId,
-            'ref_pokemon_set_id' => $pokemonSetId,
-            'weight' => $weight,
-            'length' => $length,
-            'width' => $width,
-            'height' => $height,
-            'status' => $status,
-            'image_url' => $validated['image_url'] ?? null,
-            'gallery_images' => $validated['gallery_images'] ?? null,
-        ]);
-
-        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
-
-        Log::info('Product created in database', ['product_id' => $product->id, 'name' => $product->name]);
+        $product = $this->productService->createProduct($request->validated());
 
         return response()->json([
             'success' => true,
@@ -196,9 +42,6 @@ class ProductController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified product.
-     */
     public function show(Product $product): JsonResponse
     {
         $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet', 'reviews']);
@@ -209,92 +52,20 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * Update the specified product in storage.
-     */
-    public function update(Request $request, Product $product): JsonResponse
+    public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        $data = $request->only([
-            'name',
-            'sku',
-            'stock',
-            'description',
-            'ref_brand_id',
-            'ref_category_id',
-            'ref_subcategory_id',
-            'ref_condition_id',
-            'ref_pokemon_set_id',
-            'price',
-            'weight',
-            'length',
-            'width',
-            'height',
-            'status',
-            'image_url',
-            'gallery_images',
-        ]);
-
-        if ($request->has('pokemon_set') && ! isset($data['ref_pokemon_set_id'])) {
-            $setName = $request->input('pokemon_set');
-            $setRecord = RefPokemonSet::where('japanese_set', $setName)
-                ->orWhere('japanese_code', $setName)
-                ->orWhere('english_set', $setName)
-                ->first();
-            $data['ref_pokemon_set_id'] = $setRecord?->id;
-        }
-
-        if (isset($data['description']) && ! empty($data['description'])) {
-            $data['description'] = $this->cleanPlainTextDescription((string) $data['description']);
-        }
-
-        if (isset($data['status'])) {
-            $data['status'] = strtolower($data['status']);
-        }
-
-        $product->update($data);
-        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
+        $updatedProduct = $this->productService->updateProduct($product, $request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Product updated successfully.',
-            'data' => $product,
+            'data' => $updatedProduct,
         ]);
     }
 
-    /**
-     * Check if a product with a similar name or image URL already exists.
-     * Used before saving to warn admins of potential duplicates.
-     */
-    public function checkDuplicate(Request $request): JsonResponse
+    public function checkDuplicate(CheckDuplicateProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'nullable|string',
-            'image_url' => 'nullable|string',
-            'description' => 'nullable|string',
-        ]);
-
-        $duplicates = collect();
-
-        // Match by identical or very similar name (case-insensitive, trimmed)
-        if (! empty($request->name)) {
-            $nameTrimmed = trim($request->name);
-            $byName = Product::where('name', 'like', '%'.substr($nameTrimmed, 0, 30).'%')
-                ->with(['category', 'brand'])
-                ->get(['id', 'sku', 'name', 'ref_category_id', 'ref_brand_id', 'image_url', 'status']);
-
-            $duplicates = $duplicates->merge($byName);
-        }
-
-        // Match by exact image URL (same photo uploaded twice)
-        if (! empty($request->image_url)) {
-            $byImage = Product::where('image_url', $request->image_url)
-                ->with(['category', 'brand'])
-                ->get(['id', 'sku', 'name', 'ref_category_id', 'ref_brand_id', 'image_url', 'status']);
-
-            $duplicates = $duplicates->merge($byImage);
-        }
-
-        $duplicates = $duplicates->unique('id')->values();
+        $duplicates = $this->productService->checkDuplicate($request->validated());
 
         return response()->json([
             'success' => true,
@@ -304,79 +75,13 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * Generate a SKU code from the product name and category.
-     *
-     * Format: CAT-SLUG-XXXX  e.g. TCG-PIKACHU-V-BOXI-A3F2
-     */
-    protected function generateSku(string $productName, ?int $categoryId): string
-    {
-        // Derive a 2-4 char category prefix
-        $catPrefix = 'PRD';
-        if ($categoryId) {
-            $cat = RefCategory::find($categoryId);
-            if ($cat) {
-                // Take first letters of each word, up to 3 chars
-                $catPrefix = strtoupper(implode('', array_map(
-                    fn ($w) => $w[0] ?? '',
-                    preg_split('/[\s\-_]+/', $cat->desc) ?: []
-                )));
-                $catPrefix = substr($catPrefix, 0, 3) ?: 'PRD';
-            }
-        }
-
-        // Slug from the first 3 significant words of the product name
-        $words = preg_split('/\s+/', trim($productName)) ?: [];
-        $slug = strtoupper(implode('-', array_map(
-            fn ($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
-            array_slice($words, 0, 3)
-        )));
-
-        $random = strtoupper(Str::random(4));
-
-        return "{$catPrefix}-{$slug}-{$random}";
-    }
-
-    /**
-     * Remove the specified product from storage.
-     */
     public function destroy(Product $product): JsonResponse
     {
-        $product->delete();
+        $this->productService->deleteProduct($product);
 
         return response()->json([
             'success' => true,
             'message' => 'Product deleted successfully.',
         ]);
-    }
-
-    /**
-     * Ensure product description is saved as clean normal text using tabs and spacing without HTML tags.
-     */
-    protected function cleanPlainTextDescription(string $desc): string
-    {
-        // Convert headers into line headings
-        $desc = preg_replace('/<h[1-6][^>]*>(.*?)<\/h[1-6]>/is', "\n\n$1\n", $desc);
-
-        // Convert list items into tabbed bullet points
-        $desc = preg_replace('/<li[^>]*>(.*?)<\/li>/is', "\t• $1\n", $desc);
-
-        // Convert paragraph and break tags into clean line breaks
-        $desc = preg_replace('/<br\s*\/?>/i', "\n", $desc);
-        $desc = preg_replace('/<\/(p|div)>/i', "\n\n", $desc);
-
-        // Strip any remaining HTML tags completely
-        $desc = strip_tags($desc);
-
-        // Decode HTML entities
-        $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        // Normalize non-breaking spaces
-        $desc = str_replace("\xc2\xa0", ' ', $desc);
-
-        // Trim multiple consecutive blank lines
-        $desc = preg_replace("/\n{3,}/", "\n\n", $desc);
-
-        return trim($desc);
     }
 }
