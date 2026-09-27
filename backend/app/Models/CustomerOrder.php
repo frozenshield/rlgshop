@@ -36,54 +36,6 @@ class CustomerOrder extends Model
         'notes',
     ];
 
-    protected $appends = [
-        'customer_name',
-        'customer_email',
-        'customer_phone',
-        'shipping_address',
-        'city',
-        'postal_code',
-    ];
-
-    public function getCustomerNameAttribute(): ?string
-    {
-        return $this->customerProfile?->name ?? $this->user?->name ?? $this->attributes['customer_name'] ?? null;
-    }
-
-    public function getCustomerEmailAttribute(): ?string
-    {
-        return $this->customerProfile?->email ?? $this->user?->email ?? $this->attributes['customer_email'] ?? null;
-    }
-
-    public function getCustomerPhoneAttribute(): ?string
-    {
-        return $this->customerProfile?->phone ?? $this->customerProfile?->shippingAddress?->phone ?? $this->attributes['customer_phone'] ?? null;
-    }
-
-    public function getShippingAddressAttribute(): ?string
-    {
-        return $this->customerProfile?->shippingAddress?->shipping_address
-            ?? $this->customerProfile?->address_line1
-            ?? $this->attributes['shipping_address']
-            ?? null;
-    }
-
-    public function getCityAttribute(): ?string
-    {
-        return $this->customerProfile?->shippingAddress?->city
-            ?? $this->customerProfile?->city
-            ?? $this->attributes['city']
-            ?? null;
-    }
-
-    public function getPostalCodeAttribute(): ?string
-    {
-        return $this->customerProfile?->shippingAddress?->postal_code
-            ?? $this->customerProfile?->postal_code
-            ?? $this->attributes['postal_code']
-            ?? null;
-    }
-
     /**
      * @return array<string, string>
      */
