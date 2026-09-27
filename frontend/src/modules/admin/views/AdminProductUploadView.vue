@@ -131,18 +131,49 @@ interface MediaItem {
   url: string;
   alt: string;
   isPrimary: boolean;
+  width?: number;
+  height?: number;
+  fileSize?: string;
 }
 
 const mediaList = ref<MediaItem[]>([]);
 const newImageUrl = ref("");
 
-const addImage = () => {
+const getImageDimensions = (
+  url: string,
+): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      resolve({ width: 0, height: 0 });
+    };
+    img.src = url;
+  });
+};
+
+const formatBytes = (bytes: number): string => {
+  if (!bytes || bytes === 0) return "";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+};
+
+const addImage = async () => {
   if (newImageUrl.value.trim()) {
+    const url = newImageUrl.value.trim();
+    const newId = "m-" + Date.now();
+    const dims = await getImageDimensions(url);
     mediaList.value.push({
-      id: "m-" + Date.now(),
-      url: newImageUrl.value.trim(),
-      alt: title.value + " photo",
+      id: newId,
+      url,
+      alt: title.value ? title.value + " photo" : "Product photo",
       isPrimary: mediaList.value.length === 0,
+      width: dims.width > 0 ? dims.width : undefined,
+      height: dims.height > 0 ? dims.height : undefined,
     });
     newImageUrl.value = "";
   }
@@ -192,12 +223,17 @@ const handleDrop = async (e: DragEvent) => {
 const processUploadedImage = async (file: File) => {
   const localPreviewUrl = URL.createObjectURL(file);
   const newMediaId = "m-" + Date.now();
+  const dims = await getImageDimensions(localPreviewUrl);
+  const fileSize = formatBytes(file.size);
 
   mediaList.value.unshift({
     id: newMediaId,
     url: localPreviewUrl,
     alt: file.name,
     isPrimary: true,
+    width: dims.width > 0 ? dims.width : undefined,
+    height: dims.height > 0 ? dims.height : undefined,
+    fileSize,
   });
   mediaList.value.slice(1).forEach((m) => (m.isPrimary = false));
 
@@ -935,11 +971,13 @@ const handleSaveProduct = async () => {
                   : 'border-slate-200'
               "
             >
-              <div class="aspect-square relative overflow-hidden">
+              <div
+                class="aspect-square relative overflow-hidden bg-slate-900 flex items-center justify-center p-1.5"
+              >
                 <img
                   :src="img.url"
                   :alt="img.alt"
-                  class="w-full h-full object-cover"
+                  class="max-w-full max-h-full object-contain"
                 />
                 <span
                   v-if="img.isPrimary"
@@ -947,9 +985,18 @@ const handleSaveProduct = async () => {
                 >
                   Primary
                 </span>
+                <span
+                  v-if="img.width && img.height"
+                  class="absolute bottom-1.5 left-1.5 bg-slate-950/85 backdrop-blur-xs text-slate-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-slate-700/60 shadow-xs pointer-events-none"
+                >
+                  {{ img.width }}×{{ img.height
+                  }}<span v-if="img.fileSize" class="text-slate-400 ml-1"
+                    >({{ img.fileSize }})</span
+                  >
+                </span>
                 <button
                   type="button"
-                  class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-slate-900/80 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                  class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-slate-900/80 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hover:bg-rose-600"
                   title="Delete image"
                   @click="removeMedia(img.id)"
                 >

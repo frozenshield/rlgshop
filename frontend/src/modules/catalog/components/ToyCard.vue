@@ -44,12 +44,12 @@ const handleToggleWishlist = () => {
   >
     <!-- Top Image Container -->
     <div
-      class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950/80 border border-slate-800/80 mb-3.5"
+      class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950/80 border border-slate-800/80 mb-3.5 flex items-center justify-center p-2"
     >
       <img
         :src="toy.imageUrl"
         :alt="toy.name"
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+        class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
         loading="lazy"
       />
 

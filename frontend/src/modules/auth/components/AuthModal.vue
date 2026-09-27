@@ -72,7 +72,7 @@ const handleLogin = async () => {
   }
   loginLoading.value = true;
   try {
-    const res = await fetch("http://localhost:8000/api/auth/login", {
+    const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -117,7 +117,7 @@ const handleRegister = async () => {
   }
   regLoading.value = true;
   try {
-    const res = await fetch("http://localhost:8000/api/auth/register", {
+    const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -145,7 +145,7 @@ const handleRegister = async () => {
 };
 
 const handleGoogleLogin = () => {
-  window.location.href = "http://localhost:8000/api/auth/google/redirect";
+  window.location.href = "/api/auth/google/redirect";
 };
 </script>
 

@@ -38,9 +38,13 @@ onMounted(() => {
   }
 });
 
-const handleSignOut = () => {
+const handleSignOut = async () => {
   adminStore.logout();
-  router.replace("/admin/login");
+  try {
+    localStorage.removeItem("rlg-admin-session");
+    sessionStorage.removeItem("rlg-admin-session");
+  } catch {}
+  await router.replace("/admin/login");
 };
 
 // Master list of all admin sidebar modules

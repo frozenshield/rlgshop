@@ -16,6 +16,8 @@ import type {
   OrderStatus,
   StaffModulePermission,
   StaffModulesResponse,
+  RefShippingCarrierItem,
+  RefOrderStatusItem,
 } from "./admin.types";
 
 const getStoredAdminSession = (): AdminUser | null => {
@@ -38,25 +40,8 @@ const getStoredAdminSession = (): AdminUser | null => {
 };
 
 export const useAdminStore = defineStore("adminStore", () => {
-  // Current logged in admin session (persisted via localStorage with explicit JSON object serializer)
-  const currentAdmin = useStorage<AdminUser | null>(
-    "rlg-admin-session",
-    getStoredAdminSession(),
-    undefined,
-    {
-      serializer: StorageSerializers.object,
-      mergeDefaults: false,
-    },
-  );
-
-  // Safeguard: parse string if legacy unparsed value was stored
-  if (typeof currentAdmin.value === "string") {
-    try {
-      currentAdmin.value = JSON.parse(currentAdmin.value);
-    } catch {
-      currentAdmin.value = null;
-    }
-  }
+  // Current logged in admin session (persisted synchronously in localStorage)
+  const currentAdmin = ref<AdminUser | null>(getStoredAdminSession());
 
   // Clear legacy mock session that was auto-seeded by default
   if (
@@ -934,35 +919,212 @@ export const useAdminStore = defineStore("adminStore", () => {
     localStorage.removeItem("rlg-admin-session");
   };
 
+  // Order Reference Data & Database Sync
+  const shippingCarriers = ref<RefShippingCarrierItem[]>([]);
+  const orderStatuses = ref<RefOrderStatusItem[]>([]);
+  const isLoadingOrders = ref(false);
+
+  const fetchShippingCarriers = async () => {
+    try {
+      const res = await fetch("/api/ref-shipping-carriers");
+      if (res.ok) {
+        shippingCarriers.value = await res.json();
+      }
+    } catch (e) {
+      console.warn("Could not load shipping carriers from API", e);
+    }
+  };
+
+  const fetchOrderStatuses = async () => {
+    try {
+      const res = await fetch("/api/ref-order-statuses");
+      if (res.ok) {
+        orderStatuses.value = await res.json();
+      }
+    } catch (e) {
+      console.warn("Could not load order statuses from API", e);
+    }
+  };
+
+  const mapBackendOrderToAdminOrder = (bo: any): AdminOrder => {
+    const rawStatus = bo.status?.label || bo.status?.name || "Processing";
+    let normalizedStatus: OrderStatus = "Processing";
+    const lower = rawStatus.toLowerCase();
+    if (lower === "pending") normalizedStatus = "Pending";
+    else if (lower === "processing") normalizedStatus = "Processing";
+    else if (lower === "shipped") normalizedStatus = "Shipped";
+    else if (lower === "delivered") normalizedStatus = "Delivered";
+    else if (lower === "accepted") normalizedStatus = "Accepted";
+    else if (lower === "cancel" || lower === "canceled")
+      normalizedStatus = "Canceled";
+    else if (lower === "refund" || lower === "refunded")
+      normalizedStatus = "Refunded";
+    else if (lower === "return" || lower === "returned")
+      normalizedStatus = "Returned";
+
+    return {
+      id: bo.order_number,
+      backendId: bo.id,
+      customerName: bo.customer_name,
+      customerEmail: bo.customer_email || "",
+      customerPhone: bo.customer_phone || "",
+      shippingAddress: bo.shipping_address || "",
+      city: bo.city || "",
+      postalCode: bo.postal_code || "",
+      items: (bo.items || []).map((it: any) => ({
+        id: String(it.id || it.sku || Math.random()),
+        name: it.product_name,
+        sku: it.sku || "",
+        price: Number(it.price) || 0,
+        quantity: Number(it.quantity) || 1,
+        imageUrl:
+          it.image_url ||
+          "https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?w=600&auto=format&fit=crop&q=80",
+      })),
+      total: Number(bo.total_amount) || 0,
+      status: normalizedStatus,
+      paymentMethod: bo.payment_method || "GCash",
+      trackingNumber: bo.fulfillment?.tracking_number || undefined,
+      carrier:
+        bo.fulfillment?.carrier?.name ||
+        bo.fulfillment?.carrier?.short_name ||
+        undefined,
+      carrierId: bo.fulfillment?.ref_shipping_carrier_id || undefined,
+      packingSlipPrinted: Boolean(
+        bo.packing_slip_printed || bo.fulfillment?.packing_slip_printed,
+      ),
+      refundStatus: (bo.refund_status as any) || "None",
+      refundAmount: Number(bo.refund_amount) || 0,
+      invoiceId: bo.invoice_id || "INV-" + bo.order_number,
+      createdAt: bo.order_date
+        ? new Date(bo.order_date).toLocaleString("en-US", {
+            dateStyle: "short",
+            timeStyle: "short",
+          })
+        : new Date(bo.created_at).toLocaleString(),
+      notes: bo.notes || undefined,
+    };
+  };
+
+  const fetchOrders = async () => {
+    isLoadingOrders.value = true;
+    try {
+      const res = await fetch("/api/customer-orders");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          orders.value = json.data.map(mapBackendOrderToAdminOrder);
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "Could not fetch orders from API, using fallback store orders",
+        e,
+      );
+    } finally {
+      isLoadingOrders.value = false;
+    }
+  };
+
   // Order Management Actions
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     const order = orders.value.find((o) => o.id === orderId);
     if (order) {
       order.status = newStatus;
     }
-  };
 
-  const attachTracking = (
-    orderId: string,
-    trackingNumber: string,
-    carrier: string,
-  ) => {
-    const order = orders.value.find((o) => o.id === orderId);
-    if (order) {
-      order.trackingNumber = trackingNumber;
-      order.carrier = carrier;
-      order.status = "Shipped";
+    try {
+      const targetId = order?.backendId || orderId;
+      await fetch(`/api/customer-orders/${targetId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status_name: newStatus.toLowerCase() }),
+      });
+    } catch (e) {
+      console.warn("Could not sync order status to backend:", e);
     }
   };
 
-  const markPackingSlipPrinted = (orderId: string) => {
+  const attachTracking = async (
+    orderId: string,
+    trackingNumber: string,
+    carrierNameOrId: string | number,
+    carrierIdInput?: number,
+  ) => {
+    const order = orders.value.find((o) => o.id === orderId);
+    let resolvedCarrierId = carrierIdInput;
+    let resolvedCarrierName = String(carrierNameOrId);
+
+    if (typeof carrierNameOrId === "number") {
+      resolvedCarrierId = carrierNameOrId;
+      const c = shippingCarriers.value.find((x) => x.id === carrierNameOrId);
+      if (c) resolvedCarrierName = c.name;
+    } else if (!resolvedCarrierId) {
+      const c = shippingCarriers.value.find(
+        (x) =>
+          x.name.toLowerCase().includes(carrierNameOrId.toLowerCase()) ||
+          (x.short_name &&
+            x.short_name.toLowerCase().includes(carrierNameOrId.toLowerCase())),
+      );
+      if (c) {
+        resolvedCarrierId = c.id;
+        resolvedCarrierName = c.name;
+      }
+    }
+
+    // Default to first carrier if still unresolved
+    if (!resolvedCarrierId && shippingCarriers.value.length > 0) {
+      resolvedCarrierId = shippingCarriers.value[0].id;
+      resolvedCarrierName = shippingCarriers.value[0].name;
+    }
+
+    if (order) {
+      order.trackingNumber = trackingNumber;
+      order.carrier = resolvedCarrierName;
+      order.status = "Shipped";
+      order.packingSlipPrinted = true;
+    }
+
+    try {
+      const targetId = order?.backendId || orderId;
+      if (resolvedCarrierId) {
+        await fetch(`/api/customer-orders/${targetId}/fulfillment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ref_shipping_carrier_id: resolvedCarrierId,
+            tracking_number: trackingNumber,
+            mark_shipped: true,
+            packing_slip_printed: true,
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn("Could not sync fulfillment to backend:", e);
+    }
+  };
+
+  const markPackingSlipPrinted = async (orderId: string) => {
     const order = orders.value.find((o) => o.id === orderId);
     if (order) {
       order.packingSlipPrinted = true;
     }
+
+    try {
+      const targetId = order?.backendId || orderId;
+      await fetch(`/api/customer-orders/${targetId}/print-packing-slip`, {
+        method: "POST",
+      });
+    } catch (e) {
+      console.warn("Could not sync packing slip printed to backend:", e);
+    }
   };
 
-  const processRefund = (orderId: string, amount: number, isFull: boolean) => {
+  const processRefund = async (
+    orderId: string,
+    amount: number,
+    isFull: boolean,
+  ) => {
     const order = orders.value.find((o) => o.id === orderId);
     if (order) {
       order.refundStatus = isFull ? "Full" : "Partial";
@@ -970,6 +1132,20 @@ export const useAdminStore = defineStore("adminStore", () => {
       if (isFull) {
         order.status = "Canceled";
       }
+    }
+
+    try {
+      const targetId = order?.backendId || orderId;
+      await fetch(`/api/customer-orders/${targetId}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refund_amount: amount,
+          is_full_refund: isFull,
+        }),
+      });
+    } catch (e) {
+      console.warn("Could not sync refund to backend:", e);
     }
   };
 
@@ -1025,6 +1201,12 @@ export const useAdminStore = defineStore("adminStore", () => {
     isAuthenticated,
     dashboardTimeframe,
     orders,
+    shippingCarriers,
+    orderStatuses,
+    isLoadingOrders,
+    fetchShippingCarriers,
+    fetchOrderStatuses,
+    fetchOrders,
     inventory,
     customers,
     inquiries,

@@ -101,12 +101,12 @@ const handleToggleWishlist = () => {
             <!-- Left: Toy Image & Gallery -->
             <div class="space-y-3">
               <div
-                class="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative"
+                class="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative flex items-center justify-center p-3"
               >
                 <img
                   :src="currentImage"
                   :alt="toy.name"
-                  class="w-full h-full object-cover"
+                  class="max-w-full max-h-full object-contain"
                 />
                 <div class="absolute top-3 left-3 flex flex-col gap-1">
                   <span
@@ -133,7 +133,7 @@ const handleToggleWishlist = () => {
                   v-for="(img, idx) in toy.galleryImages"
                   :key="idx"
                   :src="img"
-                  class="w-14 h-14 rounded-xl object-cover border-2 cursor-pointer transition-all bg-slate-950"
+                  class="w-14 h-14 rounded-xl object-contain p-1 border-2 cursor-pointer transition-all bg-slate-950"
                   :class="
                     currentImage === img
                       ? 'border-amber-400 scale-105'

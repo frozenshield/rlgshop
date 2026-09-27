@@ -31,8 +31,25 @@ export interface UserSettings {
 
 export const useAuthStore = defineStore("authStore", () => {
   // ─── State ──────────────────────────────────────────────────────────────────
-  const token = useStorage<string | null>("auth_token", null);
-  const storedUser = useStorage<UserProfile | null>("auth_user", null);
+  const getStoredToken = (): string | null => {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    const t = localStorage.getItem("auth_token");
+    return t && t !== "null" && t !== "undefined" ? t : null;
+  };
+
+  const getStoredUser = (): UserProfile | null => {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    const raw = localStorage.getItem("auth_user");
+    if (!raw || raw === "null" || raw === "undefined") return null;
+    try {
+      return typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch {
+      return null;
+    }
+  };
+
+  const token = ref<string | null>(getStoredToken());
+  const storedUser = ref<UserProfile | null>(getStoredUser());
 
   const currentUser = ref<UserProfile>(
     storedUser.value || {
@@ -66,16 +83,22 @@ export const useAuthStore = defineStore("authStore", () => {
   // ─── Actions ────────────────────────────────────────────────────────────────
   const setAuth = (newToken: string, user?: Partial<UserProfile>) => {
     token.value = newToken;
+    try {
+      localStorage.setItem("auth_token", newToken);
+    } catch {}
     if (user) {
       currentUser.value = { ...currentUser.value, ...user };
       storedUser.value = currentUser.value;
+      try {
+        localStorage.setItem("auth_user", JSON.stringify(currentUser.value));
+      } catch {}
     }
   };
 
   const fetchCurrentUser = async () => {
     if (!token.value) return;
     try {
-      const res = await fetch("http://localhost:8000/api/user", {
+      const res = await fetch("/api/user", {
         headers: {
           Authorization: `Bearer ${token.value}`,
           Accept: "application/json",
@@ -85,6 +108,9 @@ export const useAuthStore = defineStore("authStore", () => {
         const data = await res.json();
         currentUser.value = { ...currentUser.value, ...data };
         storedUser.value = currentUser.value;
+        try {
+          localStorage.setItem("auth_user", JSON.stringify(currentUser.value));
+        } catch {}
       }
     } catch {
       // Backend not running or offline; keep cached user
@@ -95,11 +121,14 @@ export const useAuthStore = defineStore("authStore", () => {
     // 1. Optimistic update
     currentUser.value = { ...currentUser.value, ...fields };
     storedUser.value = currentUser.value;
+    try {
+      localStorage.setItem("auth_user", JSON.stringify(currentUser.value));
+    } catch {}
 
     // 2. Sync to Backend (if online)
     if (token.value) {
       try {
-        await fetch("http://localhost:8000/api/user/profile", {
+        await fetch("/api/user/profile", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -120,7 +149,7 @@ export const useAuthStore = defineStore("authStore", () => {
     // Sync to backend hook if token is present
     if (token.value) {
       try {
-        await fetch("http://localhost:8000/api/user/settings", {
+        await fetch("/api/user/settings", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -137,23 +166,40 @@ export const useAuthStore = defineStore("authStore", () => {
   };
 
   const logout = async () => {
-    if (token.value) {
-      try {
-        await fetch("http://localhost:8000/api/logout", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token.value}`,
-            Accept: "application/json",
-          },
-        });
-      } catch {
-        // Ignore network errors on logout
-      }
-    }
+    const savedToken = token.value;
+
+    // Immediately clear reactive state and storage synchronously so UI updates instantly
     token.value = null;
     storedUser.value = null;
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
+    try {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+    } catch {}
+
+    currentUser.value = {
+      id: 0,
+      name: "",
+      username: "",
+      email: "",
+      avatar: null,
+      user_type: "customer",
+    };
+
+    // Notify backend asynchronously without blocking or failing client-side logout
+    if (savedToken) {
+      try {
+        await fetch("/api/logout", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${savedToken}`,
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(1500),
+        });
+      } catch {
+        // Handled silently
+      }
+    }
   };
 
   return {

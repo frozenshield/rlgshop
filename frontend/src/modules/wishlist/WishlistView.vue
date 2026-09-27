@@ -93,12 +93,12 @@ const {
           class="bg-slate-900/90 rounded-3xl p-4 border border-slate-800 hover:border-indigo-500/50 shadow-lg shadow-black/30 hover:shadow-indigo-500/10 transition-all flex flex-col justify-between"
         >
           <div
-            class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-950 mb-3 border border-slate-800/80"
+            class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-950 mb-3 border border-slate-800/80 flex items-center justify-center p-2"
           >
             <img
               :src="toy.imageUrl"
               :alt="toy.name"
-              class="w-full h-full object-cover"
+              class="max-w-full max-h-full object-contain"
             />
             <button
               type="button"

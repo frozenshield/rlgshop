@@ -49,7 +49,27 @@ export type OrderStatus =
   | "Processing"
   | "Shipped"
   | "Delivered"
-  | "Canceled";
+  | "Accepted"
+  | "Canceled"
+  | "Refunded"
+  | "Returned";
+
+export interface RefShippingCarrierItem {
+  id: number;
+  name: string;
+  code: string;
+  short_name?: string;
+  tracking_url_template?: string;
+  is_active: boolean;
+}
+
+export interface RefOrderStatusItem {
+  id: number;
+  name: string;
+  label: string;
+  badge_color?: string;
+  description?: string;
+}
 
 export interface AdminOrderItem {
   id: string;
@@ -62,6 +82,7 @@ export interface AdminOrderItem {
 
 export interface AdminOrder {
   id: string;
+  backendId?: number;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -74,6 +95,7 @@ export interface AdminOrder {
   paymentMethod: string;
   trackingNumber?: string;
   carrier?: string;
+  carrierId?: number;
   packingSlipPrinted: boolean;
   refundStatus?: "None" | "Partial" | "Full";
   refundAmount?: number;
