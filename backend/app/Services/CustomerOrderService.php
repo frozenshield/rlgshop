@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\CustomerOrder;
-use App\Models\CustomerOrderItem;
 use App\Models\CustomerOrderFulfillment;
+use App\Models\CustomerOrderItem;
 use App\Models\CustomerProfile;
 use App\Models\CustomerShippmentAddress;
 use App\Models\RefOrderStatus;
@@ -21,18 +21,37 @@ class CustomerOrderService
             'customerProfile.user',
             'status',
             'items',
-            'fulfillment.carrier'
+            'fulfillment.carrier',
         ]);
 
-        if (!empty($filters['status'])) {
-            $statusStr = strtolower(trim($filters['status']));
+        $currentUser = auth('sanctum')->user() ?? auth()->user();
+        $authId = $currentUser?->id ?? auth('sanctum')->id() ?? auth()->id();
+
+        // Staff and admin can view all orders or filter by user_id;
+        // Regular customers and unauthenticated users are strictly scoped to auth()->id()
+        if ($currentUser && in_array($currentUser->user_type, ['staff', 'admin'])) {
+            if (! empty($filters['user_id'])) {
+                $query->where('user_id', $filters['user_id']);
+            }
+        } else {
+            $query->where('user_id', $authId);
+        }
+
+        if (! empty($filters['status'])) {
+            $statusStr = strtolower(trim((string) $filters['status']));
             $query->whereHas('status', function ($q) use ($statusStr): void {
                 $q->where('name', $statusStr);
             });
         }
 
-        if (!empty($filters['search'])) {
-            $search = trim($filters['search']);
+        if (! empty($filters['carrier_id'])) {
+            $query->whereHas('fulfillment', function ($fq) use ($filters): void {
+                $fq->where('ref_shipping_carrier_id', $filters['carrier_id']);
+            });
+        }
+
+        if (! empty($filters['search'])) {
+            $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('order_number', 'like', "%{$search}%")
                     ->orWhereHas('customerProfile', function ($pq) use ($search): void {
@@ -46,7 +65,15 @@ class CustomerOrderService
             });
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        $sortBy = $filters['sort_by'] ?? 'created_at';
+        $sortDir = strtolower($filters['sort_dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        if (in_array($sortBy, ['order_date', 'total_amount', 'created_at', 'order_number'])) {
+            $query->orderBy($sortBy, $sortDir);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->get();
     }
 
     public function createOrder(array $data, ?User $currentUser = null): CustomerOrder
@@ -56,7 +83,7 @@ class CustomerOrderService
                 return $carry + ((float) $item['price'] * (int) $item['quantity']);
             }, 0);
 
-            $orderNumber = 'ORD-' . strtoupper(Str::random(8));
+            $orderNumber = 'ORD-'.strtoupper(Str::random(8));
 
             $statusName = $data['status_name'] ?? 'pending';
             $statusId = $data['ref_order_status_id'] ?? null;
@@ -124,7 +151,7 @@ class CustomerOrderService
                 'payment_method' => $data['payment_method'] ?? 'GCASH',
                 'payment_status' => $data['payment_status'] ?? 'Paid',
                 'ref_order_status_id' => $statusId,
-                'invoice_id' => 'INV-' . date('Y') . '-' . rand(100, 999),
+                'invoice_id' => 'INV-'.date('Y').'-'.rand(100, 999),
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -224,7 +251,7 @@ class CustomerOrderService
         }
 
         if (! empty($data['notes'])) {
-            $customerOrder->notes = trim($customerOrder->notes . "\nRefund note: " . $data['notes']);
+            $customerOrder->notes = trim($customerOrder->notes."\nRefund note: ".$data['notes']);
         }
 
         $customerOrder->save();

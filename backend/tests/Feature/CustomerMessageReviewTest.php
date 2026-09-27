@@ -70,11 +70,13 @@ class CustomerMessageReviewTest extends TestCase
     {
         $user = User::first();
 
-        // 1. Fetch messages
-        $response = $this->getJson('/api/customer-messages');
-        $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
-        $this->assertNotEmpty($response->json('data'));
+        // 1. Unauthenticated request never leaks messages
+        $unauthResponse = $this->getJson('/api/customer-messages');
+        $unauthResponse->assertStatus(200);
+        $this->assertEmpty($unauthResponse->json('data'));
+
+        // Authenticate as user
+        $this->actingAs($user);
 
         // 2. Create message
         $storeResponse = $this->postJson('/api/customer-messages', [
@@ -93,6 +95,13 @@ class CustomerMessageReviewTest extends TestCase
             'subject' => 'Restock Question',
             'status' => 'ongoing',
         ]);
+
+        // 3. User lists their scoped messages
+        $listResponse = $this->getJson('/api/customer-messages');
+        $listResponse->assertStatus(200);
+        $listResponse->assertJsonPath('success', true);
+        $this->assertNotEmpty($listResponse->json('data'));
+        $this->assertEquals($user->id, $listResponse->json('data.0.user_id'));
     }
 
     public function test_staff_can_reply_to_customer_message_and_resolve(): void

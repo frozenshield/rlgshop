@@ -40,6 +40,12 @@ const openAdvisorModal = () => {
 const closeAdvisorModal = () => {
   isAdvisorOpen.value = false;
 };
+
+if (typeof window !== "undefined") {
+  window.addEventListener("open-auth-modal", () => {
+    isAuthOpen.value = true;
+  });
+}
 </script>
 
 <template>

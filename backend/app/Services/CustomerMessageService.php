@@ -12,14 +12,27 @@ class CustomerMessageService
     {
         $query = CustomerMessage::with(['user.customerProfile', 'staff']);
 
-        if (!empty($filters['status'])) {
+        $currentUser = auth('sanctum')->user() ?? auth()->user();
+        $authId = $currentUser?->id ?? auth('sanctum')->id() ?? auth()->id();
+
+        // Staff and admin can view all inquiries or filter by user_id;
+        // Regular customers and unauthenticated users are strictly scoped to auth()->id()
+        if ($currentUser && in_array($currentUser->user_type, ['staff', 'admin'])) {
+            if (! empty($filters['user_id'])) {
+                $query->where('user_id', $filters['user_id']);
+            }
+        } else {
+            $query->where('user_id', $authId);
+        }
+
+        if (! empty($filters['status']) && $filters['status'] !== 'all') {
             $status = strtolower(trim((string) $filters['status']));
             if (in_array($status, ['ongoing', 'resolve'])) {
                 $query->where('status', $status);
             }
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('subject', 'like', "%{$search}%")
@@ -36,9 +49,13 @@ class CustomerMessageService
 
     public function createMessage(array $data, ?User $currentUser = null): CustomerMessage
     {
-        $userId = $data['user_id'] ?? $currentUser?->id;
-        if (! $userId) {
-            $userId = User::first()?->id ?? 1;
+        $user = $currentUser ?? auth('sanctum')->user() ?? auth()->user();
+
+        // Strictly enforce auth ID for regular customers to prevent user spoofing
+        if ($user && ! in_array($user->user_type, ['staff', 'admin'])) {
+            $userId = $user->id;
+        } else {
+            $userId = $data['user_id'] ?? $user?->id ?? User::first()?->id ?? 1;
         }
 
         $msg = CustomerMessage::create([

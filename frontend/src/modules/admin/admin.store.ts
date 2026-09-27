@@ -1045,7 +1045,11 @@ export const useAdminStore = defineStore("adminStore", () => {
   const fetchOrders = async () => {
     isLoadingOrders.value = true;
     try {
-      const res = await fetch("/api/customer-orders");
+      const headers: Record<string, string> = {};
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const res = await fetch("/api/customer-orders", { headers });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -1235,7 +1239,11 @@ export const useAdminStore = defineStore("adminStore", () => {
   const fetchCustomerMessages = async () => {
     isLoadingMessages.value = true;
     try {
-      const res = await fetch("/api/customer-messages");
+      const headers: Record<string, string> = {};
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const res = await fetch("/api/customer-messages", { headers });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {

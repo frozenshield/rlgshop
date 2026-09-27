@@ -117,8 +117,18 @@ Route::post('/auth/staff-login', function (Request $request) {
         }
     }
 
-    $user = User::where('email', $staff->email)->first();
-    $token = $user ? $user->createToken('staff_token')->plainTextToken : 'staff_session_'.md5($staff->email.now());
+    $user = User::firstOrCreate(
+        ['email' => $staff->email],
+        [
+            'name' => $staff->name,
+            'password' => $staff->password,
+            'user_type' => 'staff',
+        ]
+    );
+    if ($user->user_type !== 'staff') {
+        $user->update(['user_type' => 'staff']);
+    }
+    $token = $user->createToken('staff_token')->plainTextToken;
 
     return response()->json([
         'success' => true,

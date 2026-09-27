@@ -116,10 +116,24 @@ const subjectOptions = [
   "Other Support Question",
 ];
 
+const openAuthModal = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("open-auth-modal"));
+  }
+};
+
 const fetchStaffMessages = async () => {
+  if (!authStore.token) {
+    staffMessages.value = [];
+    return;
+  }
+
   isLoadingStaff.value = true;
   try {
-    const res = await fetch("/api/customer-messages");
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${authStore.token}`,
+    };
+    const res = await fetch("/api/customer-messages", { headers });
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
@@ -154,17 +168,24 @@ const sendStaffMessage = async () => {
       : staffSubject.value;
 
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (authStore.token) {
+      headers["Authorization"] = `Bearer ${authStore.token}`;
+    }
+
     const userId = authStore.currentUser?.id
       ? parseInt(String(authStore.currentUser.id).replace(/\D/g, ""))
-      : 1;
+      : undefined;
 
     const res = await fetch("/api/customer-messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         subject: finalSubject,
         message: staffMessageText.value.trim(),
-        user_id: isNaN(userId) ? 1 : userId,
+        user_id: isNaN(userId as number) ? undefined : userId,
       }),
     });
 
@@ -193,8 +214,21 @@ const sendStaffMessage = async () => {
 };
 
 onMounted(() => {
-  fetchStaffMessages();
+  if (authStore.token) {
+    fetchStaffMessages();
+  }
 });
+
+watch(
+  () => authStore.token,
+  (newToken) => {
+    if (newToken) {
+      fetchStaffMessages();
+    } else {
+      staffMessages.value = [];
+    }
+  },
+);
 
 const openAiChat = () => {
   if (isOpen.value && activeMode.value === "ai") {
@@ -646,8 +680,31 @@ const formatTimeAgo = (dateStr?: string) => {
 
           <!-- Staff Inquiries / History View -->
           <div v-else class="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
-            <div v-if="isLoadingStaff" class="py-8 text-center text-slate-400">
-              Loading support messages...
+            <!-- Unauthenticated Gate Notice -->
+            <div
+              v-if="!authStore.isAuthenticated"
+              class="py-8 text-center space-y-3 px-4"
+            >
+              <div class="text-3xl">🔒</div>
+              <p class="font-bold text-slate-200">Sign in to view your inbox</p>
+              <p class="text-[11px] text-slate-400">
+                Your support inquiries and staff responses are private and
+                scoped to your verified collector account.
+              </p>
+              <button
+                type="button"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md"
+                @click="openAuthModal"
+              >
+                Sign In / Register
+              </button>
+            </div>
+
+            <div
+              v-else-if="isLoadingStaff"
+              class="py-8 text-center text-slate-400"
+            >
+              Loading your support messages...
             </div>
 
             <div

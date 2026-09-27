@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/modules/auth/auth.store";
 import { useCheckoutStore } from "@/modules/checkout/checkout.store";
@@ -53,14 +53,26 @@ const selectedFilter = ref<"all" | "shipped" | "delivered" | "processing">(
 );
 const selectedOrderForModal = ref<OrderRecord | null>(null);
 
+const openAuthModal = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("open-auth-modal"));
+  }
+};
+
 const fetchOrders = async () => {
   isLoading.value = true;
   try {
-    const res = await fetch("/api/customer-orders");
+    const headers: Record<string, string> = {};
+    if (authStore.token) {
+      headers["Authorization"] = `Bearer ${authStore.token}`;
+    }
+
+    const res = await fetch("/api/customer-orders", { headers });
+    let dbOrders: OrderRecord[] = [];
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        const dbOrders: OrderRecord[] = json.data.map((o: any) => ({
+        dbOrders = json.data.map((o: any) => ({
           id: o.id,
           orderNumber: o.order_number,
           createdAt: o.created_at || o.order_date,
@@ -166,6 +178,13 @@ onMounted(() => {
     searchQuery.value = String(route.query.q);
   }
 });
+
+watch(
+  () => authStore.token,
+  () => {
+    fetchOrders();
+  },
+);
 
 const filteredOrders = computed(() => {
   return orders.value.filter((o) => {
@@ -286,6 +305,53 @@ const formatDate = (dateStr: string) => {
             to your doorstep.
           </p>
         </div>
+      </div>
+
+      <!-- Auth Status / Guest Scoped Notice -->
+      <div
+        v-if="!authStore.isAuthenticated"
+        class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+      >
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🔒</span>
+          <div>
+            <p class="font-bold text-white">
+              Sign In for Scoped Order Tracking
+            </p>
+            <p class="text-slate-400 text-[11px]">
+              You are currently browsing as a guest. Log in to sync and track
+              all your authenticated collector orders.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors shrink-0 cursor-pointer shadow-md"
+          @click="openAuthModal"
+        >
+          Sign In / Register
+        </button>
+      </div>
+
+      <div
+        v-else
+        class="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs text-slate-300"
+      >
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span
+            >Orders scoped to:
+            <strong class="text-white">{{
+              authStore.currentUser?.name || "Verified Collector"
+            }}</strong>
+            ({{ authStore.currentUser?.email }})</span
+          >
+        </span>
+        <span
+          class="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30"
+        >
+          Encrypted &amp; Scoped
+        </span>
       </div>
 
       <!-- Search & Status Filter Bar -->

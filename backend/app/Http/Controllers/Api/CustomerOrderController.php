@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AttachOrderFulfillmentRequest;
+use App\Http\Requests\GetCustomerOrdersRequest;
 use App\Http\Requests\RefundCustomerOrderRequest;
 use App\Http\Requests\StoreCustomerOrderRequest;
 use App\Http\Requests\UpdateCustomerOrderStatusRequest;
 use App\Models\CustomerOrder;
 use App\Services\CustomerOrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class CustomerOrderController extends Controller
 {
@@ -18,9 +18,9 @@ class CustomerOrderController extends Controller
         protected CustomerOrderService $customerOrderService
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(GetCustomerOrdersRequest $request): JsonResponse
     {
-        $orders = $this->customerOrderService->getOrders($request->all());
+        $orders = $this->customerOrderService->getOrders($request->validated());
 
         return response()->json([
             'success' => true,
@@ -45,6 +45,16 @@ class CustomerOrderController extends Controller
 
     public function show(CustomerOrder $customerOrder): JsonResponse
     {
+        $currentUser = auth('sanctum')->user() ?? auth()->user();
+        if ($currentUser && ! in_array($currentUser->user_type, ['staff', 'admin'])) {
+            if ($customerOrder->user_id && $customerOrder->user_id !== $currentUser->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to order.',
+                ], 403);
+            }
+        }
+
         $customerOrder->load([
             'status',
             'items.product',
@@ -64,7 +74,7 @@ class CustomerOrderController extends Controller
     {
         $order = $this->customerOrderService->updateStatus($customerOrder, $request->validated());
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid order status specified.',

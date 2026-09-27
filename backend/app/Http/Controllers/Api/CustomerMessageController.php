@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GetCustomerMessagesRequest;
 use App\Http\Requests\ReplyCustomerMessageRequest;
 use App\Http\Requests\StoreCustomerMessageRequest;
 use App\Http\Requests\UpdateCustomerMessageStatusRequest;
 use App\Models\CustomerMessage;
 use App\Services\CustomerMessageService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class CustomerMessageController extends Controller
 {
@@ -17,9 +17,9 @@ class CustomerMessageController extends Controller
         protected CustomerMessageService $customerMessageService
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(GetCustomerMessagesRequest $request): JsonResponse
     {
-        $messages = $this->customerMessageService->getMessages($request->all());
+        $messages = $this->customerMessageService->getMessages($request->validated());
 
         return response()->json([
             'success' => true,
