@@ -1287,7 +1287,9 @@ export const useAdminStore = defineStore("adminStore", () => {
             productName: r.product?.name || "Store Item",
             productImage: r.product?.image_url,
             customerName:
-              r.user?.customer_profile?.name || m_extractName(r.user) || "Collector",
+              r.user?.customer_profile?.name ||
+              m_extractName(r.user) ||
+              "Collector",
             email: r.user?.email || "customer@example.com",
             stars: Number(r.stars) || 5,
             message: r.message,
