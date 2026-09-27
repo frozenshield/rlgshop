@@ -5,6 +5,103 @@ import type { StaffMember } from "../admin.types";
 
 const adminStore = useAdminStore();
 
+// ─── Payment Gateways ────────────────────────────────────────────────────────
+interface PaymentMethod {
+  id: number;
+  name: string;
+  code: string;
+  label: string;
+  status: "active" | "inactive";
+  description: string | null;
+  icon: string | null;
+}
+
+const paymentMethods = ref<PaymentMethod[]>([]);
+const isLoadingPayments = ref(false);
+const isSavingPayments = ref(false);
+const pendingStatuses = ref<Record<number, "active" | "inactive">>({});
+const paymentError = ref("");
+
+// Map PrimeIcons / codes → friendly emoji
+const gatewayEmoji: Record<string, string> = {
+  gcash: "📱",
+  stripe: "🌐",
+  paypal: "🅿️",
+  paymaya: "💳",
+  visa_master_card: "💳",
+  cod: "💵",
+};
+
+const gatewayEmoji2: Record<string, string> = {
+  "pi pi-mobile": "📱",
+  "pi pi-credit-card": "💳",
+  "pi pi-paypal": "🅿️",
+  "pi pi-wallet": "💳",
+  "pi pi-money-bill": "💵",
+};
+
+function getGatewayIcon(method: PaymentMethod): string {
+  return (
+    gatewayEmoji[method.code] ||
+    (method.icon ? gatewayEmoji2[method.icon] : null) ||
+    "💳"
+  );
+}
+
+const fetchPaymentMethods = async () => {
+  isLoadingPayments.value = true;
+  paymentError.value = "";
+  try {
+    const res = await fetch("/api/ref-payment-methods?status=all");
+    if (!res.ok) throw new Error("Failed to load payment methods");
+    const data: PaymentMethod[] = await res.json();
+    paymentMethods.value = data;
+    // Seed pending statuses mirror from current DB values
+    pendingStatuses.value = {};
+    data.forEach((m) => {
+      pendingStatuses.value[m.id] = m.status;
+    });
+  } catch (e) {
+    console.error("fetchPaymentMethods error:", e);
+    paymentError.value = "Could not load payment methods from server.";
+  } finally {
+    isLoadingPayments.value = false;
+  }
+};
+
+const saveGatewaySettings = async () => {
+  isSavingPayments.value = true;
+  paymentError.value = "";
+  try {
+    // Only PATCH methods whose pending status differs from the loaded status
+    const changed = paymentMethods.value.filter(
+      (m) => pendingStatuses.value[m.id] !== m.status,
+    );
+
+    await Promise.all(
+      changed.map((m) =>
+        fetch(`/api/ref-payment-methods/${m.id}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ status: pendingStatuses.value[m.id] }),
+        }),
+      ),
+    );
+
+    // Refresh from server to confirm persisted values
+    await fetchPaymentMethods();
+    showFeedback("Payment gateway configurations saved successfully!");
+  } catch (e) {
+    console.error("saveGatewaySettings error:", e);
+    paymentError.value = "Failed to save gateway settings. Please try again.";
+  } finally {
+    isSavingPayments.value = false;
+  }
+};
+
 const activeTab = ref<"staff" | "payments" | "shipping" | "localization">(
   "staff",
 );
@@ -107,6 +204,7 @@ const fetchStaff = async () => {
 onMounted(() => {
   fetchRoles();
   fetchStaff();
+  fetchPaymentMethods();
 });
 
 const addStaff = async () => {
@@ -529,136 +627,198 @@ const showFeedback = (msg: string) => {
 
     <!-- TAB 2: Payment Gateways -->
     <div v-else-if="activeTab === 'payments'" class="space-y-4">
-      <div
-        class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6"
-      >
+      <!-- Section header -->
+      <div class="flex items-center justify-between">
         <div>
           <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Payment Processor Gateways
           </h2>
-          <p class="text-xs text-slate-500">
+          <p class="text-xs text-slate-500 mt-0.5">
             Enable or disable localized Philippine and international payment
-            methods
+            methods. Changes are saved directly to the database.
           </p>
+        </div>
+        <button
+          type="button"
+          class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+          title="Refresh from server"
+          :disabled="isLoadingPayments"
+          @click="fetchPaymentMethods"
+        >
+          <svg
+            class="w-4 h-4"
+            :class="{ 'animate-spin': isLoadingPayments }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Error -->
+      <div
+        v-if="paymentError"
+        class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center justify-between"
+      >
+        <span>{{ paymentError }}</span>
+        <button
+          type="button"
+          class="text-rose-500 hover:text-rose-700 cursor-pointer"
+          @click="paymentError = ''"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div
+        v-if="isLoadingPayments"
+        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
+        <div
+          v-for="i in 6"
+          :key="i"
+          class="p-5 rounded-2xl border border-slate-200 bg-slate-50 animate-pulse h-24"
+        />
+      </div>
+
+      <!-- Gateway cards grid -->
+      <div
+        v-else
+        class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-5"
+      >
+        <!-- Status legend -->
+        <div class="flex items-center gap-4 text-[11px] text-slate-500">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            Active — customers can choose this at checkout
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+            Inactive — hidden from checkout
+          </span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- GCash -->
           <div
-            class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between"
+            v-for="method in paymentMethods"
+            :key="method.id"
+            class="group p-5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-4"
+            :class="
+              pendingStatuses[method.id] === 'active'
+                ? 'border-emerald-200 bg-emerald-50/40'
+                : 'border-slate-200 bg-slate-50/60'
+            "
           >
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">📱</span>
-                <h4 class="font-bold text-slate-900 text-sm">
-                  GCash QR &amp; Wallet
-                </h4>
-              </div>
-              <p class="text-xs text-slate-500">
-                Direct mobile checkout for Philippine collectors
-              </p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input
-                v-model="adminStore.settings.gateways.gcash"
-                type="checkbox"
-                class="sr-only peer"
-              />
+            <!-- Left: icon + info -->
+            <div class="flex items-center gap-3 min-w-0">
+              <!-- Icon circle -->
               <div
-                class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"
-              ></div>
-            </label>
-          </div>
+                class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl transition-colors"
+                :class="
+                  pendingStatuses[method.id] === 'active'
+                    ? 'bg-white border border-emerald-200 shadow-sm'
+                    : 'bg-white border border-slate-200'
+                "
+              >
+                {{ getGatewayIcon(method) }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-bold text-slate-900 text-sm leading-tight">
+                    {{ method.label }}
+                  </h4>
+                  <!-- Live status badge -->
+                  <span
+                    class="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                    :class="
+                      method.status === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    "
+                  >
+                    {{ method.status === "active" ? "✓ Live" : "Disabled" }}
+                  </span>
+                  <!-- Pending change indicator -->
+                  <span
+                    v-if="pendingStatuses[method.id] !== method.status"
+                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200"
+                  >
+                    ● Unsaved
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5 leading-snug">
+                  {{ method.description || "—" }}
+                </p>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">
+                  code: {{ method.code }}
+                </p>
+              </div>
+            </div>
 
-          <!-- Maya -->
-          <div
-            class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between"
-          >
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">💳</span>
-                <h4 class="font-bold text-slate-900 text-sm">
-                  Maya (PayMaya) Checkout
-                </h4>
-              </div>
-              <p class="text-xs text-slate-500">
-                Digital wallet and direct credit/debit card gateway
-              </p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
+            <!-- Right: toggle -->
+            <label
+              class="relative inline-flex items-center cursor-pointer flex-shrink-0"
+            >
               <input
-                v-model="adminStore.settings.gateways.maya"
                 type="checkbox"
                 class="sr-only peer"
+                :checked="pendingStatuses[method.id] === 'active'"
+                @change="
+                  pendingStatuses[method.id] =
+                    pendingStatuses[method.id] === 'active'
+                      ? 'inactive'
+                      : 'active'
+                "
               />
               <div
-                class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"
-              ></div>
-            </label>
-          </div>
-
-          <!-- Stripe -->
-          <div
-            class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between"
-          >
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">🌐</span>
-                <h4 class="font-bold text-slate-900 text-sm">
-                  Stripe International
-                </h4>
-              </div>
-              <p class="text-xs text-slate-500">
-                Visa, Mastercard, AMEX, and Apple Pay
-              </p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input
-                v-model="adminStore.settings.gateways.stripe"
-                type="checkbox"
-                class="sr-only peer"
+                class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
               />
-              <div
-                class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"
-              ></div>
-            </label>
-          </div>
-
-          <!-- COD -->
-          <div
-            class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between"
-          >
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">💵</span>
-                <h4 class="font-bold text-slate-900 text-sm">
-                  Cash on Delivery (COD)
-                </h4>
-              </div>
-              <p class="text-xs text-slate-500">
-                Pay directly to accredited logistics courier
-              </p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input
-                v-model="adminStore.settings.gateways.cod"
-                type="checkbox"
-                class="sr-only peer"
-              />
-              <div
-                class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"
-              ></div>
             </label>
           </div>
         </div>
 
+        <!-- Unsaved count summary -->
+        <div
+          v-if="paymentMethods.some((m) => pendingStatuses[m.id] !== m.status)"
+          class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-semibold flex items-center gap-2"
+        >
+          <span class="text-base">⚠️</span>
+          You have unsaved changes.
+          {{
+            paymentMethods.filter((m) => pendingStatuses[m.id] !== m.status)
+              .length
+          }}
+          gateway(s) will be updated when you save.
+        </div>
+
+        <!-- Save button -->
         <div class="flex justify-end pt-2 border-t border-slate-100">
           <button
             type="button"
-            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-            @click="showFeedback('Payment gateway configurations updated!')"
+            class="px-5 py-2.5 font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2 transition-all"
+            :class="
+              isSavingPayments
+                ? 'bg-slate-400 text-white cursor-not-allowed'
+                : 'bg-slate-900 hover:bg-slate-800 text-white'
+            "
+            :disabled="isSavingPayments"
+            @click="saveGatewaySettings"
           >
-            Save Gateway Settings
+            <span
+              v-if="isSavingPayments"
+              class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
+            />
+            <span>{{
+              isSavingPayments ? "Saving…" : "Save Gateway Settings"
+            }}</span>
           </button>
         </div>
       </div>
