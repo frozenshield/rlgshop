@@ -113,8 +113,11 @@ class CustomerOrderTest extends TestCase
         $this->assertEquals(7499.00, (float) $response->json('data.total_amount'));
 
         $this->assertDatabaseHas('customer_orders', [
-            'customer_name' => 'Ash Ketchum',
             'payment_method' => 'GCash',
+        ]);
+
+        $this->assertDatabaseHas('customer_profiles', [
+            'name' => 'Ash Ketchum',
         ]);
 
         $this->assertDatabaseHas('customer_order_items', [

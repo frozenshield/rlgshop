@@ -5,9 +5,11 @@ namespace Database\Seeders;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderFulfillment;
 use App\Models\CustomerOrderItem;
+use App\Models\CustomerProfile;
 use App\Models\Product;
 use App\Models\RefOrderStatus;
 use App\Models\RefShippingCarrier;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class CustomerOrderSeeder extends Seeder
@@ -203,16 +205,15 @@ class CustomerOrderSeeder extends Seeder
         foreach ($sampleOrders as $data) {
             $status = $statusMap[$data['status_name']] ?? $statusMap['pending'];
 
+            $user = User::where('email', $data['customer_email'])->first();
+            $profile = $user ? CustomerProfile::where('user_id', $user->id)->first() : CustomerProfile::first();
+
             $order = CustomerOrder::updateOrCreate(
                 ['order_number' => $data['order_number']],
                 [
                     'order_date' => $data['order_date'],
-                    'customer_name' => $data['customer_name'],
-                    'customer_email' => $data['customer_email'],
-                    'customer_phone' => $data['customer_phone'],
-                    'shipping_address' => $data['shipping_address'],
-                    'city' => $data['city'],
-                    'postal_code' => $data['postal_code'],
+                    'customer_profile_id' => $profile?->id,
+                    'user_id' => $user?->id,
                     'total_amount' => $data['total_amount'],
                     'payment_method' => $data['payment_method'],
                     'payment_status' => $data['payment_status'],

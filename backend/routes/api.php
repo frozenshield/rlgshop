@@ -3,8 +3,10 @@
 use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
+use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
+use App\Http\Controllers\Api\CustomerReviewController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
@@ -173,7 +175,20 @@ Route::apiResource('products', ProductController::class);
 Route::apiResource('staff', StaffController::class);
 
 // Customer Profiles CRM & Management API
+Route::patch('/customer-profiles/{customer_profile}/segment-rank', [CustomerProfileController::class, 'updateSegmentRank']);
 Route::apiResource('customer-profiles', CustomerProfileController::class);
+
+// Customer Support Messages API (Inbox & Status)
+Route::get('/customer-messages', [CustomerMessageController::class, 'index']);
+Route::post('/customer-messages', [CustomerMessageController::class, 'store']);
+Route::post('/customer-messages/{customer_message}/reply', [CustomerMessageController::class, 'reply']);
+Route::patch('/customer-messages/{customer_message}/status', [CustomerMessageController::class, 'updateStatus']);
+
+// Customer Reviews API & Staff Reply
+Route::get('/customer-reviews', [CustomerReviewController::class, 'index']);
+Route::post('/customer-reviews', [CustomerReviewController::class, 'store']);
+Route::post('/customer-reviews/{customer_review}/reply', [CustomerReviewController::class, 'reply']);
+Route::delete('/customer-reviews/{customer_review}', [CustomerReviewController::class, 'destroy']);
 
 // Promotional Discount Codes Engine API
 Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode']);

@@ -18,6 +18,8 @@ import type {
   StaffModulesResponse,
   RefShippingCarrierItem,
   RefOrderStatusItem,
+  CustomerMessageItem,
+  CustomerReviewItem,
 } from "./admin.types";
 
 const getStoredAdminSession = (): AdminUser | null => {
@@ -553,7 +555,15 @@ export const useAdminStore = defineStore("adminStore", () => {
     },
   ]);
 
-  // Inquiries & Centralized Inbox
+  // Customer Messages (backed by customer_message table)
+  const customerMessages = ref<CustomerMessageItem[]>([]);
+  const isLoadingMessages = ref(false);
+
+  // Customer Reviews (backed by customer_review table)
+  const customerReviews = ref<CustomerReviewItem[]>([]);
+  const isLoadingReviews = ref(false);
+
+  // Inquiries & Centralized Inbox (legacy fallback)
   const inquiries = useStorage<CustomerInquiry[]>("rlg-admin-inquiries", [
     {
       id: "INQ-301",
@@ -713,9 +723,10 @@ export const useAdminStore = defineStore("adminStore", () => {
     const lowStockCount = inventory.value.filter(
       (i) => i.stock <= i.lowStockThreshold,
     ).length;
-    const unreadInquiriesCount = inquiries.value.filter(
-      (i) => i.status === "unread",
-    ).length;
+    const unreadInquiriesCount =
+      customerMessages.value.length > 0
+        ? customerMessages.value.filter((m) => m.status === "ongoing").length
+        : inquiries.value.filter((i) => i.status === "unread").length;
 
     return {
       totalRevenue: totalSales,
@@ -971,25 +982,45 @@ export const useAdminStore = defineStore("adminStore", () => {
       shippingAddress: bo.shipping_address || "",
       city: bo.city || "",
       postalCode: bo.postal_code || "",
-      items: (bo.items || []).map((it: any) => ({
-        id: String(it.id || it.sku || Math.random()),
-        name: it.product_name,
-        sku: it.sku || "",
-        price: Number(it.price) || 0,
-        quantity: Number(it.quantity) || 1,
-        imageUrl:
-          it.image_url ||
-          "https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?w=600&auto=format&fit=crop&q=80",
-      })),
+      items: (bo.items || []).map((it: any) => {
+        const itemPrice = Number(it.price) || 0;
+        const itemQty = Number(it.quantity) || 1;
+        const itemSubtotal = Number(it.subtotal) || itemPrice * itemQty;
+        return {
+          id: String(it.id || it.sku || Math.random()),
+          productId: it.product_id ? Number(it.product_id) : undefined,
+          name: it.product_name,
+          sku: it.sku || "",
+          price: itemPrice,
+          quantity: itemQty,
+          subtotal: itemSubtotal,
+          imageUrl:
+            it.image_url ||
+            it.product?.image_url ||
+            "https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?w=600&auto=format&fit=crop&q=80",
+          category:
+            it.product?.category?.name ||
+            it.product?.primary_category ||
+            undefined,
+          brand: it.product?.brand?.name || it.product?.brand || undefined,
+          condition:
+            it.product?.condition?.name || it.product?.condition || undefined,
+        };
+      }),
       total: Number(bo.total_amount) || 0,
       status: normalizedStatus,
+      statusLabel: bo.status?.label || normalizedStatus,
+      statusBadgeColor: bo.status?.badge_color || undefined,
       paymentMethod: bo.payment_method || "GCash",
+      paymentStatus: bo.payment_status || "Paid",
       trackingNumber: bo.fulfillment?.tracking_number || undefined,
       carrier:
         bo.fulfillment?.carrier?.name ||
         bo.fulfillment?.carrier?.short_name ||
         undefined,
       carrierId: bo.fulfillment?.ref_shipping_carrier_id || undefined,
+      carrierTrackingUrl:
+        bo.fulfillment?.carrier?.tracking_url_template || undefined,
       packingSlipPrinted: Boolean(
         bo.packing_slip_printed || bo.fulfillment?.packing_slip_printed,
       ),
@@ -998,11 +1029,16 @@ export const useAdminStore = defineStore("adminStore", () => {
       invoiceId: bo.invoice_id || "INV-" + bo.order_number,
       createdAt: bo.order_date
         ? new Date(bo.order_date).toLocaleString("en-US", {
-            dateStyle: "short",
+            dateStyle: "medium",
             timeStyle: "short",
           })
-        : new Date(bo.created_at).toLocaleString(),
+        : new Date(bo.created_at).toLocaleString("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }),
+      rawOrderDate: bo.order_date || bo.created_at || undefined,
       notes: bo.notes || undefined,
+      customerProfile: bo.customer_profile || undefined,
     };
   };
 
@@ -1196,6 +1232,199 @@ export const useAdminStore = defineStore("adminStore", () => {
     }
   };
 
+  const fetchCustomerMessages = async () => {
+    isLoadingMessages.value = true;
+    try {
+      const res = await fetch("/api/customer-messages");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          customerMessages.value = json.data.map((m: any) => ({
+            id: m.id,
+            userId: m.user_id,
+            customerName:
+              m.user?.customer_profile?.name || m.user?.name || "Customer",
+            email: m.user?.email || "customer@example.com",
+            phone: m.user?.customer_profile?.phone || undefined,
+            subject: m.subject || "Customer Inquiry",
+            message: m.message,
+            status: m.status || "ongoing",
+            staffReply: m.staff_reply,
+            staffName: m.staff?.name,
+            resolvedAt: m.resolved_at
+              ? new Date(m.resolved_at).toLocaleString("en-US", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : null,
+            createdAt: m.created_at
+              ? new Date(m.created_at).toLocaleString("en-US", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : "Recent",
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch customer messages from API", e);
+    } finally {
+      isLoadingMessages.value = false;
+    }
+  };
+
+  const fetchCustomerReviews = async () => {
+    isLoadingReviews.value = true;
+    try {
+      const res = await fetch("/api/customer-reviews");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          customerReviews.value = json.data.map((r: any) => ({
+            id: r.id,
+            userId: r.user_id,
+            productId: r.product_id,
+            productName: r.product?.name || "Store Item",
+            productImage: r.product?.image_url,
+            customerName:
+              r.user?.customer_profile?.name || m_extractName(r.user) || "Collector",
+            email: r.user?.email || "customer@example.com",
+            stars: Number(r.stars) || 5,
+            message: r.message,
+            image: r.image,
+            staffReply: r.staff_reply,
+            staffName: r.staff?.name,
+            repliedAt: r.replied_at
+              ? new Date(r.replied_at).toLocaleString("en-US", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : null,
+            createdAt: r.created_at
+              ? new Date(r.created_at).toLocaleString("en-US", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : "Recent",
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch customer reviews from API", e);
+    } finally {
+      isLoadingReviews.value = false;
+    }
+  };
+
+  const m_extractName = (user: any): string => {
+    if (!user) return "Collector";
+    return user.name || "Collector";
+  };
+
+  const replyToCustomerMessage = async (id: number, replyText: string) => {
+    try {
+      const staffIdNum = currentAdmin.value?.id
+        ? parseInt(currentAdmin.value.id.replace(/\D/g, ""))
+        : 1;
+
+      const res = await fetch(`/api/customer-messages/${id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staff_reply: replyText,
+          staff_id: isNaN(staffIdNum) ? 1 : staffIdNum,
+          status: "resolve",
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          const idx = customerMessages.value.findIndex((m) => m.id === id);
+          if (idx !== -1) {
+            customerMessages.value[idx].status = "resolve";
+            customerMessages.value[idx].staffReply = replyText;
+            customerMessages.value[idx].staffName =
+              currentAdmin.value?.name || "Staff Support";
+            customerMessages.value[idx].resolvedAt = "Just now";
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to reply to customer message", e);
+    }
+  };
+
+  const toggleCustomerMessageStatus = async (
+    id: number,
+    newStatus: "ongoing" | "resolve",
+  ) => {
+    try {
+      const res = await fetch(`/api/customer-messages/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (res.ok) {
+        const idx = customerMessages.value.findIndex((m) => m.id === id);
+        if (idx !== -1) {
+          customerMessages.value[idx].status = newStatus;
+          if (newStatus === "resolve") {
+            customerMessages.value[idx].resolvedAt = "Just now";
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to update customer message status", e);
+    }
+  };
+
+  const replyToCustomerReview = async (id: number, replyText: string) => {
+    try {
+      const staffIdNum = currentAdmin.value?.id
+        ? parseInt(currentAdmin.value.id.replace(/\D/g, ""))
+        : 1;
+
+      const res = await fetch(`/api/customer-reviews/${id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staff_reply: replyText,
+          staff_id: isNaN(staffIdNum) ? 1 : staffIdNum,
+        }),
+      });
+
+      if (res.ok) {
+        const idx = customerReviews.value.findIndex((r) => r.id === id);
+        if (idx !== -1) {
+          customerReviews.value[idx].staffReply = replyText;
+          customerReviews.value[idx].staffName =
+            currentAdmin.value?.name || "Store Admin";
+          customerReviews.value[idx].repliedAt = "Just now";
+        }
+      }
+    } catch (e) {
+      console.error("Failed to reply to customer review", e);
+    }
+  };
+
+  const deleteCustomerReview = async (id: number) => {
+    try {
+      const res = await fetch(`/api/customer-reviews/${id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        customerReviews.value = customerReviews.value.filter(
+          (r) => r.id !== id,
+        );
+      }
+    } catch (e) {
+      console.error("Failed to delete customer review", e);
+    }
+  };
+
   return {
     currentAdmin,
     isAuthenticated,
@@ -1210,6 +1439,16 @@ export const useAdminStore = defineStore("adminStore", () => {
     inventory,
     customers,
     inquiries,
+    customerMessages,
+    isLoadingMessages,
+    customerReviews,
+    isLoadingReviews,
+    fetchCustomerMessages,
+    fetchCustomerReviews,
+    replyToCustomerMessage,
+    toggleCustomerMessageStatus,
+    replyToCustomerReview,
+    deleteCustomerReview,
     promoCodes,
     abandonedCarts,
     cmsBanners,

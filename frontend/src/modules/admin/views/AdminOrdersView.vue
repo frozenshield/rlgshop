@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useAdminStore } from "../admin.store";
 import type { AdminOrder, OrderStatus } from "../admin.types";
 import { formatCurrency } from "@/shared/utils/currency.util";
+import OrderItemsDetailModal from "../components/OrderItemsDetailModal.vue";
 
 const adminStore = useAdminStore();
 
@@ -22,6 +23,12 @@ const selectedOrder = ref<AdminOrder | null>(null);
 const isFulfillmentModalOpen = ref(false);
 const isRefundModalOpen = ref(false);
 const isInvoiceModalOpen = ref(false);
+const isItemsDetailModalOpen = ref(false);
+
+const openItemsDetail = (order: AdminOrder) => {
+  selectedOrder.value = order;
+  isItemsDetailModalOpen.value = true;
+};
 
 // Fulfillment form
 const trackingNumberInput = ref("");
@@ -246,20 +253,57 @@ const getStatusBadge = (status: OrderStatus) => {
 
               <!-- Items -->
               <td class="p-4">
-                <div class="flex items-center gap-1.5">
-                  <img
-                    v-for="item in order.items"
-                    :key="item.id"
-                    :src="item.imageUrl"
-                    :alt="item.name"
-                    class="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-2xs"
-                    :title="`${item.name} (x${item.quantity})`"
-                  />
-                  <span class="text-[11px] font-semibold text-slate-600 ml-1">
-                    {{ order.items.reduce((s, i) => s + i.quantity, 0) }}
-                    item(s)
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  class="group flex items-center gap-2.5 p-2 -m-2 rounded-2xl hover:bg-slate-100/90 border border-transparent hover:border-slate-200 transition-all text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                  title="Click to view detailed items order modal"
+                  @click="openItemsDetail(order)"
+                >
+                  <div
+                    class="flex items-center -space-x-2 overflow-hidden py-0.5"
+                  >
+                    <div
+                      v-for="item in order.items.slice(0, 3)"
+                      :key="item.id"
+                      class="w-9 h-9 rounded-xl bg-slate-950 border-2 border-white shadow-2xs flex items-center justify-center p-1 relative overflow-hidden group-hover:scale-105 transition-transform"
+                    >
+                      <img
+                        :src="item.imageUrl"
+                        :alt="item.name"
+                        class="max-w-full max-h-full object-contain"
+                        :title="`${item.name} (x${item.quantity})`"
+                      />
+                    </div>
+                    <div
+                      v-if="order.items.length > 3"
+                      class="w-9 h-9 rounded-xl bg-slate-800 text-white font-bold text-[10px] border-2 border-white shadow-2xs flex items-center justify-center"
+                    >
+                      +{{ order.items.length - 3 }}
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col min-w-0">
+                    <span
+                      class="text-xs font-bold text-slate-900 group-hover:text-rose-600 transition-colors flex items-center gap-1"
+                    >
+                      <span
+                        >{{
+                          order.items.reduce((s, i) => s + i.quantity, 0)
+                        }}
+                        item(s)</span
+                      >
+                      <span
+                        class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        >🔍</span
+                      >
+                    </span>
+                    <span
+                      class="text-[10px] font-semibold text-rose-500 group-hover:underline"
+                    >
+                      View items &rarr;
+                    </span>
+                  </div>
+                </button>
               </td>
 
               <!-- Total & Payment -->
@@ -328,6 +372,14 @@ const getStatusBadge = (status: OrderStatus) => {
               <!-- Actions -->
               <td class="p-4 text-right">
                 <div class="flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    class="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                    title="View Items Ordered Details (Modal)"
+                    @click="openItemsDetail(order)"
+                  >
+                    👁️
+                  </button>
                   <button
                     type="button"
                     class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -712,5 +764,14 @@ const getStatusBadge = (status: OrderStatus) => {
         </div>
       </div>
     </teleport>
+
+    <!-- Beautiful Order Items Detail Modal (Based on customer_orders & customer_order_items) -->
+    <OrderItemsDetailModal
+      :is-open="isItemsDetailModalOpen"
+      :order="selectedOrder"
+      @close="isItemsDetailModalOpen = false"
+      @print-invoice="openInvoice"
+      @open-fulfillment="openFulfillment"
+    />
   </div>
 </template>

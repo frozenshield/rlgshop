@@ -16,13 +16,7 @@ return new class extends Migration
             $table->string('order_number')->unique(); // e.g. ORD-9842
             $table->dateTime('order_date')->nullable();
 
-            // Customer & Address Details
-            $table->string('customer_name');
-            $table->string('customer_email')->nullable();
-            $table->string('customer_phone')->nullable();
-            $table->text('shipping_address')->nullable();
-            $table->string('city')->nullable();
-            $table->string('postal_code')->nullable();
+            // Linked customer profile foreign key
             $table->foreignId('customer_profile_id')->nullable()->constrained('customer_profiles')->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
 

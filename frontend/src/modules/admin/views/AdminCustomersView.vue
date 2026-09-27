@@ -1,16 +1,44 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useAdminStore } from "../admin.store";
-import type { CustomerProfile, CustomerInquiry } from "../admin.types";
+import type {
+  CustomerProfile,
+  CustomerMessageItem,
+  CustomerReviewItem,
+} from "../admin.types";
 import { formatCurrency } from "@/shared/utils/currency.util";
 
 const adminStore = useAdminStore();
 
-const activeTab = ref<"profiles" | "inbox">("profiles");
+// Top Tab Switcher: Separated into Profiles, Messages, Reviews
+const activeTab = ref<"profiles" | "messages" | "reviews">("profiles");
+
+// TAB 1: Profiles State
 const searchQuery = ref("");
 const selectedSegment = ref<
   "All" | "VIP" | "Regular" | "Wholesale" | "Inactive"
 >("All");
+const selectedCustomer = ref<CustomerProfile | null>(null);
+const isProfileModalOpen = ref(false);
+
+// TAB 2: Messages State (customer_message table)
+const messageSearchQuery = ref("");
+const messageStatusFilter = ref<"all" | "ongoing" | "resolve">("all");
+const selectedMessage = ref<CustomerMessageItem | null>(null);
+const messageReplyText = ref("");
+const isMessageReplyModalOpen = ref(false);
+const isSendingMessageReply = ref(false);
+
+// TAB 3: Reviews State (customer_review table)
+const reviewSearchQuery = ref("");
+const reviewStarFilter = ref<
+  "all" | "5" | "4" | "3" | "needs_reply" | "replied"
+>("all");
+const selectedReview = ref<CustomerReviewItem | null>(null);
+const reviewReplyText = ref("");
+const isReviewReplyModalOpen = ref(false);
+const isSendingReviewReply = ref(false);
+const isDeletingReview = ref<number | null>(null);
 
 const fetchDbCustomers = async () => {
   try {
@@ -26,7 +54,7 @@ const fetchDbCustomers = async () => {
           city: p.city || "Metro Manila",
           totalOrders: p.orders_count || 1,
           lifetimeValue: p.lifetime_value || 4500,
-          segment: (p.segment || "Regular") as any,
+          segment: (p.segment_rank || p.segment || "Regular") as any,
           lastOrderDate: p.updated_at
             ? p.updated_at.slice(0, 10)
             : "2026-09-25",
@@ -42,19 +70,15 @@ const fetchDbCustomers = async () => {
   }
 };
 
-onMounted(() => {
-  fetchDbCustomers();
+onMounted(async () => {
+  await Promise.all([
+    fetchDbCustomers(),
+    adminStore.fetchCustomerMessages(),
+    adminStore.fetchCustomerReviews(),
+  ]);
 });
 
-// Profile Details Modal
-const selectedCustomer = ref<CustomerProfile | null>(null);
-const isProfileModalOpen = ref(false);
-
-// Inbox Reply Modal
-const selectedInquiry = ref<CustomerInquiry | null>(null);
-const replyText = ref("");
-const isReplyModalOpen = ref(false);
-
+// Profile Helpers
 const filteredCustomers = computed(() => {
   return adminStore.customers.filter((c) => {
     const matchesSegment =
@@ -72,19 +96,6 @@ const openProfile = (c: CustomerProfile) => {
   isProfileModalOpen.value = true;
 };
 
-const openReply = (inq: CustomerInquiry) => {
-  selectedInquiry.value = inq;
-  replyText.value = `Hi ${inq.customerName},\n\nThank you for reaching out to RLG Hobby Shop support regarding "${inq.subject}". `;
-  isReplyModalOpen.value = true;
-};
-
-const sendReply = () => {
-  if (selectedInquiry.value) {
-    adminStore.markInquiryStatus(selectedInquiry.value.id, "resolved");
-    isReplyModalOpen.value = false;
-  }
-};
-
 const getSegmentBadge = (segment: string) => {
   switch (segment) {
     case "VIP":
@@ -99,13 +110,132 @@ const getSegmentBadge = (segment: string) => {
       return "bg-slate-100 text-slate-700";
   }
 };
+
+// Customer Messages Helpers & Filter (customer_message API)
+const ongoingMessagesCount = computed(() => {
+  return adminStore.customerMessages.filter((m) => m.status === "ongoing")
+    .length;
+});
+
+const filteredMessages = computed(() => {
+  return adminStore.customerMessages.filter((m) => {
+    const matchesStatus =
+      messageStatusFilter.value === "all" ||
+      m.status === messageStatusFilter.value;
+    const q = messageSearchQuery.value.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      m.subject.toLowerCase().includes(q) ||
+      m.message.toLowerCase().includes(q) ||
+      m.customerName.toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q);
+    return matchesStatus && matchesSearch;
+  });
+});
+
+const openMessageReply = (msg: CustomerMessageItem) => {
+  selectedMessage.value = msg;
+  messageReplyText.value =
+    msg.staffReply ||
+    `Hi ${msg.customerName},\n\nThank you for reaching out to RLG Hobby Shop support regarding "${msg.subject}". `;
+  isMessageReplyModalOpen.value = true;
+};
+
+const sendMessageReply = async () => {
+  if (selectedMessage.value && messageReplyText.value.trim()) {
+    isSendingMessageReply.value = true;
+    try {
+      await adminStore.replyToCustomerMessage(
+        selectedMessage.value.id,
+        messageReplyText.value.trim(),
+      );
+      isMessageReplyModalOpen.value = false;
+    } finally {
+      isSendingMessageReply.value = false;
+    }
+  }
+};
+
+const toggleMessageStatus = async (msg: CustomerMessageItem) => {
+  const newStatus = msg.status === "resolve" ? "ongoing" : "resolve";
+  await adminStore.toggleCustomerMessageStatus(msg.id, newStatus);
+};
+
+// Customer Reviews Helpers & Filter (customer_review API)
+const averageReviewRating = computed(() => {
+  if (adminStore.customerReviews.length === 0) return "5.0";
+  const sum = adminStore.customerReviews.reduce((acc, r) => acc + r.stars, 0);
+  return (sum / adminStore.customerReviews.length).toFixed(1);
+});
+
+const needsReplyReviewsCount = computed(() => {
+  return adminStore.customerReviews.filter((r) => !r.staffReply).length;
+});
+
+const filteredReviews = computed(() => {
+  return adminStore.customerReviews.filter((r) => {
+    let matchesFilter = true;
+    if (reviewStarFilter.value === "5") matchesFilter = r.stars === 5;
+    else if (reviewStarFilter.value === "4") matchesFilter = r.stars === 4;
+    else if (reviewStarFilter.value === "3") matchesFilter = r.stars === 3;
+    else if (reviewStarFilter.value === "needs_reply")
+      matchesFilter = !r.staffReply;
+    else if (reviewStarFilter.value === "replied")
+      matchesFilter = !!r.staffReply;
+
+    const q = reviewSearchQuery.value.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      r.productName.toLowerCase().includes(q) ||
+      r.message.toLowerCase().includes(q) ||
+      r.customerName.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q);
+    return matchesFilter && matchesSearch;
+  });
+});
+
+const openReviewReply = (r: CustomerReviewItem) => {
+  selectedReview.value = r;
+  reviewReplyText.value =
+    r.staffReply ||
+    `Thank you for your review, ${r.customerName}! We take extra care in packaging all authentic collectible hobby items. Enjoy your collection!`;
+  isReviewReplyModalOpen.value = true;
+};
+
+const sendReviewReply = async () => {
+  if (selectedReview.value && reviewReplyText.value.trim()) {
+    isSendingReviewReply.value = true;
+    try {
+      await adminStore.replyToCustomerReview(
+        selectedReview.value.id,
+        reviewReplyText.value.trim(),
+      );
+      isReviewReplyModalOpen.value = false;
+    } finally {
+      isSendingReviewReply.value = false;
+    }
+  }
+};
+
+const deleteReview = async (id: number) => {
+  if (
+    confirm("Are you sure you want to permanently delete this customer review?")
+  ) {
+    isDeletingReview.value = id;
+    try {
+      await adminStore.deleteCustomerReview(id);
+    } finally {
+      isDeletingReview.value = null;
+    }
+  }
+};
 </script>
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
+    <!-- Header with 3 Toggles -->
     <div
-      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs"
+      class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs"
     >
       <div>
         <h1
@@ -119,13 +249,14 @@ const getSegmentBadge = (segment: string) => {
         </p>
       </div>
 
-      <!-- Tab Switcher -->
+      <!-- Tab Switcher (Separated into Profiles, Customer Messages, and Customer Reviews) -->
       <div
-        class="flex gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200"
+        class="flex flex-wrap sm:flex-nowrap gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start lg:self-auto"
       >
+        <!-- Toggle 1: Customer Profiles -->
         <button
           type="button"
-          class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           :class="
             activeTab === 'profiles'
               ? 'bg-white text-slate-900 shadow-xs'
@@ -133,24 +264,57 @@ const getSegmentBadge = (segment: string) => {
           "
           @click="activeTab = 'profiles'"
         >
-          👥 Customer Profiles ({{ adminStore.customers.length }})
+          <span>👥 Customer Profiles</span>
+          <span class="text-[11px] text-slate-400 font-semibold"
+            >({{ adminStore.customers.length }})</span
+          >
         </button>
+
+        <!-- Toggle 2: Customer Messages (customer_message table) -->
         <button
           type="button"
-          class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           :class="
-            activeTab === 'inbox'
+            activeTab === 'messages'
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
           "
-          @click="activeTab = 'inbox'"
+          @click="activeTab = 'messages'"
         >
-          <span>📥 Support Inbox</span>
+          <span>💬 Customer Messages</span>
           <span
-            v-if="adminStore.metrics.unreadInquiriesCount > 0"
-            class="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-extrabold"
+            v-if="ongoingMessagesCount > 0"
+            class="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-extrabold shadow-2xs"
+            title="Ongoing inquiries requiring support reply"
           >
-            {{ adminStore.metrics.unreadInquiriesCount }}
+            {{ ongoingMessagesCount }}
+          </span>
+          <span v-else class="text-[11px] text-slate-400 font-semibold">
+            ({{ adminStore.customerMessages.length }})
+          </span>
+        </button>
+
+        <!-- Toggle 3: Customer Reviews (customer_review table) -->
+        <button
+          type="button"
+          class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          :class="
+            activeTab === 'reviews'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          "
+          @click="activeTab = 'reviews'"
+        >
+          <span>⭐ Customer Reviews</span>
+          <span
+            v-if="needsReplyReviewsCount > 0"
+            class="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold shadow-2xs"
+            title="Reviews awaiting staff reply"
+          >
+            {{ needsReplyReviewsCount }}
+          </span>
+          <span v-else class="text-[11px] text-slate-400 font-semibold">
+            ({{ adminStore.customerReviews.length }})
           </span>
         </button>
       </div>
@@ -223,45 +387,62 @@ const getSegmentBadge = (segment: string) => {
                 class="hover:bg-slate-50/70 transition-colors"
               >
                 <td class="p-4">
-                  <span class="font-bold text-slate-900 text-xs block">{{
-                    c.name
-                  }}</span>
-                  <span class="font-mono text-[10px] text-slate-400">{{
-                    c.id
-                  }}</span>
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-8 h-8 rounded-full bg-slate-900 text-white font-black text-xs flex items-center justify-center flex-shrink-0"
+                    >
+                      {{ c.name.charAt(0) }}
+                    </div>
+                    <div>
+                      <span class="font-bold text-slate-900 block">{{
+                        c.name
+                      }}</span>
+                      <span class="text-[10px] text-slate-400 font-mono">{{
+                        c.id
+                      }}</span>
+                    </div>
+                  </div>
                 </td>
+
                 <td class="p-4">
-                  <span class="text-slate-800 block">{{ c.email }}</span>
-                  <span class="text-[11px] text-slate-400 block"
-                    >{{ c.phone }} &bull; {{ c.city }}</span
+                  <span class="text-slate-900 block">{{ c.email }}</span>
+                  <span class="text-[11px] text-slate-400"
+                    >{{ c.city }} &bull; {{ c.phone }}</span
                   >
                 </td>
+
                 <td class="p-4">
                   <span
-                    class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                    class="px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block"
                     :class="getSegmentBadge(c.segment)"
                   >
                     {{ c.segment }}
                   </span>
                 </td>
+
                 <td class="p-4">
                   <span class="font-extrabold text-slate-900">{{
                     formatCurrency(c.lifetimeValue)
                   }}</span>
                 </td>
-                <td class="p-4 font-bold text-slate-700">
-                  {{ c.totalOrders }} order(s)
+
+                <td class="p-4">
+                  <span class="font-bold text-slate-700"
+                    >{{ c.totalOrders }} orders</span
+                  >
                 </td>
-                <td class="p-4 text-slate-500">
-                  {{ c.lastOrderDate }}
+
+                <td class="p-4">
+                  <span class="text-slate-500">{{ c.lastOrderDate }}</span>
                 </td>
+
                 <td class="p-4 text-right">
                   <button
                     type="button"
-                    class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold cursor-pointer"
+                    class="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
                     @click="openProfile(c)"
                   >
-                    View CRM Card
+                    View LTV &rarr;
                   </button>
                 </td>
               </tr>
@@ -271,66 +452,439 @@ const getSegmentBadge = (segment: string) => {
       </div>
     </div>
 
-    <!-- TAB 2: Support & Messaging Inbox -->
-    <div v-else class="space-y-4">
+    <!-- TAB 2: Customer Messages (Integrated with /api/customer-messages & customer_message table) -->
+    <div v-else-if="activeTab === 'messages'" class="space-y-4">
+      <!-- Search & Status Filters for Messages -->
+      <div
+        class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4"
+      >
+        <div class="relative w-full md:w-80">
+          <input
+            v-model="messageSearchQuery"
+            type="text"
+            placeholder="Search inquiries by subject, text, or customer..."
+            class="w-full text-xs px-3.5 py-2.5 pl-9 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-rose-500"
+          />
+          <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+        </div>
+
+        <div
+          class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto"
+        >
+          <button
+            type="button"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
+            :class="
+              messageStatusFilter === 'all'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="messageStatusFilter = 'all'"
+          >
+            All Messages ({{ adminStore.customerMessages.length }})
+          </button>
+          <button
+            type="button"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5"
+            :class="
+              messageStatusFilter === 'ongoing'
+                ? 'bg-white text-rose-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="messageStatusFilter = 'ongoing'"
+          >
+            <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+            <span>Ongoing ({{ ongoingMessagesCount }})</span>
+          </button>
+          <button
+            type="button"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5"
+            :class="
+              messageStatusFilter === 'resolve'
+                ? 'bg-white text-emerald-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="messageStatusFilter = 'resolve'"
+          >
+            <span>✓ Resolved</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages List -->
       <div
         class="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100"
       >
         <div
-          v-for="inq in adminStore.inquiries"
-          :key="inq.id"
-          class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors"
+          v-if="adminStore.isLoadingMessages"
+          class="p-8 text-center text-xs text-slate-400 font-bold"
         >
-          <div class="space-y-1.5 flex-1">
-            <div class="flex items-center gap-2">
+          Loading messages from customer_message table...
+        </div>
+
+        <div
+          v-else-if="filteredMessages.length === 0"
+          class="p-8 text-center text-xs text-slate-400 space-y-1"
+        >
+          <div class="text-2xl">📭</div>
+          <p class="font-bold text-slate-600">No customer messages found.</p>
+          <p class="text-[11px]">
+            Inquiries submitted via the storefront contact or support form will
+            appear here.
+          </p>
+        </div>
+
+        <div
+          v-for="msg in filteredMessages"
+          :key="msg.id"
+          class="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors"
+        >
+          <div class="space-y-2 flex-1 min-w-0">
+            <!-- Header Badges -->
+            <div class="flex items-center gap-2 flex-wrap">
               <span
-                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                :class="
-                  inq.type === 'dispute'
-                    ? 'bg-rose-100 text-rose-800'
-                    : inq.type === 'review'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-blue-100 text-blue-800'
-                "
+                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800"
               >
-                {{ inq.type }}
+                INQUIRY
               </span>
-              <span class="text-xs font-extrabold text-slate-900">{{
-                inq.subject
-              }}</span>
+              <span class="text-xs font-extrabold text-slate-900">
+                {{ msg.subject }}
+              </span>
               <span
-                v-if="inq.status === 'unread'"
-                class="w-2 h-2 rounded-full bg-rose-600"
-                title="Unread"
-              ></span>
-            </div>
-            <p class="text-xs text-slate-600 line-clamp-2">
-              "{{ inq.message }}"
-            </p>
-            <div class="flex items-center gap-3 text-[11px] text-slate-400">
-              <span class="font-bold text-slate-700"
-                >{{ inq.customerName }} ({{ inq.email }})</span
+                v-if="msg.status === 'ongoing'"
+                class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200"
               >
+                <span
+                  class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"
+                ></span>
+                Ongoing
+              </span>
+              <span
+                v-else
+                class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+              >
+                ✓ Resolved
+              </span>
+            </div>
+
+            <!-- Customer Inquiry Message Body -->
+            <p
+              class="text-xs text-slate-700 leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100"
+            >
+              "{{ msg.message }}"
+            </p>
+
+            <!-- Staff Support Reply (if answered) -->
+            <div
+              v-if="msg.staffReply"
+              class="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 space-y-1"
+            >
+              <div
+                class="flex items-center justify-between text-[10px] font-black text-emerald-800 uppercase tracking-wider"
+              >
+                <span>STAFF SUPPORT REPLY:</span>
+                <span
+                  v-if="msg.staffName"
+                  class="text-emerald-700 font-semibold normal-case"
+                >
+                  by {{ msg.staffName }} &bull;
+                  {{ msg.resolvedAt || "Resolved" }}
+                </span>
+              </div>
+              <p class="text-xs text-emerald-900 font-medium">
+                {{ msg.staffReply }}
+              </p>
+            </div>
+
+            <!-- Sender Metadata -->
+            <div
+              class="flex items-center gap-2.5 text-[11px] text-slate-400 pt-0.5"
+            >
+              <span class="font-bold text-slate-700">
+                {{ msg.customerName }} ({{ msg.email }})
+              </span>
+              <span v-if="msg.phone">&bull; {{ msg.phone }}</span>
               <span>&bull;</span>
-              <span>{{ inq.date }}</span>
+              <span>{{ msg.createdAt }}</span>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 self-start md:self-auto">
+          <!-- Action Buttons -->
+          <div
+            class="flex items-center gap-2 self-start md:self-auto flex-shrink-0"
+          >
             <button
-              v-if="inq.status !== 'resolved'"
+              v-if="msg.status === 'ongoing'"
               type="button"
-              class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-2xs"
-              @click="openReply(inq)"
+              class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-2xs transition-all"
+              @click="openMessageReply(msg)"
             >
               Reply &amp; Resolve
             </button>
-            <span
+
+            <button
               v-else
-              class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+              type="button"
+              class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 cursor-pointer transition-all"
+              title="Edit Staff Reply"
+              @click="openMessageReply(msg)"
             >
-              ✓ Resolved
+              Edit Reply
+            </button>
+
+            <button
+              type="button"
+              class="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-xs transition-colors cursor-pointer"
+              :title="
+                msg.status === 'resolve'
+                  ? 'Reopen inquiry'
+                  : 'Mark resolved without reply'
+              "
+              @click="toggleMessageStatus(msg)"
+            >
+              {{ msg.status === "resolve" ? "↩️ Reopen" : "✓ Mark" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Customer Reviews (Integrated with /api/customer-reviews & customer_review table) -->
+    <div v-else-if="activeTab === 'reviews'" class="space-y-4">
+      <!-- Reviews Header Metrics & Filter Bar -->
+      <div
+        class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <!-- Rating badge -->
+          <div
+            class="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center gap-1.5"
+          >
+            <span class="text-amber-500 font-black text-sm"
+              >⭐ {{ averageReviewRating }}</span
+            >
+            <span class="text-[11px] text-amber-800 font-bold"
+              >Store Rating</span
+            >
+          </div>
+
+          <!-- Search Input -->
+          <div class="relative flex-1 md:w-72">
+            <input
+              v-model="reviewSearchQuery"
+              type="text"
+              placeholder="Search reviews by product or customer..."
+              class="w-full text-xs px-3.5 py-2.5 pl-9 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-amber-500"
+            />
+            <span class="absolute left-3 top-2.5 text-slate-400 text-xs"
+              >🔍</span
+            >
+          </div>
+        </div>
+
+        <!-- Filter tabs by star rating / reply status -->
+        <div
+          class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto"
+        >
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
+            :class="
+              reviewStarFilter === 'all'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="reviewStarFilter = 'all'"
+          >
+            All Reviews ({{ adminStore.customerReviews.length }})
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer text-amber-600"
+            :class="
+              reviewStarFilter === '5'
+                ? 'bg-white font-extrabold shadow-xs'
+                : 'hover:text-amber-800'
+            "
+            @click="reviewStarFilter = '5'"
+          >
+            5 Stars ⭐⭐⭐⭐⭐
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer text-amber-600"
+            :class="
+              reviewStarFilter === '4'
+                ? 'bg-white font-extrabold shadow-xs'
+                : 'hover:text-amber-800'
+            "
+            @click="reviewStarFilter = '4'"
+          >
+            4 Stars ⭐⭐⭐⭐
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1"
+            :class="
+              reviewStarFilter === 'needs_reply'
+                ? 'bg-white text-rose-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="reviewStarFilter = 'needs_reply'"
+          >
+            <span>Needs Reply</span>
+            <span
+              v-if="needsReplyReviewsCount > 0"
+              class="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[9px] font-bold"
+            >
+              {{ needsReplyReviewsCount }}
             </span>
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
+            :class="
+              reviewStarFilter === 'replied'
+                ? 'bg-white text-emerald-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            "
+            @click="reviewStarFilter = 'replied'"
+          >
+            ✓ Replied
+          </button>
+        </div>
+      </div>
+
+      <!-- Reviews Cards List -->
+      <div
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100"
+      >
+        <div
+          v-if="adminStore.isLoadingReviews"
+          class="p-8 text-center text-xs text-slate-400 font-bold"
+        >
+          Loading reviews from customer_review table...
+        </div>
+
+        <div
+          v-else-if="filteredReviews.length === 0"
+          class="p-8 text-center text-xs text-slate-400 space-y-1"
+        >
+          <div class="text-2xl">⭐</div>
+          <p class="font-bold text-slate-600">No customer reviews found.</p>
+          <p class="text-[11px]">
+            Product reviews submitted by verified buyers will appear here.
+          </p>
+        </div>
+
+        <div
+          v-for="rev in filteredReviews"
+          :key="rev.id"
+          class="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors"
+        >
+          <div class="space-y-2.5 flex-1 min-w-0">
+            <!-- Review Header: Badge + Product Title + Stars -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <span
+                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800"
+              >
+                REVIEW
+              </span>
+
+              <span class="text-xs font-extrabold text-slate-900">
+                Review for {{ rev.productName }} ({{ rev.stars }} Stars)
+              </span>
+
+              <!-- Star Rating Graphic -->
+              <span class="text-amber-400 text-xs tracking-tight">
+                {{ "★".repeat(rev.stars) }}{{ "☆".repeat(5 - rev.stars) }}
+              </span>
+
+              <!-- Unreplied Indicator Dot -->
+              <span
+                v-if="!rev.staffReply"
+                class="w-2 h-2 rounded-full bg-rose-600"
+                title="Awaiting staff acknowledgment"
+              ></span>
+            </div>
+
+            <!-- Review Message Body -->
+            <p
+              class="text-xs text-slate-700 leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100"
+            >
+              "{{ rev.message }}"
+            </p>
+
+            <!-- Review Attached Photo if available -->
+            <div v-if="rev.image" class="pt-1">
+              <img
+                :src="rev.image"
+                alt="Review Attachment"
+                class="w-20 h-20 rounded-xl object-contain bg-slate-950 border border-slate-800 p-1"
+              />
+            </div>
+
+            <!-- Staff Support Reply (if answered) -->
+            <div
+              v-if="rev.staffReply"
+              class="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 space-y-1"
+            >
+              <div
+                class="flex items-center justify-between text-[10px] font-black text-emerald-800 uppercase tracking-wider"
+              >
+                <span>STAFF SUPPORT REPLY:</span>
+                <span
+                  v-if="rev.staffName"
+                  class="text-emerald-700 font-semibold normal-case"
+                >
+                  by {{ rev.staffName }} &bull; {{ rev.repliedAt || "Replied" }}
+                </span>
+              </div>
+              <p class="text-xs text-emerald-900 font-medium">
+                {{ rev.staffReply }}
+              </p>
+            </div>
+
+            <!-- Customer Reviewer Metadata -->
+            <div
+              class="flex items-center gap-2.5 text-[11px] text-slate-400 pt-0.5"
+            >
+              <span class="font-bold text-slate-700">
+                {{ rev.customerName }} ({{ rev.email }})
+              </span>
+              <span>&bull;</span>
+              <span>{{ rev.createdAt }}</span>
+            </div>
+          </div>
+
+          <!-- Actions: Reply to Review & Delete -->
+          <div
+            class="flex items-center gap-2 self-start md:self-auto flex-shrink-0"
+          >
+            <button
+              type="button"
+              class="px-3.5 py-1.5 rounded-xl font-bold text-xs cursor-pointer shadow-2xs transition-all flex items-center gap-1.5"
+              :class="
+                rev.staffReply
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+              "
+              @click="openReviewReply(rev)"
+            >
+              <span>{{
+                rev.staffReply ? "✓ Resolved" : "Reply & Resolve"
+              }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="p-1.5 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs transition-colors cursor-pointer"
+              title="Delete customer review"
+              :disabled="isDeletingReview === rev.id"
+              @click="deleteReview(rev.id)"
+            >
+              🗑️
+            </button>
           </div>
         </div>
       </div>
@@ -426,10 +980,10 @@ const getSegmentBadge = (segment: string) => {
       </div>
     </teleport>
 
-    <!-- Reply to Inquiry Modal -->
+    <!-- Reply to Customer Message Modal (customer_message API) -->
     <teleport to="body">
       <div
-        v-if="isReplyModalOpen && selectedInquiry"
+        v-if="isMessageReplyModalOpen && selectedMessage"
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
       >
         <div
@@ -440,16 +994,16 @@ const getSegmentBadge = (segment: string) => {
           >
             <div>
               <h3 class="text-base font-bold text-slate-900">
-                Reply to {{ selectedInquiry.customerName }}
+                Reply to {{ selectedMessage.customerName }}
               </h3>
               <p class="text-xs text-slate-500">
-                Subject: {{ selectedInquiry.subject }}
+                Subject: {{ selectedMessage.subject }}
               </p>
             </div>
             <button
               type="button"
               class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
-              @click="isReplyModalOpen = false"
+              @click="isMessageReplyModalOpen = false"
             >
               ✕
             </button>
@@ -459,7 +1013,7 @@ const getSegmentBadge = (segment: string) => {
             class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600"
           >
             <span class="font-bold text-slate-800">Original Inquiry:</span>
-            <p class="mt-1">"{{ selectedInquiry.message }}"</p>
+            <p class="mt-1">"{{ selectedMessage.message }}"</p>
           </div>
 
           <div>
@@ -467,22 +1021,98 @@ const getSegmentBadge = (segment: string) => {
               >Official Support Response</label
             >
             <textarea
-              v-model="replyText"
+              v-model="messageReplyText"
               rows="5"
+              placeholder="Type your official reply here..."
               class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:border-slate-900"
             ></textarea>
           </div>
 
           <div class="flex justify-between items-center pt-2">
-            <span class="text-[11px] text-slate-400"
-              >Will send email response to {{ selectedInquiry.email }}</span
-            >
+            <span class="text-[11px] text-slate-400">
+              Will record response &amp; resolve ticket
+            </span>
             <button
               type="button"
-              class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
-              @click="sendReply"
+              class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              :disabled="isSendingMessageReply || !messageReplyText.trim()"
+              @click="sendMessageReply"
             >
-              Send &amp; Resolve Ticket
+              <span>{{
+                isSendingMessageReply ? "Sending..." : "Send & Resolve Ticket"
+              }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Reply to Customer Review Modal (customer_review API) -->
+    <teleport to="body">
+      <div
+        v-if="isReviewReplyModalOpen && selectedReview"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display"
+        >
+          <div
+            class="flex items-center justify-between pb-3 border-b border-slate-100"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-amber-400 text-xs">
+                  {{ "★".repeat(selectedReview.stars) }}
+                </span>
+                <h3 class="text-base font-bold text-slate-900">
+                  Reply to {{ selectedReview.customerName }}'s Review
+                </h3>
+              </div>
+              <p class="text-xs text-slate-500">
+                Item: {{ selectedReview.productName }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+              @click="isReviewReplyModalOpen = false"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 text-xs text-slate-700"
+          >
+            <span class="font-bold text-amber-900">Customer Review:</span>
+            <p class="mt-1 italic">"{{ selectedReview.message }}"</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1"
+              >Store Support Response</label
+            >
+            <textarea
+              v-model="reviewReplyText"
+              rows="5"
+              placeholder="Type your public store reply to this review..."
+              class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-600"
+            ></textarea>
+          </div>
+
+          <div class="flex justify-between items-center pt-2">
+            <span class="text-[11px] text-slate-400">
+              Published publicly under the product review
+            </span>
+            <button
+              type="button"
+              class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              :disabled="isSendingReviewReply || !reviewReplyText.trim()"
+              @click="sendReviewReply"
+            >
+              <span>{{
+                isSendingReviewReply ? "Posting..." : "Post Official Response"
+              }}</span>
             </button>
           </div>
         </div>

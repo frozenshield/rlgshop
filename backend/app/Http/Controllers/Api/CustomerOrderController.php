@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderFulfillment;
 use App\Models\CustomerOrderItem;
+use App\Models\CustomerProfile;
+use App\Models\CustomerShippmentAddress;
 use App\Models\RefOrderStatus;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,8 @@ class CustomerOrderController extends Controller
             'items',
             'fulfillment.carrier',
             'fulfillments.carrier',
+            'customerProfile.shippingAddress',
+            'customerProfile.user',
         ]);
 
         // Search by order number, customer name, email, phone, or tracking number
@@ -31,9 +36,18 @@ class CustomerOrderController extends Controller
             $search = trim((string) $request->input('search'));
             $query->where(function ($q) use ($search): void {
                 $q->where('order_number', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_email', 'like', "%{$search}%")
-                    ->orWhere('customer_phone', 'like', "%{$search}%")
+                    ->orWhereHas('customerProfile', function ($cq) use ($search): void {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhereHas('user', function ($uq) use ($search): void {
+                                $uq->where('email', 'like', "%{$search}%")
+                                    ->orWhere('name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('shippingAddress', function ($aq) use ($search): void {
+                                $aq->where('shipping_address', 'like', "%{$search}%")
+                                    ->orWhere('city', 'like', "%{$search}%");
+                            });
+                    })
                     ->orWhereHas('fulfillment', function ($fq) use ($search): void {
                         $fq->where('tracking_number', 'like', "%{$search}%");
                     });
@@ -86,7 +100,8 @@ class CustomerOrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'customer_name' => 'required|string|max:255',
+            'customer_profile_id' => 'nullable|exists:customer_profiles,id',
+            'customer_name' => 'nullable|string|max:255',
             'customer_email' => 'nullable|email|max:255',
             'customer_phone' => 'nullable|string|max:50',
             'shipping_address' => 'nullable|string',
@@ -129,18 +144,63 @@ class CustomerOrderController extends Controller
                 $totalAmount += ((float) $item['price']) * ((int) $item['quantity']);
             }
 
+            // Resolve or create CustomerProfile & CustomerShippmentAddress if not given directly
+            $customerProfileId = $validated['customer_profile_id'] ?? null;
+            $userId = $request->user()?->id;
+
+            if (! $customerProfileId && (! empty($validated['customer_name']) || ! empty($validated['customer_email']))) {
+                $user = null;
+                if (! empty($validated['customer_email'])) {
+                    $user = User::firstOrCreate(
+                        ['email' => $validated['customer_email']],
+                        [
+                            'name' => $validated['customer_name'] ?? 'Customer',
+                            'user_type' => 'customer',
+                        ]
+                    );
+                    $userId = $user->id;
+                }
+
+                $shipmentAddress = null;
+                if (! empty($validated['shipping_address'])) {
+                    $shipmentAddress = CustomerShippmentAddress::create([
+                        'user_id' => $userId,
+                        'recipient_name' => $validated['customer_name'] ?? null,
+                        'phone' => $validated['customer_phone'] ?? null,
+                        'shipping_address' => $validated['shipping_address'],
+                        'city' => $validated['city'] ?? 'Metro Manila',
+                        'postal_code' => $validated['postal_code'] ?? '1000',
+                        'country' => 'Philippines',
+                        'is_default' => true,
+                    ]);
+                }
+
+                $profile = CustomerProfile::firstOrCreate(
+                    ['user_id' => $userId],
+                    [
+                        'customer_shippment_address_id' => $shipmentAddress?->id,
+                        'name' => $validated['customer_name'] ?? $user?->name ?? 'Customer',
+                        'phone' => $validated['customer_phone'] ?? null,
+                        'address_line1' => $validated['shipping_address'] ?? null,
+                        'city' => $validated['city'] ?? 'Metro Manila',
+                        'postal_code' => $validated['postal_code'] ?? '1000',
+                    ]
+                );
+
+                if ($shipmentAddress && ! $profile->customer_shippment_address_id) {
+                    $profile->update(['customer_shippment_address_id' => $shipmentAddress->id]);
+                }
+
+                $customerProfileId = $profile->id;
+            }
+
             $order = CustomerOrder::create([
                 'order_number' => $orderNumber,
                 'order_date' => now(),
-                'customer_name' => $validated['customer_name'],
-                'customer_email' => $validated['customer_email'] ?? null,
-                'customer_phone' => $validated['customer_phone'] ?? null,
-                'shipping_address' => $validated['shipping_address'] ?? null,
-                'city' => $validated['city'] ?? null,
-                'postal_code' => $validated['postal_code'] ?? null,
-                'user_id' => $request->user()?->id,
+                'customer_profile_id' => $customerProfileId,
+                'user_id' => $userId,
                 'total_amount' => $totalAmount,
-                'payment_method' => $validated['payment_method'] ?? 'GCash',
+                'payment_method' => $validated['payment_method'] ?? 'GCASH',
                 'payment_status' => $validated['payment_status'] ?? 'Paid',
                 'ref_order_status_id' => $statusId,
                 'invoice_id' => 'INV-'.date('Y').'-'.rand(100, 999),
@@ -162,7 +222,7 @@ class CustomerOrderController extends Controller
                 ]);
             }
 
-            $order->load(['status', 'items', 'fulfillment.carrier']);
+            $order->load(['customerProfile.user', 'customerProfile.shippingAddress', 'status', 'items', 'fulfillment.carrier']);
 
             return response()->json([
                 'success' => true,
@@ -182,7 +242,8 @@ class CustomerOrderController extends Controller
             'items.product',
             'fulfillment.carrier',
             'fulfillments.carrier',
-            'customerProfile',
+            'customerProfile.shippingAddress',
+            'customerProfile.user',
         ]);
 
         return response()->json([

@@ -164,6 +164,29 @@ class CustomerProfileController extends Controller
     }
 
     /**
+     * Update customer segment rank (staff action via CRM card).
+     */
+    public function updateSegmentRank(Request $request, CustomerProfile $customerProfile): JsonResponse
+    {
+        $validated = $request->validate([
+            'segment_rank' => 'required|string|in:VIP,Regular,Wholesale,Inactive',
+            'notes' => 'nullable|string',
+        ]);
+
+        $customerProfile->update([
+            'segment_rank' => $validated['segment_rank'],
+            'segment' => $validated['segment_rank'],
+            'notes' => $validated['notes'] ?? $customerProfile->notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer segment rank updated successfully.',
+            'data' => $customerProfile->load(['user', 'shippingAddress']),
+        ]);
+    }
+
+    /**
      * Get the authenticated user's profile.
      */
     public function getCurrentProfile(Request $request): JsonResponse

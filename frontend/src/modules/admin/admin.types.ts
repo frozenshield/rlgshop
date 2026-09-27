@@ -73,11 +73,16 @@ export interface RefOrderStatusItem {
 
 export interface AdminOrderItem {
   id: string;
+  productId?: number;
   name: string;
   sku: string;
   price: number;
   quantity: number;
+  subtotal?: number;
   imageUrl: string;
+  category?: string;
+  brand?: string;
+  condition?: string;
 }
 
 export interface AdminOrder {
@@ -92,16 +97,22 @@ export interface AdminOrder {
   items: AdminOrderItem[];
   total: number;
   status: OrderStatus;
+  statusLabel?: string;
+  statusBadgeColor?: string;
   paymentMethod: string;
+  paymentStatus?: string;
   trackingNumber?: string;
   carrier?: string;
   carrierId?: number;
+  carrierTrackingUrl?: string;
   packingSlipPrinted: boolean;
   refundStatus?: "None" | "Partial" | "Full";
   refundAmount?: number;
   invoiceId: string;
   createdAt: string;
+  rawOrderDate?: string;
   notes?: string;
+  customerProfile?: any;
 }
 
 export interface ProductVariant {
@@ -152,6 +163,38 @@ export interface CustomerInquiry {
   message: string;
   date: string;
   status: "unread" | "in-progress" | "resolved";
+}
+
+export interface CustomerMessageItem {
+  id: number;
+  userId?: number | null;
+  customerName: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  status: "ongoing" | "resolve";
+  staffReply?: string | null;
+  staffName?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export interface CustomerReviewItem {
+  id: number;
+  userId?: number | null;
+  productId?: number | null;
+  productName: string;
+  productImage?: string | null;
+  customerName: string;
+  email: string;
+  stars: number;
+  message: string;
+  image?: string | null;
+  staffReply?: string | null;
+  staffName?: string | null;
+  repliedAt?: string | null;
+  createdAt: string;
 }
 
 export interface PromoCode {
