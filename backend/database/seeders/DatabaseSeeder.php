@@ -34,6 +34,9 @@ class DatabaseSeeder extends Seeder
             PromoCodeSeeder::class,
             ProductSeeder::class,
             RefPokemonSetSeeder::class,
+            RefOrderStatusSeeder::class,
+            RefShippingCarrierSeeder::class,
+            CustomerOrderSeeder::class,
         ]);
     }
 }

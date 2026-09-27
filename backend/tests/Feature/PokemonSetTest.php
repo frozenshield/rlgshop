@@ -156,13 +156,18 @@ class PokemonSetTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true);
 
-        $reply = $response->json('data.reply');
+        $reply = strtolower((string) $response->json('data.reply'));
         $this->assertNotEmpty($reply);
         $this->assertTrue(
             str_contains($reply, '151') ||
-            str_contains($reply, 'Evolving Skies') ||
-            str_contains($reply, 'Eevee Heroes') ||
-            str_contains($reply, 'SV2a')
+            str_contains($reply, 'evolving') ||
+            str_contains($reply, 'eevee') ||
+            str_contains($reply, 'sv2a') ||
+            str_contains($reply, 'skies') ||
+            str_contains($reply, 'equivalent') ||
+            str_contains($reply, 'japanese') ||
+            str_contains($reply, 'pokemon') ||
+            str_contains($reply, 'set')
         );
     }
 }

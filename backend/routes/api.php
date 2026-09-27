@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
+use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
@@ -15,6 +16,8 @@ use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefModule;
+use App\Models\RefOrderStatus;
+use App\Models\RefShippingCarrier;
 use App\Models\RefStaffRole;
 use App\Models\Staff;
 use App\Models\User;
@@ -176,6 +179,23 @@ Route::apiResource('customer-profiles', CustomerProfileController::class);
 Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateCode']);
 Route::post('/promo-codes/{promo_code}/toggle', [PromoCodeController::class, 'toggle']);
 Route::apiResource('promo-codes', PromoCodeController::class);
+
+// Order Status & Shipping Carriers Reference Tables
+Route::get('/ref-order-statuses', function () {
+    return response()->json(RefOrderStatus::orderBy('id')->get());
+});
+Route::get('/ref-shipping-carriers', function () {
+    return response()->json(RefShippingCarrier::where('is_active', true)->orderBy('id')->get());
+});
+
+// Customer Orders & Fulfillment Lifecycle API
+Route::get('/customer-orders', [CustomerOrderController::class, 'index']);
+Route::post('/customer-orders', [CustomerOrderController::class, 'store']);
+Route::get('/customer-orders/{customer_order}', [CustomerOrderController::class, 'show']);
+Route::patch('/customer-orders/{customer_order}/status', [CustomerOrderController::class, 'updateStatus']);
+Route::post('/customer-orders/{customer_order}/fulfillment', [CustomerOrderController::class, 'attachFulfillment']);
+Route::post('/customer-orders/{customer_order}/refund', [CustomerOrderController::class, 'processRefund']);
+Route::post('/customer-orders/{customer_order}/print-packing-slip', [CustomerOrderController::class, 'markPackingSlipPrinted']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {

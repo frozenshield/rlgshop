@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('orders', function (Blueprint $table) {
+        Schema::create('ref_order_status', function (Blueprint $table): void {
             $table->id();
+            $table->string('name')->unique();
+            $table->string('label');
+            $table->string('badge_color')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
@@ -22,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('orders');
+        Schema::dropIfExists('ref_order_status');
     }
 };
