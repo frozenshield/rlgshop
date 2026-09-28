@@ -15,6 +15,9 @@ class AiProductController extends Controller
      */
     public function analyzeImage(Request $request, GeminiProductAnalyzer $analyzer): JsonResponse
     {
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
+
         $request->validate([
             'image' => 'nullable|file|image|max:15360',
             'image_url' => 'nullable|url',

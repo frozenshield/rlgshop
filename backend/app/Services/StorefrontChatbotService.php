@@ -36,7 +36,7 @@ class StorefrontChatbotService
             try {
                 return $this->generateWithGemini($message, $history, $products, $promos, $pokemonSets);
             } catch (Throwable $e) {
-                Log::warning('Storefront chatbot Gemini API error: '.$e->getMessage().'. Using intelligent local fallback.');
+                Log::warning('Storefront chatbot Gemini API error: ' . $e->getMessage() . '. Using intelligent local fallback.');
             }
         }
 
@@ -59,9 +59,12 @@ class StorefrontChatbotService
      */
     protected function generateWithGemini(string $message, array $history, Collection $products, Collection $promos, Collection $pokemonSets): array
     {
+        @set_time_limit(120);
+        @ini_set('max_execution_time', '120');
+
         $apiKey = config('services.gemini.api_key');
-        $primaryModel = config('services.gemini.model', 'gemini-3.8-flash');
-        $models = array_unique([$primaryModel, 'gemini-3.8-flash', 'gemini-3.5-flash-lite']);
+        $primaryModel = config('services.gemini.model', 'gemini-2.5-flash');
+        $models = array_unique([$primaryModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash-lite']);
 
         $catalogSummary = $this->buildCatalogContext($products);
         $promoSummary = $this->buildPromoContext($promos);
@@ -145,7 +148,7 @@ EOT;
                 break;
             }
 
-            $lastError = $response->json('error.message') ?? 'HTTP '.$response->status();
+            $lastError = $response->json('error.message') ?? 'HTTP ' . $response->status();
         }
 
         if (! $response || $response->failed()) {
@@ -195,8 +198,8 @@ EOT;
                 return "• **{$p->code}**: {$val} on your order";
             })->implode("\n");
 
-            $reply = "Here are our active discount coupons for collectors today! 🎟️✨\n\n".
-                ($promoList ?: "• **HOBBY10**: 10% OFF all items\n• **FREESHIPPH**: Free shipping on all orders").
+            $reply = "Here are our active discount coupons for collectors today! 🎟️✨\n\n" .
+                ($promoList ?: "• **HOBBY10**: 10% OFF all items\n• **FREESHIPPH**: Free shipping on all orders") .
                 "\n\nYou can apply any of these promo codes during checkout!";
 
             return [
@@ -209,10 +212,10 @@ EOT;
 
         // Check for shipping inquiries
         if (str_contains($lower, 'shipping') || str_contains($lower, 'delivery') || str_contains($lower, 'courier') || str_contains($lower, 'ship') || str_contains($lower, 'free ship')) {
-            $reply = "🚚 **RLG Hobby Shop Shipping & Logistics:**\n\n".
-                "• **Flat Rate Shipping:** ₱150 anywhere in Metro Manila and Provincial PH.\n".
-                "• **FREE Shipping:** Available on all orders of **₱2,500 and above**!\n".
-                "• **Courier Partners:** J&T Express and LBC Express with tracking numbers provided.\n".
+            $reply = "🚚 **RLG Hobby Shop Shipping & Logistics:**\n\n" .
+                "• **Flat Rate Shipping:** ₱150 anywhere in Metro Manila and Provincial PH.\n" .
+                "• **FREE Shipping:** Available on all orders of **₱2,500 and above**!\n" .
+                "• **Courier Partners:** J&T Express and LBC Express with tracking numbers provided.\n" .
                 '• **Collector Packaging:** All booster boxes, figures, and cards are packed with bubble armor and corner guards to ensure 100% pristine arrival!';
 
             return [
@@ -225,10 +228,10 @@ EOT;
 
         // Check for payment inquiries
         if (str_contains($lower, 'payment') || str_contains($lower, 'pay') || str_contains($lower, 'gcash') || str_contains($lower, 'maya') || str_contains($lower, 'cod')) {
-            $reply = "💳 **Accepted Payment Methods:**\n\n".
-                "• **GCash & Maya:** Direct digital wallet checkout.\n".
-                "• **Cash on Delivery (COD):** Pay upon receiving your parcel from our courier.\n".
-                "• **Credit & Debit Cards:** Visa and Mastercard processed securely.\n\n".
+            $reply = "💳 **Accepted Payment Methods:**\n\n" .
+                "• **GCash & Maya:** Direct digital wallet checkout.\n" .
+                "• **Cash on Delivery (COD):** Pay upon receiving your parcel from our courier.\n" .
+                "• **Credit & Debit Cards:** Visa and Mastercard processed securely.\n\n" .
                 'All orders are confirmed immediately with packing slips generated for fast dispatch! ⚡';
 
             return [
@@ -249,8 +252,8 @@ EOT;
                 $lines[] = "• **{$s->japanese_set}**{$codeStr}\n  - **Series:** {$s->series} ({$s->series_years})\n  - **English Equivalent:** **{$s->english_set}** [{$s->set_type}]{$notesStr}";
             }
 
-            $reply = "Here is the official Japanese-to-English Pokémon expansion mapping from our database reference! ⚡🃏\n\n".
-                implode("\n\n", $lines).
+            $reply = "Here is the official Japanese-to-English Pokémon expansion mapping from our database reference! ⚡🃏\n\n" .
+                implode("\n\n", $lines) .
                 "\n\nWould you like me to check our current inventory for booster boxes, packs, or singles from this set?";
 
             return [
@@ -269,11 +272,11 @@ EOT;
                     ? "✅ In Stock ({$prod['stock']} units available)"
                     : '❌ Currently Out of Stock';
 
-                $lines[] = "• **{$prod['name']}**\n  - SKU: `{$prod['sku']}`\n  - Price: ₱".number_format($prod['price'], 2)."\n  - Status: {$stockStatus}\n  - Condition: {$prod['condition']}";
+                $lines[] = "• **{$prod['name']}**\n  - SKU: `{$prod['sku']}`\n  - Price: ₱" . number_format($prod['price'], 2) . "\n  - Status: {$stockStatus}\n  - Condition: {$prod['condition']}";
             }
 
-            $reply = "Here is what I found in our real-time store catalog! 📦✨\n\n".
-                implode("\n\n", $lines).
+            $reply = "Here is what I found in our real-time store catalog! 📦✨\n\n" .
+                implode("\n\n", $lines) .
                 "\n\nWould you like more details or help adding any of these items to your cart?";
 
             return [
@@ -285,17 +288,17 @@ EOT;
         }
 
         // General greeting / fallback
-        $reply = "Konnichiwa! I'm **Aiko**, your RLG Hobby AI concierge! ⚡🃏\n\n".
-            "I have real-time access to our entire catalog, current stocks on hand, and active promotions. You can ask me:\n".
-            "• *\"Do you have Pokémon 151 Elite Trainer Boxes in stock?\"*\n".
-            "• *\"How much is the One Piece OP-05 Booster Box?\"*\n".
-            "• *\"What promo codes can I use today?\"*\n".
-            "• *\"What are your shipping rates and free shipping minimum?\"*\n\n".
+        $reply = "Konnichiwa! I'm **Aiko**, your RLG Hobby AI concierge! ⚡🃏\n\n" .
+            "I have real-time access to our entire catalog, current stocks on hand, and active promotions. You can ask me:\n" .
+            "• *\"Do you have Pokémon 151 Elite Trainer Boxes in stock?\"*\n" .
+            "• *\"How much is the One Piece OP-05 Booster Box?\"*\n" .
+            "• *\"What promo codes can I use today?\"*\n" .
+            "• *\"What are your shipping rates and free shipping minimum?\"*\n\n" .
             'How can I help power up your collection today?';
 
         return [
             'reply' => $reply,
-            'suggested_products' => $products->take(3)->map(fn ($p) => $this->formatProductItem($p))->values()->all(),
+            'suggested_products' => $products->take(3)->map(fn($p) => $this->formatProductItem($p))->values()->all(),
             'suggested_actions' => [
                 '🃏 Check Pokémon TCG stock',
                 '📦 Show One Piece boxes',
@@ -359,7 +362,7 @@ EOT;
      */
     protected function matchProducts(string $query, string $reply, Collection $products): array
     {
-        $combinedText = strtolower($query.' '.$reply);
+        $combinedText = strtolower($query . ' ' . $reply);
         $matches = [];
 
         foreach ($products as $p) {
@@ -376,9 +379,20 @@ EOT;
             // Keyword match on distinctive words
             if (! $matched) {
                 $keywords = [
-                    '151', 'charizard', 'one piece', 'op-05', 'hololive',
-                    'gundam', 'rx-78', 'freedom', 'luffy', 'frieren',
-                    'nendoroid', 'leafeon', 'abomasnow', 'shiny star',
+                    '151',
+                    'charizard',
+                    'one piece',
+                    'op-05',
+                    'hololive',
+                    'gundam',
+                    'rx-78',
+                    'freedom',
+                    'luffy',
+                    'frieren',
+                    'nendoroid',
+                    'leafeon',
+                    'abomasnow',
+                    'shiny star',
                 ];
 
                 foreach ($keywords as $kw) {
@@ -391,7 +405,7 @@ EOT;
 
             // Partial name match if at least 2 significant words match
             if (! $matched) {
-                $words = array_filter(explode(' ', $nameLower), fn ($w) => strlen($w) > 3);
+                $words = array_filter(explode(' ', $nameLower), fn($w) => strlen($w) > 3);
                 $wordMatches = 0;
                 foreach ($words as $w) {
                     if (str_contains($combinedText, $w)) {
@@ -445,7 +459,7 @@ EOT;
 
         if (! empty($matchedProducts)) {
             $firstName = $matchedProducts[0]['name'] ?? 'this item';
-            $shortName = strlen($firstName) > 25 ? substr($firstName, 0, 22).'...' : $firstName;
+            $shortName = strlen($firstName) > 25 ? substr($firstName, 0, 22) . '...' : $firstName;
 
             return [
                 "Is {$shortName} brand new?",
@@ -536,11 +550,31 @@ EOT;
             $enLower = strtolower($s->english_set);
 
             $checkNames = [
-                '151', 'eevee heroes', 'vstar universe', 'shiny treasure', 'clay burst',
-                'snow hazard', 'triplet beat', 'raging surf', 'stellar miracle', 'paradise dragona',
-                'super electric breaker', 'dream league', 'tag all stars', 'vmax climax', 'shiny star v',
-                'evolving skies', 'paldea evolved', 'crown zenith', 'lost origin', 'fusion strike',
-                'twilight masquerade', 'shrouded fable', 'surging sparks', 'stellar crown', 'temporal forces',
+                '151',
+                'eevee heroes',
+                'vstar universe',
+                'shiny treasure',
+                'clay burst',
+                'snow hazard',
+                'triplet beat',
+                'raging surf',
+                'stellar miracle',
+                'paradise dragona',
+                'super electric breaker',
+                'dream league',
+                'tag all stars',
+                'vmax climax',
+                'shiny star v',
+                'evolving skies',
+                'paldea evolved',
+                'crown zenith',
+                'lost origin',
+                'fusion strike',
+                'twilight masquerade',
+                'shrouded fable',
+                'surging sparks',
+                'stellar crown',
+                'temporal forces',
             ];
 
             foreach ($checkNames as $name) {

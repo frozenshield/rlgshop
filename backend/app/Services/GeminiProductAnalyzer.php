@@ -22,13 +22,16 @@ class GeminiProductAnalyzer
      */
     public function analyze(UploadedFile|string $image): array
     {
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
+
         $apiKey = config('services.gemini.api_key');
 
         if (empty($apiKey)) {
             throw new RuntimeException('Gemini API key is not configured. Please add GEMINI_API_KEY to your .env file.');
         }
 
-        $model = config('services.gemini.model', 'gemini-3.8-flash');
+        $model = config('services.gemini.model', 'gemini-2.5-flash');
 
         [$mimeType, $base64Data, $storedImageUrl] = $this->processImage($image);
 
@@ -117,8 +120,8 @@ EOT;
             ],
         ];
 
-        $primaryModel = config('services.gemini.model', 'gemini-3-flash-preview');
-        $candidateModels = array_unique([$primaryModel, 'gemini-3-flash-preview', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.1-pro-preview']);
+        $primaryModel = config('services.gemini.model', 'gemini-2.5-flash');
+        $candidateModels = array_unique([$primaryModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash-lite']);
 
         $lastError = null;
         $response = null;
@@ -126,7 +129,7 @@ EOT;
         foreach ($candidateModels as $model) {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
-            $response = Http::timeout(45)
+            $response = Http::timeout(20)
                 ->withoutVerifying()
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->post($url, $payload);
@@ -135,7 +138,7 @@ EOT;
                 break;
             }
 
-            $lastError = $response->json('error.message') ?? 'HTTP '.$response->status();
+            $lastError = $response->json('error.message') ?? 'HTTP ' . $response->status();
             Log::warning("Gemini model {$model} failed: {$lastError}. Trying fallback model if available...");
         }
 
@@ -191,7 +194,7 @@ EOT;
             }
             $words = preg_split('/\s+/', trim($result['title'])) ?: [];
             $slug = strtoupper(implode('-', array_map(
-                fn ($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
+                fn($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
                 array_slice($words, 0, 3)
             )));
             $rand = strtoupper(Str::random(4));
@@ -201,7 +204,7 @@ EOT;
 
         // Determine if product is Pokemon TCG (strictly applicable only to Pokemon TCG)
         $isPokemonTcg = (bool) ($result['is_pokemon_tcg'] ?? false);
-        $fullText = ($result['title'] ?? '').' '.($result['brand'] ?? '').' '.($result['primary_category'] ?? '').' '.($result['secondary_category'] ?? '').' '.implode(' ', (array) ($result['tags'] ?? ''));
+        $fullText = ($result['title'] ?? '') . ' ' . ($result['brand'] ?? '') . ' ' . ($result['primary_category'] ?? '') . ' ' . ($result['secondary_category'] ?? '') . ' ' . implode(' ', (array) ($result['tags'] ?? ''));
 
         if (! $isPokemonTcg && (stripos($fullText, 'pokemon') !== false || stripos($fullText, 'pokémon') !== false)) {
             if (stripos($fullText, 'card') !== false || stripos($fullText, 'tcg') !== false || stripos($fullText, 'booster') !== false || stripos($fullText, 'pack') !== false || stripos($fullText, 'box') !== false) {
@@ -233,12 +236,36 @@ EOT;
             // 4. Match distinctive set names from full title/text
             if (! $setMatch) {
                 $distSetNames = [
-                    '151', 'eevee heroes', 'vstar universe', 'shiny treasure', 'clay burst',
-                    'snow hazard', 'triplet beat', 'raging surf', 'stellar miracle', 'paradise dragona',
-                    'super electric breaker', 'dream league', 'tag all stars', 'vmax climax', 'shiny star v',
-                    'ruler of the black flame', 'wild force', 'cyber judge', 'crimson haze', 'mask of change',
-                    'night wanderer', 'lost abyss', 'dark phantasma', 'time gazer', 'space juggler',
-                    'battle region', 'star birth', 'fusion arts', 'blue sky stream', 'skyscraping perfection',
+                    '151',
+                    'eevee heroes',
+                    'vstar universe',
+                    'shiny treasure',
+                    'clay burst',
+                    'snow hazard',
+                    'triplet beat',
+                    'raging surf',
+                    'stellar miracle',
+                    'paradise dragona',
+                    'super electric breaker',
+                    'dream league',
+                    'tag all stars',
+                    'vmax climax',
+                    'shiny star v',
+                    'ruler of the black flame',
+                    'wild force',
+                    'cyber judge',
+                    'crimson haze',
+                    'mask of change',
+                    'night wanderer',
+                    'lost abyss',
+                    'dark phantasma',
+                    'time gazer',
+                    'space juggler',
+                    'battle region',
+                    'star birth',
+                    'fusion arts',
+                    'blue sky stream',
+                    'skyscraping perfection',
                 ];
 
                 foreach ($distSetNames as $name) {
@@ -305,11 +332,12 @@ EOT;
     {
         if ($image instanceof UploadedFile) {
             $mimeType = $image->getMimeType() ?: 'image/jpeg';
-            $base64Data = base64_encode($image->get());
+            $rawBytes = $image->get();
+            $base64Data = $this->prepareOptimizedBase64($rawBytes, $mimeType);
 
             // Save image to public storage so it can be previewed/used
             $path = $image->store('products', 'public');
-            $storedUrl = asset('storage/'.$path);
+            $storedUrl = asset('storage/' . $path);
 
             return [$mimeType, $base64Data, $storedUrl];
         }
@@ -322,19 +350,69 @@ EOT;
             }
 
             $mimeType = $imageResponse->header('Content-Type') ?: 'image/jpeg';
-            $base64Data = base64_encode($imageResponse->body());
+            $base64Data = $this->prepareOptimizedBase64($imageResponse->body(), $mimeType);
 
             return [$mimeType, $base64Data, $image];
         }
 
         if (file_exists($image)) {
             $mimeType = mime_content_type($image) ?: 'image/jpeg';
-            $base64Data = base64_encode(file_get_contents($image));
+            $base64Data = $this->prepareOptimizedBase64(file_get_contents($image), $mimeType);
 
             return [$mimeType, $base64Data, null];
         }
 
         throw new RuntimeException('Invalid image provided.');
+    }
+
+    /**
+     * Resizes large image buffers to max 1280px to speed up base64 encoding and API upload.
+     */
+    protected function prepareOptimizedBase64(string $rawBytes, string &$mimeType): string
+    {
+        if (strlen($rawBytes) < 600 * 1024 || ! extension_loaded('gd')) {
+            return base64_encode($rawBytes);
+        }
+
+        try {
+            $src = @imagecreatefromstring($rawBytes);
+            if (! $src) {
+                return base64_encode($rawBytes);
+            }
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+
+            $maxDim = 1280;
+            if ($w > $maxDim || $h > $maxDim) {
+                if ($w >= $h) {
+                    $newW = $maxDim;
+                    $newH = (int) round(($h / $w) * $maxDim);
+                } else {
+                    $newH = $maxDim;
+                    $newW = (int) round(($w / $h) * $maxDim);
+                }
+
+                $dst = imagecreatetruecolor($newW, $newH);
+                imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $w, $h);
+                imagedestroy($src);
+                $src = $dst;
+            }
+
+            ob_start();
+            imagejpeg($src, null, 82);
+            $compressed = ob_get_clean();
+            imagedestroy($src);
+
+            if ($compressed && strlen($compressed) > 0) {
+                $mimeType = 'image/jpeg';
+                return base64_encode($compressed);
+            }
+        } catch (\Throwable $e) {
+            // Fallback to raw bytes
+        }
+
+        return base64_encode($rawBytes);
     }
 
     /**
@@ -350,7 +428,7 @@ EOT;
 
         $lines = [];
         foreach ($categories as $cat) {
-            $subNames = $cat->subcategories->map(fn ($s) => "{$s->desc} (ID: {$s->id})")->join(', ');
+            $subNames = $cat->subcategories->map(fn($s) => "{$s->desc} (ID: {$s->id})")->join(', ');
             $lines[] = "- {$cat->desc} (ID: {$cat->id}): [{$subNames}]";
         }
 
@@ -368,7 +446,7 @@ EOT;
             return '- The Pokémon Company, Bandai, Banpresto, Good Smile Company, Bushiroad, Takara Tomy, Konami, Kotobukiya';
         }
 
-        return $brands->map(fn ($b) => "- {$b->name} (ID: {$b->id})")->join("\n");
+        return $brands->map(fn($b) => "- {$b->name} (ID: {$b->id})")->join("\n");
     }
 
     /**
@@ -382,7 +460,7 @@ EOT;
             return '- Near Mint, Damaged, Lightly Played, Moderately Played, Heavily Played, MISB, BIB, Loose, Brandnew';
         }
 
-        return $conditions->map(fn ($c) => "- {$c->desc} (ID: {$c->id})")->join("\n");
+        return $conditions->map(fn($c) => "- {$c->desc} (ID: {$c->id})")->join("\n");
     }
 
     /**
