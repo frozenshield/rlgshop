@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\CustomerReviewController;
+use App\Http\Controllers\CustomerFavouriteController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
@@ -286,6 +287,9 @@ Route::post('/customer-cart', [CustomerCartController::class, 'store']);
 Route::get('/customer-cart', [CustomerCartController::class, 'index']);
 Route::put('/customer-cart/{customer_cart}', [CustomerCartController::class, 'update']);
 Route::delete('/customer-cart/{customer_cart}', [CustomerCartController::class, 'destroy']);
+
+Route::post('/customer-favourites', [CustomerFavouriteController::class, 'store']);
+Route::delete('/customer-favourites/{customer_favourite}', [CustomerFavouriteController::class, 'destroy']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {
