@@ -111,6 +111,15 @@ export const useAuthStore = defineStore("authStore", () => {
         try {
           localStorage.setItem("auth_user", JSON.stringify(currentUser.value));
         } catch {}
+
+        // After fetching user and confirming we are authenticated, fetch the user's cart
+        try {
+          const { useCartStore } = await import('@/modules/cart/cart.store');
+          const cartStore = useCartStore();
+          await cartStore.fetchCart();
+        } catch (e) {
+          console.warn('Could not fetch cart during auth', e);
+        }
       }
     } catch {
       // Backend not running or offline; keep cached user
@@ -175,6 +184,15 @@ export const useAuthStore = defineStore("authStore", () => {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("auth_user");
     } catch {}
+
+    // Clear the cart on logout
+    try {
+      const { useCartStore } = await import('@/modules/cart/cart.store');
+      const cartStore = useCartStore();
+      cartStore.clearCart();
+    } catch (e) {
+      console.warn('Could not clear cart during logout', e);
+    }
 
     currentUser.value = {
       id: 0,
