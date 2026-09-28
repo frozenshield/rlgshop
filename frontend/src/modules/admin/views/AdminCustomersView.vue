@@ -107,11 +107,17 @@ watch(activeTab, (tab) => {
   if (tab === "messages") {
     if (adminStore.conversations.length === 0) {
       adminStore.fetchConversations().then(() => {
-        if (adminStore.conversations.length > 0 && !adminStore.activeConversationId) {
+        if (
+          adminStore.conversations.length > 0 &&
+          !adminStore.activeConversationId
+        ) {
           selectConversation(adminStore.conversations[0].id);
         }
       });
-    } else if (!adminStore.activeConversationId && adminStore.conversations.length > 0) {
+    } else if (
+      !adminStore.activeConversationId &&
+      adminStore.conversations.length > 0
+    ) {
       selectConversation(adminStore.conversations[0].id);
     }
   }
@@ -191,12 +197,16 @@ const selectConversation = async (convId: number) => {
 
 const handleSendAdminReply = async (customText?: string) => {
   const content = (customText || adminReplyInput.value).trim();
-  if (!content || !adminStore.activeConversationId || isSendingAdminReply.value) return;
+  if (!content || !adminStore.activeConversationId || isSendingAdminReply.value)
+    return;
 
   isSendingAdminReply.value = true;
   adminReplyInput.value = "";
   try {
-    await adminStore.sendAdminChatMessage(adminStore.activeConversationId, content);
+    await adminStore.sendAdminChatMessage(
+      adminStore.activeConversationId,
+      content,
+    );
     scrollAdminChatToBottom();
   } finally {
     isSendingAdminReply.value = false;
@@ -205,7 +215,10 @@ const handleSendAdminReply = async (customText?: string) => {
 
 const handleUpdateStatus = async (status: "active" | "closed" | "resolved") => {
   if (!adminStore.activeConversationId) return;
-  await adminStore.updateChatConversationStatus(adminStore.activeConversationId, status);
+  await adminStore.updateChatConversationStatus(
+    adminStore.activeConversationId,
+    status,
+  );
 };
 
 const formatChatTime = (dateStr?: string) => {
@@ -215,9 +228,17 @@ const formatChatTime = (dateStr?: string) => {
     const now = new Date();
     const isToday = d.toDateString() === now.toDateString();
     if (isToday) {
-      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      });
     }
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   } catch {
     return dateStr;
   }
@@ -571,12 +592,16 @@ const deleteReview = async (id: number) => {
         class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] h-[720px]"
       >
         <!-- LEFT COLUMN: Conversation Threads List (4 cols) -->
-        <div class="lg:col-span-4 border-r border-slate-200 flex flex-col h-full bg-slate-50/50">
+        <div
+          class="lg:col-span-4 border-r border-slate-200 flex flex-col h-full bg-slate-50/50"
+        >
           <!-- Thread List Header & Search -->
           <div class="p-3.5 border-b border-slate-200 space-y-2.5 bg-white">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-black text-slate-900 uppercase tracking-wider">
+                <span
+                  class="text-xs font-black text-slate-900 uppercase tracking-wider"
+                >
                   Conversations
                 </span>
                 <span
@@ -593,7 +618,13 @@ const deleteReview = async (id: number) => {
                 :disabled="adminStore.isLoadingConversations"
                 @click="adminStore.fetchConversations()"
               >
-                <span :class="{ 'inline-block animate-spin': adminStore.isLoadingConversations }">🔄</span>
+                <span
+                  :class="{
+                    'inline-block animate-spin':
+                      adminStore.isLoadingConversations,
+                  }"
+                  >🔄</span
+                >
               </button>
             </div>
 
@@ -605,11 +636,15 @@ const deleteReview = async (id: number) => {
                 placeholder="Search by buyer name or message..."
                 class="w-full text-xs px-3 py-2 pl-8 rounded-xl bg-slate-100 border border-slate-200 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors"
               />
-              <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+              <span class="absolute left-2.5 top-2 text-slate-400 text-xs"
+                >🔍</span
+              >
             </div>
 
             <!-- Status filter tabs -->
-            <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]">
+            <div
+              class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]"
+            >
               <button
                 v-for="st in ['all', 'active', 'resolved', 'closed'] as const"
                 :key="st"
@@ -630,7 +665,10 @@ const deleteReview = async (id: number) => {
           <!-- Thread Items List -->
           <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
             <div
-              v-if="adminStore.isLoadingConversations && adminStore.conversations.length === 0"
+              v-if="
+                adminStore.isLoadingConversations &&
+                adminStore.conversations.length === 0
+              "
               class="p-8 text-center text-xs text-slate-400 font-medium"
             >
               <div class="inline-block animate-spin text-lg mb-1">⏳</div>
@@ -669,14 +707,14 @@ const deleteReview = async (id: number) => {
                     : 'bg-slate-800'
                 "
               >
-                {{ (conv.customer?.name || 'C').charAt(0).toUpperCase() }}
+                {{ (conv.customer?.name || "C").charAt(0).toUpperCase() }}
               </div>
 
               <!-- Thread Info -->
               <div class="flex-1 min-w-0 space-y-1">
                 <div class="flex items-center justify-between gap-1">
                   <span class="text-xs font-bold text-slate-900 truncate">
-                    {{ conv.customer?.name || 'Customer #' + conv.customer_id }}
+                    {{ conv.customer?.name || "Customer #" + conv.customer_id }}
                   </span>
                   <span class="text-[10px] text-slate-400 flex-shrink-0">
                     {{ formatChatTime(conv.updated_at) }}
@@ -687,7 +725,11 @@ const deleteReview = async (id: number) => {
                   <span
                     v-if="conv.customer?.customer_profile?.segment_rank"
                     class="px-1.5 py-0.2 rounded text-[9px] font-bold border"
-                    :class="getSegmentBadge(conv.customer.customer_profile.segment_rank)"
+                    :class="
+                      getSegmentBadge(
+                        conv.customer.customer_profile.segment_rank,
+                      )
+                    "
                   >
                     {{ conv.customer.customer_profile.segment_rank }}
                   </span>
@@ -697,8 +739,8 @@ const deleteReview = async (id: number) => {
                       conv.status === 'active'
                         ? 'bg-emerald-100 text-emerald-800'
                         : conv.status === 'resolved'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-slate-200 text-slate-700'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-200 text-slate-700'
                     "
                   >
                     {{ conv.status }}
@@ -706,7 +748,7 @@ const deleteReview = async (id: number) => {
                 </div>
 
                 <p class="text-xs text-slate-500 truncate leading-snug">
-                  {{ conv.latest_message?.content || 'No messages yet' }}
+                  {{ conv.latest_message?.content || "No messages yet" }}
                 </p>
               </div>
 
@@ -728,27 +770,43 @@ const deleteReview = async (id: number) => {
             v-if="!adminStore.activeConversation"
             class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3"
           >
-            <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl">
+            <div
+              class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl"
+            >
               💬
             </div>
-            <h3 class="text-sm font-bold text-slate-800">Select a Conversation</h3>
+            <h3 class="text-sm font-bold text-slate-800">
+              Select a Conversation
+            </h3>
             <p class="text-xs text-slate-500 max-w-sm">
-              Choose a buyer conversation from the left thread list to review their order history, inquiry, and reply in real-time.
+              Choose a buyer conversation from the left thread list to review
+              their order history, inquiry, and reply in real-time.
             </p>
           </div>
 
           <!-- State: Active Conversation Open -->
           <template v-else>
             <!-- Chat Room Header -->
-            <div class="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div
+              class="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-sm flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  {{ (adminStore.activeConversation.customer?.name || 'C').charAt(0).toUpperCase() }}
+                <div
+                  class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-sm flex items-center justify-center flex-shrink-0 shadow-2xs"
+                >
+                  {{
+                    (adminStore.activeConversation.customer?.name || "C")
+                      .charAt(0)
+                      .toUpperCase()
+                  }}
                 </div>
                 <div>
                   <div class="flex items-center gap-2">
                     <h3 class="text-xs sm:text-sm font-black text-slate-900">
-                      {{ adminStore.activeConversation.customer?.name || 'Collector' }}
+                      {{
+                        adminStore.activeConversation.customer?.name ||
+                        "Collector"
+                      }}
                     </h3>
                     <span
                       class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
@@ -756,24 +814,36 @@ const deleteReview = async (id: number) => {
                         adminStore.activeConversation.status === 'active'
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           : adminStore.activeConversation.status === 'resolved'
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
                       "
                     >
                       {{ adminStore.activeConversation.status }}
                     </span>
                   </div>
-                  <div class="text-[11px] text-slate-500 flex items-center gap-2">
-                    <span>{{ adminStore.activeConversation.customer?.email }}</span>
-                    <span v-if="adminStore.activeConversation.customer?.phone">&bull; {{ adminStore.activeConversation.customer.phone }}</span>
+                  <div
+                    class="text-[11px] text-slate-500 flex items-center gap-2"
+                  >
+                    <span>{{
+                      adminStore.activeConversation.customer?.email
+                    }}</span>
+                    <span v-if="adminStore.activeConversation.customer?.phone"
+                      >&bull;
+                      {{ adminStore.activeConversation.customer.phone }}</span
+                    >
                   </div>
                 </div>
               </div>
 
               <!-- Status Action Buttons -->
               <div class="flex items-center gap-2">
-                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Status:</span>
-                <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                <span
+                  class="text-[11px] text-slate-400 font-bold uppercase tracking-wider"
+                  >Status:</span
+                >
+                <div
+                  class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200"
+                >
                   <button
                     type="button"
                     class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -821,7 +891,10 @@ const deleteReview = async (id: number) => {
             >
               <!-- Loading spinner -->
               <div
-                v-if="adminStore.isLoadingChatMessages && adminStore.activeConversationMessages.length === 0"
+                v-if="
+                  adminStore.isLoadingChatMessages &&
+                  adminStore.activeConversationMessages.length === 0
+                "
                 class="py-12 text-center text-slate-400 font-medium"
               >
                 <div class="inline-block animate-spin text-xl mb-1">⏳</div>
@@ -834,8 +907,12 @@ const deleteReview = async (id: number) => {
                 class="py-12 text-center text-slate-400 space-y-1"
               >
                 <div class="text-2xl">💬</div>
-                <p class="font-bold text-slate-600">No messages in this chat room yet</p>
-                <p class="text-[11px]">Send a message below to greet this customer.</p>
+                <p class="font-bold text-slate-600">
+                  No messages in this chat room yet
+                </p>
+                <p class="text-[11px]">
+                  Send a message below to greet this customer.
+                </p>
               </div>
 
               <!-- Message Dialogue Bubbles -->
@@ -845,19 +922,39 @@ const deleteReview = async (id: number) => {
                   :key="msg.id"
                   class="flex flex-col"
                   :class="
-                    msg.sender_id === adminStore.activeConversation.customer_id ||
+                    msg.sender_id ===
+                      adminStore.activeConversation.customer_id ||
                     msg.sender?.user_type === 'customer'
                       ? 'items-start'
                       : 'items-end'
                   "
                 >
                   <!-- Bubble Sender Label -->
-                  <div class="flex items-center gap-1 text-[10px] text-slate-400 mb-1 px-1 font-semibold">
-                    <span v-if="msg.sender_id === adminStore.activeConversation.customer_id || msg.sender?.user_type === 'customer'">
-                      👤 {{ msg.sender?.name || adminStore.activeConversation.customer?.name || 'Customer' }}
+                  <div
+                    class="flex items-center gap-1 text-[10px] text-slate-400 mb-1 px-1 font-semibold"
+                  >
+                    <span
+                      v-if="
+                        msg.sender_id ===
+                          adminStore.activeConversation.customer_id ||
+                        msg.sender?.user_type === 'customer'
+                      "
+                    >
+                      👤
+                      {{
+                        msg.sender?.name ||
+                        adminStore.activeConversation.customer?.name ||
+                        "Customer"
+                      }}
                     </span>
                     <span v-else class="text-indigo-600 font-bold">
-                      🧑‍💼 {{ msg.sender?.name || adminStore.currentAdmin?.name || 'Shop Staff' }} (You)
+                      🧑‍💼
+                      {{
+                        msg.sender?.name ||
+                        adminStore.currentAdmin?.name ||
+                        "Shop Staff"
+                      }}
+                      (You)
                     </span>
                   </div>
 
@@ -865,26 +962,36 @@ const deleteReview = async (id: number) => {
                   <div
                     class="max-w-[80%] p-3.5 rounded-2xl shadow-2xs text-xs leading-relaxed"
                     :class="
-                      msg.sender_id === adminStore.activeConversation.customer_id ||
+                      msg.sender_id ===
+                        adminStore.activeConversation.customer_id ||
                       msg.sender?.user_type === 'customer'
                         ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
                         : 'bg-indigo-600 text-white rounded-tr-xs shadow-indigo-600/20'
                     "
                   >
-                    <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
+                    <p class="whitespace-pre-wrap break-words">
+                      {{ msg.content }}
+                    </p>
                   </div>
 
                   <!-- Bubble Timestamp & Read Receipt -->
-                  <div class="flex items-center gap-1 text-[9px] text-slate-400 mt-1 px-1">
+                  <div
+                    class="flex items-center gap-1 text-[9px] text-slate-400 mt-1 px-1"
+                  >
                     <span>{{ formatChatTime(msg.created_at) }}</span>
                     <span
                       v-if="
-                        msg.sender_id !== adminStore.activeConversation.customer_id &&
+                        msg.sender_id !==
+                          adminStore.activeConversation.customer_id &&
                         msg.sender?.user_type !== 'customer'
                       "
-                      :class="msg.is_read ? 'text-emerald-600 font-bold' : 'text-slate-400'"
+                      :class="
+                        msg.is_read
+                          ? 'text-emerald-600 font-bold'
+                          : 'text-slate-400'
+                      "
                     >
-                      &bull; {{ msg.is_read ? '✓✓ Seen by buyer' : '✓ Sent' }}
+                      &bull; {{ msg.is_read ? "✓✓ Seen by buyer" : "✓ Sent" }}
                     </span>
                   </div>
                 </div>
@@ -892,28 +999,44 @@ const deleteReview = async (id: number) => {
             </div>
 
             <!-- Quick Macro Reply Chips -->
-            <div class="px-4 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto text-[11px]">
-              <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] flex-shrink-0">
+            <div
+              class="px-4 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto text-[11px]"
+            >
+              <span
+                class="text-slate-400 font-bold uppercase tracking-wider text-[10px] flex-shrink-0"
+              >
                 Quick:
               </span>
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
-                @click="handleSendAdminReply('Hello! Your order has been securely packed and handed over to our courier partner. 🚚')"
+                @click="
+                  handleSendAdminReply(
+                    'Hello! Your order has been securely packed and handed over to our courier partner. 🚚',
+                  )
+                "
               >
                 📦 Order Packed &amp; Shipped
               </button>
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
-                @click="handleSendAdminReply('All our collectible booster boxes and single cards are 100% authentic Japanese imports. ✨')"
+                @click="
+                  handleSendAdminReply(
+                    'All our collectible booster boxes and single cards are 100% authentic Japanese imports. ✨',
+                  )
+                "
               >
                 ✨ Authenticity Guaranteed
               </button>
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
-                @click="handleSendAdminReply('Thank you for choosing RLG Hobby Shop! Please let us know if you need anything else.')"
+                @click="
+                  handleSendAdminReply(
+                    'Thank you for choosing RLG Hobby Shop! Please let us know if you need anything else.',
+                  )
+                "
               >
                 🙏 Thank You Note
               </button>
@@ -938,7 +1061,9 @@ const deleteReview = async (id: number) => {
                   class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
                   :disabled="isSendingAdminReply || !adminReplyInput.trim()"
                 >
-                  <span v-if="isSendingAdminReply" class="animate-spin">⏳</span>
+                  <span v-if="isSendingAdminReply" class="animate-spin"
+                    >⏳</span
+                  >
                   <span v-else>Send ➤</span>
                 </button>
               </form>

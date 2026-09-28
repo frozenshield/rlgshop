@@ -300,4 +300,3 @@ export interface AdminChatConversation {
   };
   latest_message?: AdminChatMessage;
 }
-

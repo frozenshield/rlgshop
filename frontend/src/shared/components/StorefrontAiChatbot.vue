@@ -153,7 +153,11 @@ const hasStaffReply = computed(() => {
     ? parseInt(String(authStore.currentUser.id).replace(/\D/g, ""))
     : 0;
   const lastMsg = chatRoomMessages.value[chatRoomMessages.value.length - 1];
-  return !!lastMsg && lastMsg.sender_id !== currentUserId && lastMsg.sender?.user_type !== "customer";
+  return (
+    !!lastMsg &&
+    lastMsg.sender_id !== currentUserId &&
+    lastMsg.sender?.user_type !== "customer"
+  );
 });
 
 const scrollChatToBottom = () => {
@@ -626,7 +630,10 @@ const formatTimeAgo = (dateStr?: string) => {
                   ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               "
-              @click="activeMode = 'staff'; fetchChatRoomAndMessages()"
+              @click="
+                activeMode = 'staff';
+                fetchChatRoomAndMessages();
+              "
             >
               <span>💬</span>
               <span>Live Staff Chat</span>
@@ -717,7 +724,9 @@ const formatTimeAgo = (dateStr?: string) => {
               :disabled="isLoadingChatRoom"
               @click="fetchChatRoomAndMessages"
             >
-              <span :class="{ 'inline-block animate-spin': isLoadingChatRoom }">🔄</span>
+              <span :class="{ 'inline-block animate-spin': isLoadingChatRoom }"
+                >🔄</span
+              >
             </button>
           </div>
 
@@ -731,9 +740,12 @@ const formatTimeAgo = (dateStr?: string) => {
             >
               🔒
             </div>
-            <h4 class="font-bold text-slate-200 text-sm">Sign in for Live Chat</h4>
+            <h4 class="font-bold text-slate-200 text-sm">
+              Sign in for Live Chat
+            </h4>
             <p class="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-              Sign in to start a private, interactive chat thread directly with our shop customer service specialists.
+              Sign in to start a private, interactive chat thread directly with
+              our shop customer service specialists.
             </p>
             <button
               type="button"
@@ -767,16 +779,25 @@ const formatTimeAgo = (dateStr?: string) => {
               >
                 <div class="text-3xl">💬</div>
                 <div class="space-y-1">
-                  <p class="font-bold text-slate-200">Start a conversation with our staff</p>
+                  <p class="font-bold text-slate-200">
+                    Start a conversation with our staff
+                  </p>
                   <p class="text-[11px] text-slate-400 max-w-xs mx-auto">
-                    Ask about tracking updates, card condition scans, pre-orders, or order changes.
+                    Ask about tracking updates, card condition scans,
+                    pre-orders, or order changes.
                   </p>
                 </div>
-                <div class="flex flex-col gap-1.5 pt-2 max-w-xs mx-auto text-left">
+                <div
+                  class="flex flex-col gap-1.5 pt-2 max-w-xs mx-auto text-left"
+                >
                   <button
                     type="button"
                     class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
-                    @click="sendChatMessage('Can I check the delivery status of my latest order?')"
+                    @click="
+                      sendChatMessage(
+                        'Can I check the delivery status of my latest order?',
+                      )
+                    "
                   >
                     <span>🚚 Check status of my order</span>
                     <span class="text-indigo-400">&rarr;</span>
@@ -784,7 +805,11 @@ const formatTimeAgo = (dateStr?: string) => {
                   <button
                     type="button"
                     class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
-                    @click="sendChatMessage('Do you have stock for Japanese Pokémon booster boxes?')"
+                    @click="
+                      sendChatMessage(
+                        'Do you have stock for Japanese Pokémon booster boxes?',
+                      )
+                    "
                   >
                     <span>📦 Japanese Pokémon booster stock</span>
                     <span class="text-indigo-400">&rarr;</span>
@@ -792,7 +817,11 @@ const formatTimeAgo = (dateStr?: string) => {
                   <button
                     type="button"
                     class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
-                    @click="sendChatMessage('Can you verify card authenticity or grading condition?')"
+                    @click="
+                      sendChatMessage(
+                        'Can you verify card authenticity or grading condition?',
+                      )
+                    "
                   >
                     <span>✨ Card condition & authenticity check</span>
                     <span class="text-indigo-400">&rarr;</span>
@@ -807,8 +836,12 @@ const formatTimeAgo = (dateStr?: string) => {
                   :key="msg.id"
                   class="flex flex-col"
                   :class="
-                    msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
-                    msg.sender?.user_type === 'customer'
+                    msg.sender_id ===
+                      (authStore.currentUser?.id
+                        ? parseInt(
+                            String(authStore.currentUser.id).replace(/\D/g, ''),
+                          )
+                        : 0) || msg.sender?.user_type === 'customer'
                       ? 'items-end'
                       : 'items-start'
                   "
@@ -816,40 +849,69 @@ const formatTimeAgo = (dateStr?: string) => {
                   <!-- Bubble Header Label for Staff -->
                   <div
                     v-if="
-                      msg.sender_id !== (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) &&
-                      msg.sender?.user_type !== 'customer'
+                      msg.sender_id !==
+                        (authStore.currentUser?.id
+                          ? parseInt(
+                              String(authStore.currentUser.id).replace(
+                                /\D/g,
+                                '',
+                              ),
+                            )
+                          : 0) && msg.sender?.user_type !== 'customer'
                     "
                     class="flex items-center gap-1 text-[10px] text-indigo-300 font-bold mb-1 pl-1"
                   >
                     <span>🧑‍💼</span>
-                    <span>{{ msg.sender?.name || 'Shop Staff' }}</span>
+                    <span>{{ msg.sender?.name || "Shop Staff" }}</span>
                   </div>
 
                   <!-- Speech Bubble -->
                   <div
                     class="max-w-[85%] p-3 rounded-2xl shadow-sm text-xs leading-relaxed"
                     :class="
-                      msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
-                      msg.sender?.user_type === 'customer'
+                      msg.sender_id ===
+                        (authStore.currentUser?.id
+                          ? parseInt(
+                              String(authStore.currentUser.id).replace(
+                                /\D/g,
+                                '',
+                              ),
+                            )
+                          : 0) || msg.sender?.user_type === 'customer'
                         ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-tr-xs'
                         : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-xs'
                     "
                   >
-                    <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
+                    <p class="whitespace-pre-wrap break-words">
+                      {{ msg.content }}
+                    </p>
                   </div>
 
                   <!-- Bubble Timestamp & Read Receipt -->
-                  <div class="flex items-center gap-1 text-[9px] text-slate-500 mt-1 px-1">
+                  <div
+                    class="flex items-center gap-1 text-[9px] text-slate-500 mt-1 px-1"
+                  >
                     <span>{{ formatMessageTime(msg.created_at) }}</span>
                     <span
                       v-if="
-                        msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
-                        msg.sender?.user_type === 'customer'
+                        msg.sender_id ===
+                          (authStore.currentUser?.id
+                            ? parseInt(
+                                String(authStore.currentUser.id).replace(
+                                  /\D/g,
+                                  '',
+                                ),
+                              )
+                            : 0) || msg.sender?.user_type === 'customer'
                       "
-                      :class="msg.is_read ? 'text-emerald-400 font-bold' : 'text-slate-500'"
+                      :class="
+                        msg.is_read
+                          ? 'text-emerald-400 font-bold'
+                          : 'text-slate-500'
+                      "
                       :title="msg.is_read ? 'Read by staff' : 'Delivered'"
                     >
-                      {{ msg.is_read ? '✓✓ Read' : '✓ Sent' }}
+                      {{ msg.is_read ? "✓✓ Read" : "✓ Sent" }}
                     </span>
                   </div>
                 </div>
@@ -875,11 +937,15 @@ const formatTimeAgo = (dateStr?: string) => {
                   class="p-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50 flex items-center justify-center flex-shrink-0"
                   :disabled="isSendingChatMessage || !chatInputText.trim()"
                 >
-                  <span v-if="isSendingChatMessage" class="animate-spin text-sm">⏳</span>
+                  <span v-if="isSendingChatMessage" class="animate-spin text-sm"
+                    >⏳</span
+                  >
                   <span v-else class="text-sm">➤</span>
                 </button>
               </form>
-              <div class="flex items-center justify-between text-[10px] text-slate-500 mt-2 px-1">
+              <div
+                class="flex items-center justify-between text-[10px] text-slate-500 mt-2 px-1"
+              >
                 <span>💬 Back-and-forth direct dialogue</span>
                 <span>Press Enter to send</span>
               </div>
