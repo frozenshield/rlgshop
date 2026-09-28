@@ -49,7 +49,7 @@ Route::post('/auth/staff-login', function (Request $request) {
     // Query staff table by exact email, username prefix before @, or name
     $staff = Staff::with(['role.accessMatrices.module'])
         ->where('email', $login)
-        ->orWhere('email', 'like', $login.'@%')
+        ->orWhere('email', 'like', $login . '@%')
         ->orWhere('name', $login)
         ->first();
 
@@ -117,16 +117,35 @@ Route::post('/auth/staff-login', function (Request $request) {
         }
     }
 
-    $user = User::firstOrCreate(
-        ['email' => $staff->email],
-        [
-            'name' => $staff->name,
-            'password' => $staff->password,
-            'user_type' => 'staff',
-        ]
-    );
-    if ($user->user_type !== 'staff') {
-        $user->update(['user_type' => 'staff']);
+    // Determine user_type: Admin Chief uses 'admin', other staff use 'staff' (or fallback to 'admin' if enum restricted)
+    $desiredType = ($staff->ref_staff_role_id == 1 || strtolower($staff->role?->name ?? '') === 'admin') ? 'admin' : 'staff';
+
+    try {
+        $user = User::firstOrCreate(
+            ['email' => $staff->email],
+            [
+                'name' => $staff->name,
+                'password' => $staff->password,
+                'user_type' => $desiredType,
+            ]
+        );
+        if ($user->user_type !== $desiredType) {
+            $user->update(['user_type' => $desiredType]);
+        }
+    } catch (\Illuminate\Database\QueryException $e) {
+        // Fallback for MySQL enum constraint when 'staff' is not yet in enum
+        $fallbackType = 'admin';
+        $user = User::firstOrCreate(
+            ['email' => $staff->email],
+            [
+                'name' => $staff->name,
+                'password' => $staff->password,
+                'user_type' => $fallbackType,
+            ]
+        );
+        if ($user->user_type !== $fallbackType) {
+            $user->update(['user_type' => $fallbackType]);
+        }
     }
     $token = $user->createToken('staff_token')->plainTextToken;
 
