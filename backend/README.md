@@ -1,58 +1,128 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# E-Commerce Backend API Documentation
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This is the comprehensive backend API for the E-Commerce platform, built with [Laravel](https://laravel.com). It serves as the core engine powering catalog management, complex order lifecycles, customer profiles (CRM), staff Role-Based Access Control (RBAC), and AI-integrated features (image analysis & conversational chatbots).
 
-## About Laravel
+## Key Features & App Processes
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The backend operates via a set of well-defined RESTful endpoints that trigger specific workflows:
+- **Authentication & RBAC**: Dual-authentication strategy. Customers authenticate via Laravel Sanctum tokens or Socialite (Google). Staff authenticate via a separate, highly restrictive path (`AuthController::login`) evaluated against custom Access Matrices (`AccessMatrixService`) which return allowed paths, modules, and granular permissions per role.
+- **Product & Catalog Management**: A deeply structured catalog where products (`ProductController`) sit within Categories/Subcategories and are tagged with Brands, Conditions, and distinct attributes (like `PokemonSet` tracking for TCG items). The `ProductService` orchestrates these associations.
+- **Order Lifecycle (Fulfillment)**: Orders transition through distinct states (Pending -> Processing -> Shipped -> Delivered) managed by the `CustomerOrderService`. This includes generating packing slips, attaching tracking info (`RefShippingCarrier`), and orchestrating refunds.
+- **Customer CRM**: Centralized management of users (`CustomerProfileController`) containing addresses and preferred settings, linked to actionable segments (Segment Ranks).
+- **Communication & Reviews**: Bidirectional communication. Customers submit reviews and support messages; staff can reply, update statuses (Pending -> Resolved), and manage public feedback (`CustomerMessageService`, `CustomerReviewService`).
+- **Marketing Engine**: Dynamic validation of promo codes based on cart totals and validity dates (`PromoCodeService`).
+- **AI Integration**:
+    - **Image Analysis**: Uses `GeminiProductAnalyzer` to parse uploaded product images and extract/suggest structured metadata (Name, Brand, Category, Condition).
+    - **Conversational Chatbot**: The `StorefrontChatbotService` provides a RAG-style conversational agent using Gemini or a local fallback, dynamically pulling current catalog stock, promos, and Pokemon Set data into the conversation context to assist users with stock inquiries or shipping policies.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Architecture Reference
 
-## Learning Laravel
+Below is an index of the primary classes responsible for handling HTTP requests, data validation, and core business logic.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Controllers (`app/Http/Controllers/Api/`)
+Controllers handle the HTTP layer, injecting Services to perform actions and returning JSON responses.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **`AccessMatrixController`**
+  - `index()` - List RBAC matrix configurations.
+  - `getStaffModules()` - Retrieve allowed modules for a specific staff member.
+  - `update()` - Modify role permissions.
+- **`AiChatbotController`**
+  - `chat()` - Process conversational prompts and return AI responses.
+  - `quickPrompts()` - Return pre-configured quick prompt questions.
+- **`AiProductController`**
+  - `analyzeImage()` - Extract product metadata from an uploaded image via Gemini.
+- **`CustomerMessageController`**
+  - `index()`, `store()`, `reply()`, `updateStatus()` - Manage inbox communications.
+- **`CustomerOrderController`**
+  - `index()`, `store()`, `show()`, `updateStatus()`, `attachFulfillment()`, `processRefund()`, `markPackingSlipPrinted()` - Comprehensive order processing.
+- **`CustomerProfileController`**
+  - `index()`, `store()`, `show()`, `update()`, `destroy()`, `updateSegmentRank()`, `getCurrentProfile()`, `updateCurrentProfile()`, `getCurrentSettings()`, `updateCurrentSettings()` - User CRM and preferences.
+- **`CustomerReviewController`**
+  - `index()`, `store()`, `reply()`, `destroy()` - Manage product reviews.
+- **`PokemonSetController`**
+  - `index()`, `show()`, `series()` - Query TCG-specific metadata tables.
+- **`ProductController`**
+  - `index()`, `store()`, `show()`, `update()`, `checkDuplicate()`, `destroy()` - Catalog management.
+- **`PromoCodeController`**
+  - `index()`, `store()`, `show()`, `update()`, `toggle()`, `destroy()`, `validateCode()` - Discount code workflows.
+- **`StaffController`**
+  - `index()`, `store()`, `show()`, `update()`, `destroy()` - Manage staff roster.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### Auth Controllers (`app/Http/Controllers/Auth/`)
+- **`AuthController`**: `register()`, `login()` - Handles standard/staff logins.
+- **`SocialAuthController`**: `redirectToGoogle()`, `handleGoogleCallback()` - OAuth flows.
 
-## Agentic Development
+### Form Requests (`app/Http/Requests/`)
+Requests encapsulate validation rules, ensuring data integrity before reaching the controller.
+- **AI**: `AiChatRequest`
+- **Access Matrix**: `UpdateAccessMatrixRequest`
+- **Orders**: `AttachOrderFulfillmentRequest`, `RefundCustomerOrderRequest`, `StoreCustomerOrderRequest`, `UpdateCustomerOrderStatusRequest`
+- **Products**: `CheckDuplicateProductRequest`, `StoreProductRequest`, `UpdateProductRequest`
+- **Communications**: `ReplyCustomerMessageRequest`, `ReplyCustomerReviewRequest`, `StoreCustomerMessageRequest`, `StoreCustomerReviewRequest`, `UpdateCustomerMessageStatusRequest`
+- **CRM**: `StoreCustomerProfileRequest`, `UpdateCurrentProfileRequest`, `UpdateCurrentSettingsRequest`, `UpdateCustomerProfileRequest`, `UpdateSegmentRankRequest`
+- **Promo Codes**: `StorePromoCodeRequest`, `UpdatePromoCodeRequest`, `ValidatePromoCodeRequest`
+- **Staff**: `StoreStaffRequest`, `UpdateStaffRequest`
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Services (`app/Services/`)
+Services contain the heavy business logic, transaction handling, and third-party integrations, keeping controllers thin.
 
+- **`AccessMatrixService`**
+  - `getMatrixRules()`, `getStaffModules()`, `updateRule()`
+- **`CustomerMessageService`**
+  - `getMessages()`, `createMessage()`, `replyToMessage()`, `updateMessageStatus()`
+- **`CustomerOrderService`**
+  - `getOrders()`, `createOrder()`, `updateStatus()`, `attachFulfillment()`, `processRefund()`, `markPackingSlipPrinted()`
+- **`CustomerProfileService`**
+  - `getProfiles()`, `createProfile()`, `updateProfile()`, `deleteProfile()`, `updateSegmentRank()`, `getCurrentProfile()`, `updateCurrentProfile()`, `getCurrentSettings()`, `updateCurrentSettings()`
+- **`CustomerReviewService`**
+  - `getReviews()`, `createReview()`, `replyToReview()`, `deleteReview()`
+- **`GeminiProductAnalyzer`**
+  - `analyze()`, `processImage()`, `buildCategoriesContext()`, `buildBrandsContext()`
+- **`StaffService`**
+  - `getStaffMembers()`, `createStaff()`, `updateStaff()`, `deleteStaff()`, `resolveRoleId()`
+- **`StorefrontChatbotService`**
+  - `reply()`, `generateWithGemini()`, `generateLocalFallback()`, `buildCatalogContext()`, `buildPromoContext()`, `matchProducts()`, `formatProductItem()`, `generateSuggestedActions()`, `buildPokemonSetContext()`, `matchPokemonSets()`
+
+---
+
+## Tech Stack
+
+- **PHP 8.3+**
+- **Laravel 11.x**
+- **Database**: SQLite (Development) / MySQL / PostgreSQL
+- **Authentication**: Laravel Sanctum (Token-based) & Custom Matrix (Staff RBAC)
+
+## Setup & Installation
+
+1. **Install PHP Dependencies**
+   ```bash
+   composer install
+   ```
+2. **Environment Configuration**
+   Copy `.env.example` to `.env` and generate the key:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+3. **Database Migration & Seeding**
+   ```bash
+   php artisan migrate --seed
+   ```
+   *(Note: The DatabaseSeeder populates roles, access matrices, modules, catalogs, and test orders.)*
+
+## Running the Application & Tests
+
+Start local development server:
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Execute the comprehensive PHPUnit test suite:
+```bash
+php artisan test
+```
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## AI Agent Development Guidelines
+Please refer to `AGENTS.md` and `.ai/rules` (if present) for application-specific rules, formatting (`pint --format agent`), and specialized testing instructions (`testing-best-practices` skill).
