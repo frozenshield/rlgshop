@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\Api\CustomerCartController;
 use App\Models\AccessMatrix;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
@@ -269,6 +270,12 @@ Route::patch('/customer-orders/{customer_order}/status', [CustomerOrderControlle
 Route::post('/customer-orders/{customer_order}/fulfillment', [CustomerOrderController::class, 'attachFulfillment']);
 Route::post('/customer-orders/{customer_order}/refund', [CustomerOrderController::class, 'processRefund']);
 Route::post('/customer-orders/{customer_order}/print-packing-slip', [CustomerOrderController::class, 'markPackingSlipPrinted']);
+
+// Customer Cart API
+Route::post('/customer-cart', [CustomerCartController::class, 'store']);
+Route::get('/customer-cart', [CustomerCartController::class, 'index']);
+Route::put('/customer-cart/{customer_cart}', [CustomerCartController::class, 'update']);
+Route::delete('/customer-cart/{customer_cart}', [CustomerCartController::class, 'destroy']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {
