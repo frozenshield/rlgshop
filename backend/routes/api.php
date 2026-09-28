@@ -288,6 +288,7 @@ Route::get('/customer-cart', [CustomerCartController::class, 'index']);
 Route::put('/customer-cart/{customer_cart}', [CustomerCartController::class, 'update']);
 Route::delete('/customer-cart/{customer_cart}', [CustomerCartController::class, 'destroy']);
 
+Route::get('/customer-favourites', [CustomerFavouriteController::class, 'index']);
 Route::post('/customer-favourites', [CustomerFavouriteController::class, 'store']);
 Route::delete('/customer-favourites/{customer_favourite}', [CustomerFavouriteController::class, 'destroy']);
 

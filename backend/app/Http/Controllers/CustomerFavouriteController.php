@@ -9,6 +9,19 @@ use Illuminate\Http\Request;
 class CustomerFavouriteController extends Controller
 {
     /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $customerFavourites = CustomerFavourite::all();
+
+        return response()->json([
+            'message' => 'Customer favourites retrieved successfully',
+            'data' => $customerFavourites
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(StoreCustomerFavouriteRequest $request)
