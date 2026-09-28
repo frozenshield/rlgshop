@@ -38,7 +38,7 @@ return [
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_REDIRECT_URI', '/api/auth/google/callback'),
+        'redirect' => str_replace('${APP_URL}', env('APP_URL', ''), env('GOOGLE_REDIRECT_URI', '/api/auth/google/callback')),
     ],
 
     'gemini' => [
