@@ -239,5 +239,9 @@ class ProductSeeder extends Seeder
                 $p
             );
         }
+
+        if (Product::count() < 500) {
+            \Illuminate\Support\Facades\Artisan::call('products:populate', ['count' => 500]);
+        }
     }
 }
