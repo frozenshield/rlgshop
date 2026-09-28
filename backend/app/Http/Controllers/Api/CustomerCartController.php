@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
 
 use App\Http\Requests\CustomerCartRequest;
 use App\Models\CustomerCart;
@@ -14,7 +16,19 @@ class CustomerCartController extends Controller
         $validatedData = $request->validated();
         $validatedData['customer_id'] = $user->id;
 
-        $customerCart = CustomerCart::create($validatedData);
+        $customerCart = CustomerCart::where('customer_id', $user->id)
+            ->where('product_id', $validatedData['product_id'])
+            ->first();
+
+        if ($customerCart) {
+            $customerCart->update([
+                'quantity' => $validatedData['quantity']
+            ]);
+        } else {
+            $customerCart = CustomerCart::create($validatedData);
+        }
+
+        $customerCart->load('product');
 
         return response()->json([
             'success' => true,
@@ -26,7 +40,7 @@ class CustomerCartController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $customerCartItems = CustomerCart::where('customer_id', $user->id)->get();
+        $customerCartItems = CustomerCart::with('product')->where('customer_id', $user->id)->get();
 
         return response()->json([
             'success' => true,
@@ -48,6 +62,8 @@ class CustomerCartController extends Controller
 
         $validatedData = $request->validated();
         $customerCart->update($validatedData);
+
+        $customerCart->load('product');
 
         return response()->json([
             'success' => true,

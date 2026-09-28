@@ -71,6 +71,7 @@ export interface RefPokemonSeriesItem {
 }
 
 export interface CartItem {
+  cartItemId?: number;
   toy: ToyProduct;
   quantity: number;
   selected?: boolean;

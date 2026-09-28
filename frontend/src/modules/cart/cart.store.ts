@@ -2,11 +2,13 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useStorage } from "@vueuse/core";
 import type { CartItem, ToyProduct } from "@/shared/types/toy.types";
+import { useAuthStore } from "@/modules/auth/auth.store";
 
 export const useCartStore = defineStore("cartStore", () => {
   // Persisted cart in localStorage so trainer's items stay safe
   const items = useStorage<CartItem[]>("rlg-shop-cart-items", []);
   const isDrawerOpen = ref(false);
+  const authStore = useAuthStore();
   const appliedPromo = useStorage<string | null>("rlg-shop-promo", null);
   const promoDiscountPercentage = ref(0);
 
@@ -96,8 +98,35 @@ export const useCartStore = defineStore("cartStore", () => {
     isDrawerOpen.value = !isDrawerOpen.value;
   };
 
-  const addItem = (toy: ToyProduct, quantity = 1) => {
+  const fetchCart = async () => {
+    if (!authStore.isAuthenticated) return;
+    try {
+      const res = await fetch("/api/customer-cart", {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          Accept: "application/json",
+        },
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          items.value = result.data.map((backendItem: any) => ({
+            cartItemId: backendItem.id,
+            toy: backendItem.product,
+            quantity: backendItem.quantity,
+            selected: true,
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch customer cart", e);
+    }
+  };
+
+  const addItem = async (toy: ToyProduct, quantity = 1) => {
     const existingIndex = items.value.findIndex((i) => i.toy.id === toy.id);
+    let cartItemId = undefined;
+
     if (existingIndex > -1) {
       const currentQty = items.value[existingIndex].quantity;
       items.value[existingIndex].quantity = Math.min(
@@ -105,6 +134,7 @@ export const useCartStore = defineStore("cartStore", () => {
         currentQty + quantity,
       );
       items.value[existingIndex].selected = true;
+      cartItemId = items.value[existingIndex].cartItemId;
     } else {
       items.value.push({
         toy,
@@ -113,6 +143,38 @@ export const useCartStore = defineStore("cartStore", () => {
       });
     }
     openDrawer();
+
+    if (authStore.isAuthenticated) {
+      try {
+        const method = cartItemId ? "PUT" : "POST";
+        const url = cartItemId ? `/api/customer-cart/${cartItemId}` : "/api/customer-cart";
+        const body = {
+          product_id: toy.id,
+          quantity: existingIndex > -1 ? items.value[existingIndex].quantity : Math.min(toy.stock, quantity)
+        };
+        const res = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
+            Accept: "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.data) {
+            const index = items.value.findIndex((i) => i.toy.id === toy.id);
+            if (index > -1) {
+              items.value[index].cartItemId = result.data.id;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to sync cart add", e);
+      }
+    }
   };
 
   const toggleSelectItem = (toyId: string) => {
@@ -130,34 +192,105 @@ export const useCartStore = defineStore("cartStore", () => {
     });
   };
 
-  const removeSelectedItems = () => {
+  const removeSelectedItems = async () => {
+    const itemsToRemove = items.value.filter((i) => i.selected !== false);
     items.value = items.value.filter((i) => i.selected === false);
     if (items.value.length === 0) {
       appliedPromo.value = null;
       promoDiscountPercentage.value = 0;
     }
+
+    if (authStore.isAuthenticated) {
+        for (const item of itemsToRemove) {
+            if (item.cartItemId) {
+                try {
+                    await fetch(`/api/customer-cart/${item.cartItemId}`, {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${authStore.token}`,
+                        }
+                    });
+                } catch (e) {
+                    console.warn(`Failed to sync removal of cart item ${item.cartItemId}`, e);
+                }
+            }
+        }
+    }
   };
 
-  const updateQuantity = (toyId: string, quantity: number) => {
+  const updateQuantity = async (toyId: string, quantity: number) => {
     const existingIndex = items.value.findIndex((i) => i.toy.id === toyId);
     if (existingIndex > -1) {
       if (quantity <= 0) {
-        removeItem(toyId);
+        await removeItem(toyId);
       } else {
         const maxStock = items.value[existingIndex].toy.stock;
         items.value[existingIndex].quantity = Math.min(maxStock, quantity);
+
+        if (authStore.isAuthenticated) {
+            const cartItemId = items.value[existingIndex].cartItemId;
+            if (cartItemId) {
+                try {
+                    await fetch(`/api/customer-cart/${cartItemId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${authStore.token}`,
+                        },
+                        body: JSON.stringify({
+                            product_id: toyId,
+                            quantity: items.value[existingIndex].quantity
+                        })
+                    });
+                } catch (e) {
+                    console.warn(`Failed to sync quantity update for cart item ${cartItemId}`, e);
+                }
+            }
+        }
       }
     }
   };
 
-  const removeItem = (toyId: string) => {
+  const removeItem = async (toyId: string) => {
+    const itemToRemove = items.value.find((i) => i.toy.id === toyId);
     items.value = items.value.filter((i) => i.toy.id !== toyId);
+
+    if (authStore.isAuthenticated && itemToRemove?.cartItemId) {
+        try {
+            await fetch(`/api/customer-cart/${itemToRemove.cartItemId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${authStore.token}`,
+                }
+            });
+        } catch (e) {
+            console.warn(`Failed to sync removal of cart item ${itemToRemove.cartItemId}`, e);
+        }
+    }
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    const currentItems = [...items.value];
     items.value = [];
     appliedPromo.value = null;
     promoDiscountPercentage.value = 0;
+
+    if (authStore.isAuthenticated) {
+        for (const item of currentItems) {
+            if (item.cartItemId) {
+                try {
+                    await fetch(`/api/customer-cart/${item.cartItemId}`, {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${authStore.token}`,
+                        }
+                    });
+                } catch (e) {
+                    console.warn(`Failed to sync clear of cart item ${item.cartItemId}`, e);
+                }
+            }
+        }
+    }
   };
 
   const applyPromo = (code: string): { success: boolean; message: string } => {
@@ -201,6 +334,7 @@ export const useCartStore = defineStore("cartStore", () => {
     openDrawer,
     closeDrawer,
     toggleDrawer,
+    fetchCart,
     addItem,
     toggleSelectItem,
     toggleSelectAll,
