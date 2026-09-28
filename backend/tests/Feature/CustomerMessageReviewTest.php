@@ -70,14 +70,19 @@ class CustomerMessageReviewTest extends TestCase
     {
         $user = User::first();
 
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@rlghobby.com'],
+            ['name' => 'Admin Chief', 'user_type' => 'admin']
+        );
+
         // 1. Fetch messages
-        $response = $this->getJson('/api/customer-messages');
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/customer-messages');
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
         $this->assertNotEmpty($response->json('data'));
 
         // 2. Create message
-        $storeResponse = $this->postJson('/api/customer-messages', [
+        $storeResponse = $this->actingAs($user, 'sanctum')->postJson('/api/customer-messages', [
             'user_id' => $user->id,
             'subject' => 'Restock Question',
             'message' => 'When will Pokémon 151 booster boxes be restocked?',
@@ -241,4 +246,3 @@ class CustomerMessageReviewTest extends TestCase
         $response->assertJsonValidationErrors(['segment_rank']);
     }
 }
-

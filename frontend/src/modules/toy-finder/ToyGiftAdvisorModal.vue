@@ -72,7 +72,7 @@ const tcgFranchises = TCG_SERIES_DATA;
 
 const handleAddRecommended = (toyId: string) => {
   const toy = recommendedToys.value.find((t) => t.id === toyId);
-  if (toy) {
+  if (toy && toy.stock > 0) {
     cartStore.addItem(toy, 1);
   }
 };
@@ -364,11 +364,13 @@ const handleAddRecommended = (toyId: string) => {
                   }}</span>
                 </div>
                 <BaseButton
-                  variant="primary"
+                  :variant="toy.stock > 0 ? 'primary' : 'secondary'"
                   size="sm"
+                  :disabled="toy.stock <= 0"
+                  class="disabled:opacity-50 disabled:cursor-not-allowed"
                   @click="handleAddRecommended(toy.id)"
                 >
-                  Add to Cart
+                  {{ toy.stock > 0 ? "Add to Cart" : "Sold Out" }}
                 </BaseButton>
               </div>
             </div>

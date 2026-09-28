@@ -257,3 +257,47 @@ export interface StoreSettings {
     cod: boolean;
   };
 }
+
+export interface AdminChatMessage {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: {
+    id: number;
+    name: string;
+    email: string;
+    user_type?: string;
+  };
+}
+
+export interface AdminChatConversation {
+  id: number;
+  customer_id: number;
+  admin_id?: number | null;
+  status: "active" | "closed" | "resolved";
+  created_at: string;
+  updated_at: string;
+  unread_count?: number;
+  customer?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    customer_profile?: {
+      name?: string;
+      phone?: string;
+      avatar?: string;
+      segment_rank?: string;
+    };
+  };
+  admin?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  latest_message?: AdminChatMessage;
+}
+

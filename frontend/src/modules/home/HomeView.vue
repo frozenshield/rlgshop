@@ -101,6 +101,7 @@ const displayedReviews = computed<StoreReview[]>(() => {
 });
 
 onMounted(() => {
+  catalogStore.fetchProducts();
   fetchLiveReviews();
 });
 

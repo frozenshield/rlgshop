@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import { useCartStore } from "@/modules/cart/cart.store";
 import { useCatalogStore } from "@/modules/catalog/catalog.store";
 import { useAuthStore } from "@/modules/auth/auth.store";
@@ -116,106 +116,259 @@ const subjectOptions = [
   "Other Support Question",
 ];
 
+interface ChatRoomMessage {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: {
+    id: number;
+    name: string;
+    email?: string;
+    user_type?: string;
+  };
+}
+
+interface ChatRoom {
+  id: number;
+  customer_id: number;
+  admin_id?: number | null;
+  status: "active" | "closed" | "resolved";
+  created_at: string;
+  updated_at: string;
+}
+
+const activeChatRoom = ref<ChatRoom | null>(null);
+const chatRoomMessages = ref<ChatRoomMessage[]>([]);
+const isLoadingChatRoom = ref(false);
+const isSendingChatMessage = ref(false);
+const chatInputText = ref("");
+const chatScrollContainer = ref<HTMLElement | null>(null);
+
+const hasStaffReply = computed(() => {
+  if (chatRoomMessages.value.length === 0) return false;
+  const currentUserId = authStore.currentUser?.id
+    ? parseInt(String(authStore.currentUser.id).replace(/\D/g, ""))
+    : 0;
+  const lastMsg = chatRoomMessages.value[chatRoomMessages.value.length - 1];
+  return !!lastMsg && lastMsg.sender_id !== currentUserId && lastMsg.sender?.user_type !== "customer";
+});
+
+const scrollChatToBottom = () => {
+  nextTick(() => {
+    if (chatScrollContainer.value) {
+      chatScrollContainer.value.scrollTop =
+        chatScrollContainer.value.scrollHeight;
+    }
+  });
+};
+
+const formatMessageTime = (dateStr?: string) => {
+  if (!dateStr) return "";
+  try {
+    return new Date(dateStr).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+};
+
 const openAuthModal = () => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("open-auth-modal"));
   }
 };
 
-const fetchStaffMessages = async () => {
+const fetchChatRoomAndMessages = async () => {
   if (!authStore.token) {
-    staffMessages.value = [];
+    activeChatRoom.value = null;
+    chatRoomMessages.value = [];
     return;
   }
 
-  isLoadingStaff.value = true;
+  isLoadingChatRoom.value = true;
   try {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${authStore.token}`,
     };
-    const res = await fetch("/api/customer-messages", { headers });
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        staffMessages.value = json.data;
+
+    // 1. Fetch conversations or start/get one
+    const convRes = await fetch("/api/conversations", { headers });
+    let convId: number | null = null;
+
+    if (convRes.ok) {
+      const convJson = await convRes.json();
+      if (
+        convJson.success &&
+        Array.isArray(convJson.data) &&
+        convJson.data.length > 0
+      ) {
+        activeChatRoom.value = convJson.data[0];
+        convId = convJson.data[0].id;
+      }
+    }
+
+    if (!convId) {
+      const startRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+      if (startRes.ok) {
+        const startJson = await startRes.json();
+        if (startJson.success && startJson.data) {
+          activeChatRoom.value = startJson.data;
+          convId = startJson.data.id;
+        }
+      }
+    }
+
+    // 2. Fetch all messages in this conversation room
+    if (convId) {
+      const msgRes = await fetch(`/api/conversations/${convId}/messages`, {
+        headers,
+      });
+      if (msgRes.ok) {
+        const msgJson = await msgRes.json();
+        if (msgJson.success && Array.isArray(msgJson.data)) {
+          chatRoomMessages.value = msgJson.data;
+          scrollChatToBottom();
+        }
       }
     }
   } catch (e) {
-    console.warn("Could not load customer messages", e);
+    console.warn("Could not load chat messages", e);
   } finally {
-    isLoadingStaff.value = false;
+    isLoadingChatRoom.value = false;
   }
 };
 
-const hasStaffReply = computed(() => {
-  return staffMessages.value.some((m) => !!m.staff_reply);
-});
+const sendChatMessage = async (textToSend?: string) => {
+  const content = (textToSend || chatInputText.value).trim();
+  if (!content) return;
 
-const sendStaffMessage = async () => {
-  if (!staffMessageText.value.trim()) {
-    staffErrorNotice.value = "Please write a message for the staff.";
+  if (!authStore.token) {
+    openAuthModal();
     return;
   }
 
-  isSendingStaff.value = true;
-  staffErrorNotice.value = "";
-  staffSuccessNotice.value = "";
+  isSendingChatMessage.value = true;
+  chatInputText.value = "";
 
-  const finalSubject =
-    staffSubject.value === "Other Support Question" &&
-    staffCustomSubject.value.trim()
-      ? staffCustomSubject.value.trim()
-      : staffSubject.value;
+  const currentUserId = authStore.currentUser?.id
+    ? parseInt(String(authStore.currentUser.id).replace(/\D/g, ""))
+    : 1;
+
+  // Optimistic message bubble
+  const tempMsg: ChatRoomMessage = {
+    id: Date.now(),
+    conversation_id: activeChatRoom.value?.id || 0,
+    sender_id: currentUserId,
+    content,
+    is_read: false,
+    created_at: new Date().toISOString(),
+    sender: {
+      id: currentUserId,
+      name: authStore.currentUser?.name || "You",
+      user_type: "customer",
+    },
+  };
+  chatRoomMessages.value.push(tempMsg);
+  scrollChatToBottom();
 
   try {
     const headers: Record<string, string> = {
+      Authorization: `Bearer ${authStore.token}`,
       "Content-Type": "application/json",
     };
-    if (authStore.token) {
-      headers["Authorization"] = `Bearer ${authStore.token}`;
+
+    let convId = activeChatRoom.value?.id;
+    if (!convId) {
+      const startRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({}),
+      });
+      if (startRes.ok) {
+        const startJson = await startRes.json();
+        activeChatRoom.value = startJson.data;
+        convId = startJson.data.id;
+      }
     }
 
-    const userId = authStore.currentUser?.id
-      ? parseInt(String(authStore.currentUser.id).replace(/\D/g, ""))
-      : undefined;
-
-    const res = await fetch("/api/customer-messages", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        subject: finalSubject,
-        message: staffMessageText.value.trim(),
-        user_id: isNaN(userId as number) ? undefined : userId,
-      }),
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      staffSuccessNotice.value =
-        "Your message has been sent to our staff support desk! We will reply promptly.";
-      staffMessageText.value = "";
-      staffCustomSubject.value = "";
-      if (json.data) {
-        staffMessages.value.unshift(json.data);
-      } else {
-        await fetchStaffMessages();
+    if (convId) {
+      const res = await fetch(`/api/conversations/${convId}/messages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          const idx = chatRoomMessages.value.findIndex(
+            (m) => m.id === tempMsg.id,
+          );
+          if (idx !== -1) {
+            chatRoomMessages.value[idx] = json.data;
+          }
+          if (activeChatRoom.value) {
+            activeChatRoom.value.status = "active";
+          }
+        }
       }
-      staffSubTab.value = "history";
-    } else {
-      const err = await res.json();
-      staffErrorNotice.value =
-        err.message || "Failed to send message. Please try again.";
     }
   } catch (e) {
-    staffErrorNotice.value = "Network error sending support message.";
+    console.error("Failed to send chat message", e);
   } finally {
-    isSendingStaff.value = false;
+    isSendingChatMessage.value = false;
+    scrollChatToBottom();
   }
 };
 
+let chatPollTimer: any = null;
+
 onMounted(() => {
   if (authStore.token) {
-    fetchStaffMessages();
+    fetchChatRoomAndMessages();
+  }
+
+  // Periodic poll for staff replies
+  chatPollTimer = setInterval(() => {
+    if (
+      isOpen.value &&
+      activeMode.value === "staff" &&
+      authStore.token &&
+      activeChatRoom.value?.id
+    ) {
+      fetch(`/api/conversations/${activeChatRoom.value.id}/messages`, {
+        headers: { Authorization: `Bearer ${authStore.token}` },
+      })
+        .then((r) => r.json())
+        .then((json) => {
+          if (
+            json.success &&
+            Array.isArray(json.data) &&
+            json.data.length > chatRoomMessages.value.length
+          ) {
+            chatRoomMessages.value = json.data;
+            scrollChatToBottom();
+          }
+        })
+        .catch(() => {});
+    }
+  }, 4000);
+});
+
+onUnmounted(() => {
+  if (chatPollTimer) {
+    clearInterval(chatPollTimer);
   }
 });
 
@@ -223,9 +376,10 @@ watch(
   () => authStore.token,
   (newToken) => {
     if (newToken) {
-      fetchStaffMessages();
+      fetchChatRoomAndMessages();
     } else {
-      staffMessages.value = [];
+      activeChatRoom.value = null;
+      chatRoomMessages.value = [];
     }
   },
 );
@@ -249,7 +403,7 @@ const openStaffSupport = () => {
     activeMode.value = "staff";
     isOpen.value = true;
     showWelcomeBubble.value = false;
-    fetchStaffMessages();
+    fetchChatRoomAndMessages();
   }
 };
 
@@ -372,6 +526,7 @@ const sendMessage = async (customText?: string) => {
 };
 
 const handleAddToCart = (item: SuggestedProduct) => {
+  if (item.stock <= 0) return;
   const toy: ToyProduct = {
     id: "prod-" + item.id,
     name: item.name,
@@ -471,14 +626,10 @@ const formatTimeAgo = (dateStr?: string) => {
                   ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               "
-              @click="activeMode = 'staff'"
+              @click="activeMode = 'staff'; fetchChatRoomAndMessages()"
             >
               <span>💬</span>
-              <span>Message Staff</span>
-              <span
-                v-if="hasStaffReply"
-                class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
-              ></span>
+              <span>Live Staff Chat</span>
             </button>
 
             <button
@@ -511,14 +662,14 @@ const formatTimeAgo = (dateStr?: string) => {
           </button>
         </div>
 
-        <!-- ================= MODE 1: STAFF SUPPORT MESSAGING ================= -->
+        <!-- ================= MODE 1: LIVE STAFF CONVERSATION CHAT BOX ================= -->
         <div
           v-if="activeMode === 'staff'"
           class="flex-1 flex flex-col min-h-0 bg-slate-950"
         >
-          <!-- Staff Subheader -->
+          <!-- Staff Chat Room Header -->
           <div
-            class="px-4 py-3 bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-950 border-b border-slate-800/80 flex items-center justify-between"
+            class="px-4 py-3 bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-950 border-b border-slate-800/80 flex items-center justify-between"
           >
             <div class="flex items-center gap-2.5">
               <div
@@ -531,266 +682,206 @@ const formatTimeAgo = (dateStr?: string) => {
                 </div>
               </div>
               <div>
-                <h4 class="text-xs font-black text-white">
-                  RLG Collector Support Desk
-                </h4>
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xs font-black text-white">
+                    RLG Collector Support Desk
+                  </h4>
+                  <span
+                    v-if="activeChatRoom"
+                    class="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold uppercase tracking-wider"
+                    :class="
+                      activeChatRoom.status === 'resolved'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                    "
+                  >
+                    {{ activeChatRoom.status }}
+                  </span>
+                </div>
                 <p
                   class="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold"
                 >
                   <span
                     class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
                   ></span>
-                  Human Staff Online &bull; Avg reply: under 15 mins
+                  Shop Staff Online &bull; Live Real-time Chat
                 </p>
               </div>
             </div>
 
-            <!-- Compose vs History subtabs -->
-            <div
-              class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px]"
-            >
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer"
-                :class="
-                  staffSubTab === 'compose'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white'
-                "
-                @click="staffSubTab = 'compose'"
-              >
-                Send
-              </button>
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1"
-                :class="
-                  staffSubTab === 'history'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white'
-                "
-                @click="staffSubTab = 'history'"
-              >
-                <span>Inbox</span>
-                <span
-                  v-if="staffMessages.length > 0"
-                  class="text-[9px] bg-slate-800 px-1 rounded-full"
-                >
-                  {{ staffMessages.length }}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Staff Compose View -->
-          <div
-            v-if="staffSubTab === 'compose'"
-            class="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs"
-          >
-            <div
-              v-if="staffSuccessNotice"
-              class="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-emerald-300 font-semibold flex items-center gap-2"
-            >
-              <span>✓</span>
-              <span>{{ staffSuccessNotice }}</span>
-            </div>
-
-            <div class="space-y-1">
-              <label
-                class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block"
-              >
-                Inquiry Topic:
-              </label>
-              <select
-                v-model="staffSubject"
-                class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer"
-              >
-                <option v-for="opt in subjectOptions" :key="opt" :value="opt">
-                  {{ opt }}
-                </option>
-              </select>
-            </div>
-
-            <div
-              v-if="staffSubject === 'Other Support Question'"
-              class="space-y-1"
-            >
-              <label
-                class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block"
-              >
-                Custom Topic:
-              </label>
-              <input
-                v-model="staffCustomSubject"
-                type="text"
-                placeholder="Briefly state your topic..."
-                class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-400 placeholder-slate-500"
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label
-                class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block"
-              >
-                Message for Staff:
-              </label>
-              <textarea
-                v-model="staffMessageText"
-                rows="5"
-                placeholder="Ask about Japanese booster box authenticity, courier tracking follow-ups, case break reservations, or order details..."
-                class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-400 placeholder-slate-500 leading-relaxed"
-              ></textarea>
-            </div>
-
-            <div
-              class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between"
-            >
-              <span
-                >Sending as:
-                <strong class="text-white">{{
-                  authStore.currentUser?.name || "Verified Collector"
-                }}</strong></span
-              >
-              <span class="text-indigo-400 font-mono">{{
-                authStore.currentUser?.email || "Registered Guest"
-              }}</span>
-            </div>
-
-            <div
-              v-if="staffErrorNotice"
-              class="text-xs text-rose-400 font-bold"
-            >
-              {{ staffErrorNotice }}
-            </div>
-
+            <!-- Header Action / Refresh -->
             <button
               type="button"
-              class="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-black rounded-xl shadow-lg shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-              :disabled="isSendingStaff || !staffMessageText.trim()"
-              @click="sendStaffMessage"
+              class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer text-xs"
+              title="Refresh messages"
+              :disabled="isLoadingChatRoom"
+              @click="fetchChatRoomAndMessages"
             >
-              <span>{{
-                isSendingStaff
-                  ? "Sending to Staff Desk..."
-                  : "Send Message to Staff"
-              }}</span>
-              <span>&rarr;</span>
+              <span :class="{ 'inline-block animate-spin': isLoadingChatRoom }">🔄</span>
             </button>
           </div>
 
-          <!-- Staff Inquiries / History View -->
-          <div v-else class="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
-            <!-- Unauthenticated Gate Notice -->
+          <!-- Unauthenticated Gate Notice -->
+          <div
+            v-if="!authStore.isAuthenticated"
+            class="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-3"
+          >
             <div
-              v-if="!authStore.isAuthenticated"
-              class="py-8 text-center space-y-3 px-4"
+              class="w-14 h-14 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-2xl"
             >
-              <div class="text-3xl">🔒</div>
-              <p class="font-bold text-slate-200">Sign in to view your inbox</p>
-              <p class="text-[11px] text-slate-400">
-                Your support inquiries and staff responses are private and
-                scoped to your verified collector account.
-              </p>
-              <button
-                type="button"
-                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md"
-                @click="openAuthModal"
-              >
-                Sign In / Register
-              </button>
+              🔒
             </div>
+            <h4 class="font-bold text-slate-200 text-sm">Sign in for Live Chat</h4>
+            <p class="text-[11px] text-slate-400 max-w-xs leading-relaxed">
+              Sign in to start a private, interactive chat thread directly with our shop customer service specialists.
+            </p>
+            <button
+              type="button"
+              class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs cursor-pointer shadow-lg shadow-indigo-600/30 transition-all mt-2"
+              @click="openAuthModal"
+            >
+              Sign In / Register
+            </button>
+          </div>
 
+          <!-- Interactive Message Stream & Composer (When Authenticated) -->
+          <div v-else class="flex-1 flex flex-col min-h-0">
+            <!-- Messages Scroll Area -->
             <div
-              v-else-if="isLoadingStaff"
-              class="py-8 text-center text-slate-400"
+              ref="chatScrollContainer"
+              class="flex-1 p-4 overflow-y-auto space-y-3 text-xs scroll-smooth"
             >
-              Loading your support messages...
-            </div>
-
-            <div
-              v-else-if="staffMessages.length === 0"
-              class="py-8 text-center space-y-2"
-            >
-              <div class="text-3xl">📭</div>
-              <p class="font-bold text-slate-300">No support inquiries yet</p>
-              <p class="text-[11px] text-slate-500">
-                Need help with an order or product? Send our staff a message.
-              </p>
-              <button
-                type="button"
-                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer mt-2"
-                @click="staffSubTab = 'compose'"
-              >
-                Write a Message
-              </button>
-            </div>
-
-            <div v-else class="space-y-3">
+              <!-- Initial Loading State -->
               <div
-                v-for="msg in staffMessages"
-                :key="msg.id"
-                class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5"
+                v-if="isLoadingChatRoom && chatRoomMessages.length === 0"
+                class="py-12 text-center text-slate-400 space-y-2"
               >
-                <!-- Message Header -->
-                <div class="flex items-center justify-between gap-2">
-                  <span class="font-bold text-white text-xs truncate">
-                    {{ msg.subject }}
-                  </span>
-                  <span
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                    :class="
-                      msg.status === 'resolve' || msg.staff_reply
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    "
-                  >
-                    {{
-                      msg.status === "resolve" || msg.staff_reply
-                        ? "✓ Resolved"
-                        : "🟡 Ongoing"
-                    }}
-                  </span>
-                </div>
+                <div class="inline-block animate-spin text-xl">⏳</div>
+                <p class="text-xs">Connecting to collector support room...</p>
+              </div>
 
-                <!-- Customer Message Body -->
-                <p
-                  class="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-xl border border-slate-800"
-                >
-                  "{{ msg.message }}"
-                </p>
-
-                <!-- Staff Support Reply Box -->
-                <div
-                  v-if="msg.staff_reply"
-                  class="p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 text-xs space-y-1"
-                >
-                  <div
-                    class="flex items-center justify-between text-[10px] font-black text-emerald-400 uppercase tracking-wider"
-                  >
-                    <span class="flex items-center gap-1">
-                      <span>🧑‍💼</span>
-                      <span
-                        >Staff Reply ({{
-                          msg.staff?.name || "Admin Chief"
-                        }}):</span
-                      >
-                    </span>
-                    <span class="text-slate-400 font-normal">
-                      {{ formatTimeAgo(msg.resolved_at || msg.created_at) }}
-                    </span>
-                  </div>
-                  <p class="text-slate-100 text-xs font-medium">
-                    {{ msg.staff_reply }}
+              <!-- Empty State / Quick Suggestion Prompts -->
+              <div
+                v-else-if="chatRoomMessages.length === 0"
+                class="py-8 text-center space-y-3"
+              >
+                <div class="text-3xl">💬</div>
+                <div class="space-y-1">
+                  <p class="font-bold text-slate-200">Start a conversation with our staff</p>
+                  <p class="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    Ask about tracking updates, card condition scans, pre-orders, or order changes.
                   </p>
                 </div>
-
-                <div
-                  v-else
-                  class="text-[10px] text-amber-400/90 font-medium flex items-center gap-1"
-                >
-                  <span>⏳</span>
-                  <span>Awaiting response from human staff support</span>
+                <div class="flex flex-col gap-1.5 pt-2 max-w-xs mx-auto text-left">
+                  <button
+                    type="button"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
+                    @click="sendChatMessage('Can I check the delivery status of my latest order?')"
+                  >
+                    <span>🚚 Check status of my order</span>
+                    <span class="text-indigo-400">&rarr;</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
+                    @click="sendChatMessage('Do you have stock for Japanese Pokémon booster boxes?')"
+                  >
+                    <span>📦 Japanese Pokémon booster stock</span>
+                    <span class="text-indigo-400">&rarr;</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/80 text-[11px] text-slate-300 transition-all cursor-pointer flex items-center justify-between"
+                    @click="sendChatMessage('Can you verify card authenticity or grading condition?')"
+                  >
+                    <span>✨ Card condition & authenticity check</span>
+                    <span class="text-indigo-400">&rarr;</span>
+                  </button>
                 </div>
+              </div>
+
+              <!-- Message Bubbles Stream -->
+              <template v-else>
+                <div
+                  v-for="msg in chatRoomMessages"
+                  :key="msg.id"
+                  class="flex flex-col"
+                  :class="
+                    msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
+                    msg.sender?.user_type === 'customer'
+                      ? 'items-end'
+                      : 'items-start'
+                  "
+                >
+                  <!-- Bubble Header Label for Staff -->
+                  <div
+                    v-if="
+                      msg.sender_id !== (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) &&
+                      msg.sender?.user_type !== 'customer'
+                    "
+                    class="flex items-center gap-1 text-[10px] text-indigo-300 font-bold mb-1 pl-1"
+                  >
+                    <span>🧑‍💼</span>
+                    <span>{{ msg.sender?.name || 'Shop Staff' }}</span>
+                  </div>
+
+                  <!-- Speech Bubble -->
+                  <div
+                    class="max-w-[85%] p-3 rounded-2xl shadow-sm text-xs leading-relaxed"
+                    :class="
+                      msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
+                      msg.sender?.user_type === 'customer'
+                        ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-tr-xs'
+                        : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-xs'
+                    "
+                  >
+                    <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
+                  </div>
+
+                  <!-- Bubble Timestamp & Read Receipt -->
+                  <div class="flex items-center gap-1 text-[9px] text-slate-500 mt-1 px-1">
+                    <span>{{ formatMessageTime(msg.created_at) }}</span>
+                    <span
+                      v-if="
+                        msg.sender_id === (authStore.currentUser?.id ? parseInt(String(authStore.currentUser.id).replace(/\D/g, '')) : 0) ||
+                        msg.sender?.user_type === 'customer'
+                      "
+                      :class="msg.is_read ? 'text-emerald-400 font-bold' : 'text-slate-500'"
+                      :title="msg.is_read ? 'Read by staff' : 'Delivered'"
+                    >
+                      {{ msg.is_read ? '✓✓ Read' : '✓ Sent' }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Fixed Bottom Message Composer -->
+            <div class="p-3 bg-slate-900/90 border-t border-slate-800/80">
+              <form
+                class="flex items-center gap-2"
+                @submit.prevent="sendChatMessage()"
+              >
+                <input
+                  v-model="chatInputText"
+                  type="text"
+                  placeholder="Type a message to shop staff..."
+                  class="flex-1 bg-slate-950 border border-slate-700 focus:border-indigo-400 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                  :disabled="isSendingChatMessage"
+                  @keydown.enter.exact.prevent="sendChatMessage()"
+                />
+                <button
+                  type="submit"
+                  class="p-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50 flex items-center justify-center flex-shrink-0"
+                  :disabled="isSendingChatMessage || !chatInputText.trim()"
+                >
+                  <span v-if="isSendingChatMessage" class="animate-spin text-sm">⏳</span>
+                  <span v-else class="text-sm">➤</span>
+                </button>
+              </form>
+              <div class="flex items-center justify-between text-[10px] text-slate-500 mt-2 px-1">
+                <span>💬 Back-and-forth direct dialogue</span>
+                <span>Press Enter to send</span>
               </div>
             </div>
           </div>
@@ -920,15 +1011,30 @@ const formatTimeAgo = (dateStr?: string) => {
                             })
                           }}
                         </span>
-                        <span class="text-[10px] text-emerald-400 font-medium">
+                        <span
+                          v-if="prod.stock > 0"
+                          class="text-[10px] text-emerald-400 font-medium"
+                        >
                           ✓ {{ prod.stock }} in stock
+                        </span>
+                        <span
+                          v-else
+                          class="text-[10px] text-rose-400 font-bold"
+                        >
+                          🚫 Sold out
                         </span>
                       </div>
                     </div>
                     <button
                       type="button"
-                      class="p-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-transform active:scale-95 cursor-pointer flex-shrink-0"
-                      title="Add to cart"
+                      class="p-2 rounded-xl font-black text-xs transition-transform active:scale-95 flex-shrink-0"
+                      :class="
+                        prod.stock > 0
+                          ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer'
+                          : 'bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-50'
+                      "
+                      :disabled="prod.stock <= 0"
+                      :title="prod.stock > 0 ? 'Add to cart' : 'Sold out'"
                       @click="handleAddToCart(prod)"
                     >
                       🛒

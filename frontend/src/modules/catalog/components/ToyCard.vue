@@ -30,6 +30,7 @@ const tcgInfo = computed(() => {
 });
 
 const handleAddToCart = () => {
+  if (props.toy.stock <= 0) return;
   cartStore.addItem(props.toy, 1);
 };
 
@@ -50,13 +51,20 @@ const handleToggleWishlist = () => {
         :src="toy.imageUrl"
         :alt="toy.name"
         class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+        :class="{ 'opacity-55 grayscale-[35%]': toy.stock <= 0 }"
         loading="lazy"
       />
 
       <!-- Floating Badges Top Left -->
       <div class="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
         <span
-          v-if="toy.isBestSeller"
+          v-if="toy.stock <= 0"
+          class="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-md shadow-rose-600/40"
+        >
+          🚫 Sold Out
+        </span>
+        <span
+          v-else-if="toy.isBestSeller"
           class="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 uppercase tracking-wider shadow-md shadow-amber-400/30"
         >
           🔥 Best Seller
@@ -68,7 +76,7 @@ const handleToggleWishlist = () => {
           ✨ New
         </span>
         <span
-          v-if="toy.discountPercent"
+          v-if="toy.discountPercent && toy.stock > 0"
           class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-sm"
         >
           -{{ toy.discountPercent }}%
@@ -147,8 +155,13 @@ const handleToggleWishlist = () => {
             >
               {{ toy.condition }}
             </span>
-            <span class="text-slate-400 text-[10px] font-medium">
-              {{ toy.stock > 0 ? "In Stock" : "Out of Stock" }}
+            <span
+              class="text-[10px] font-medium"
+              :class="
+                toy.stock > 0 ? 'text-slate-400' : 'text-rose-400 font-bold'
+              "
+            >
+              {{ toy.stock > 0 ? "In Stock" : "Sold Out" }}
             </span>
           </div>
         </div>
@@ -186,13 +199,20 @@ const handleToggleWishlist = () => {
           </span>
         </div>
 
-        <!-- 10% High Contrast Accent: Electric Amber Add to Cart Button -->
+        <!-- 10% High Contrast Accent: Electric Amber Add to Cart Button OR Disabled Sold Out -->
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl shadow-md shadow-amber-400/25 border border-amber-300 active:scale-95 transition-all cursor-pointer"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black rounded-xl transition-all"
+          :class="
+            toy.stock > 0
+              ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-400/25 border border-amber-300 active:scale-95 cursor-pointer'
+              : 'bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-60 shadow-none'
+          "
+          :disabled="toy.stock <= 0"
           @click="handleAddToCart"
         >
           <svg
+            v-if="toy.stock > 0"
             class="w-3.5 h-3.5"
             fill="none"
             stroke="currentColor"
@@ -205,7 +225,7 @@ const handleToggleWishlist = () => {
               d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
             />
           </svg>
-          <span>Add</span>
+          <span>{{ toy.stock > 0 ? "Add" : "Sold Out" }}</span>
         </button>
       </div>
     </div>

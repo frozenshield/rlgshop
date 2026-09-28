@@ -20,6 +20,8 @@ import type {
   RefOrderStatusItem,
   CustomerMessageItem,
   CustomerReviewItem,
+  AdminChatConversation,
+  AdminChatMessage,
 } from "./admin.types";
 
 const getStoredAdminSession = (): AdminUser | null => {
@@ -1390,6 +1392,140 @@ export const useAdminStore = defineStore("adminStore", () => {
     }
   };
 
+  // Real-time Chat Conversations
+  const conversations = ref<AdminChatConversation[]>([]);
+  const activeConversationId = ref<number | null>(null);
+  const activeConversationMessages = ref<AdminChatMessage[]>([]);
+  const isLoadingConversations = ref(false);
+  const isLoadingChatMessages = ref(false);
+
+  const activeConversation = computed(() => {
+    return (
+      conversations.value.find((c) => c.id === activeConversationId.value) ||
+      null
+    );
+  });
+
+  const fetchConversations = async (status?: string) => {
+    isLoadingConversations.value = true;
+    try {
+      const headers: Record<string, string> = {};
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const url =
+        status && status !== "all"
+          ? `/api/conversations?status=${status}`
+          : "/api/conversations";
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          conversations.value = json.data;
+          if (
+            activeConversationId.value === null &&
+            conversations.value.length > 0
+          ) {
+            activeConversationId.value = conversations.value[0].id;
+            await fetchConversationMessages(conversations.value[0].id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch conversations", e);
+    } finally {
+      isLoadingConversations.value = false;
+    }
+  };
+
+  const fetchConversationMessages = async (convId: number) => {
+    activeConversationId.value = convId;
+    isLoadingChatMessages.value = true;
+    try {
+      const headers: Record<string, string> = {};
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const res = await fetch(`/api/conversations/${convId}/messages`, {
+        headers,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          activeConversationMessages.value = json.data;
+          const conv = conversations.value.find((c) => c.id === convId);
+          if (conv) {
+            conv.unread_count = 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch conversation messages", e);
+    } finally {
+      isLoadingChatMessages.value = false;
+    }
+  };
+
+  const sendAdminChatMessage = async (convId: number, content: string) => {
+    if (!content.trim()) return;
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const res = await fetch(`/api/conversations/${convId}/messages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ content: content.trim() }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          activeConversationMessages.value.push(json.data);
+          const conv = conversations.value.find((c) => c.id === convId);
+          if (conv) {
+            conv.latest_message = json.data;
+            conv.updated_at = new Date().toISOString();
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to send admin chat message", e);
+    }
+  };
+
+  const updateChatConversationStatus = async (
+    convId: number,
+    status: "active" | "closed" | "resolved",
+  ) => {
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (currentAdmin.value?.token) {
+        headers["Authorization"] = `Bearer ${currentAdmin.value.token}`;
+      }
+      const res = await fetch(`/api/conversations/${convId}/status`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          const conv = conversations.value.find((c) => c.id === convId);
+          if (conv) {
+            conv.status = status;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to update conversation status", e);
+    }
+  };
+
   const replyToCustomerReview = async (id: number, replyText: string) => {
     try {
       const staffIdNum = currentAdmin.value?.id
@@ -1453,6 +1589,16 @@ export const useAdminStore = defineStore("adminStore", () => {
     isLoadingMessages,
     customerReviews,
     isLoadingReviews,
+    conversations,
+    activeConversationId,
+    activeConversationMessages,
+    activeConversation,
+    isLoadingConversations,
+    isLoadingChatMessages,
+    fetchConversations,
+    fetchConversationMessages,
+    sendAdminChatMessage,
+    updateChatConversationStatus,
     fetchCustomerMessages,
     fetchCustomerReviews,
     replyToCustomerMessage,

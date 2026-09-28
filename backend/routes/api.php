@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
+use App\Http\Controllers\Api\ChatConversationController;
+use App\Http\Controllers\Api\CustomerCartController;
 use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
@@ -13,7 +15,6 @@ use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
-use App\Http\Controllers\Api\CustomerCartController;
 use App\Models\AccessMatrix;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
@@ -25,6 +26,7 @@ use App\Models\RefShippingCarrier;
 use App\Models\RefStaffRole;
 use App\Models\Staff;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
@@ -50,7 +52,7 @@ Route::post('/auth/staff-login', function (Request $request) {
     // Query staff table by exact email, username prefix before @, or name
     $staff = Staff::with(['role.accessMatrices.module'])
         ->where('email', $login)
-        ->orWhere('email', 'like', $login . '@%')
+        ->orWhere('email', 'like', $login.'@%')
         ->orWhere('name', $login)
         ->first();
 
@@ -133,7 +135,7 @@ Route::post('/auth/staff-login', function (Request $request) {
         if ($user->user_type !== $desiredType) {
             $user->update(['user_type' => $desiredType]);
         }
-    } catch (\Illuminate\Database\QueryException $e) {
+    } catch (QueryException $e) {
         // Fallback for MySQL enum constraint when 'staff' is not yet in enum
         $fallbackType = 'admin';
         $user = User::firstOrCreate(
@@ -209,7 +211,15 @@ Route::apiResource('staff', StaffController::class);
 Route::patch('/customer-profiles/{customer_profile}/segment-rank', [CustomerProfileController::class, 'updateSegmentRank']);
 Route::apiResource('customer-profiles', CustomerProfileController::class);
 
-// Customer Support Messages API (Inbox & Status)
+// Live Chat Conversations & Real-time Messages API
+Route::get('/conversations', [ChatConversationController::class, 'index']);
+Route::post('/conversations', [ChatConversationController::class, 'store']);
+Route::get('/conversations/{conversation}', [ChatConversationController::class, 'show']);
+Route::get('/conversations/{conversation}/messages', [ChatConversationController::class, 'messages']);
+Route::post('/conversations/{conversation}/messages', [ChatConversationController::class, 'sendMessage']);
+Route::patch('/conversations/{conversation}/status', [ChatConversationController::class, 'updateStatus']);
+
+// Customer Support Messages API (Legacy Inbox & Status)
 Route::get('/customer-messages', [CustomerMessageController::class, 'index']);
 Route::post('/customer-messages', [CustomerMessageController::class, 'store']);
 Route::post('/customer-messages/{customer_message}/reply', [CustomerMessageController::class, 'reply']);

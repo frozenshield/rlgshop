@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CustomerOrder;
 use App\Models\RefOrderStatus;
 use App\Models\RefShippingCarrier;
+use App\Models\User;
 use Database\Seeders\CustomerOrderSeeder;
 use Database\Seeders\RefOrderStatusSeeder;
 use Database\Seeders\RefShippingCarrierSeeder;
@@ -58,7 +59,12 @@ class CustomerOrderTest extends TestCase
 
     public function test_can_list_customer_orders(): void
     {
-        $response = $this->getJson('/api/customer-orders');
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@rlghobby.com'],
+            ['name' => 'Admin Chief', 'user_type' => 'admin']
+        );
+
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/customer-orders');
 
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
@@ -72,7 +78,12 @@ class CustomerOrderTest extends TestCase
 
     public function test_can_filter_orders_by_status(): void
     {
-        $response = $this->getJson('/api/customer-orders?status=processing');
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@rlghobby.com'],
+            ['name' => 'Admin Chief', 'user_type' => 'admin']
+        );
+
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/customer-orders?status=processing');
 
         $response->assertStatus(200);
         $data = $response->json('data');

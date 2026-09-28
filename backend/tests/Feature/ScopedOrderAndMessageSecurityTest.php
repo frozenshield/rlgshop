@@ -61,7 +61,7 @@ class ScopedOrderAndMessageSecurityTest extends TestCase
 
         $this->staffUser = User::firstOrCreate(
             ['email' => 'admin@rlghobby.com'],
-            ['name' => 'Admin Chief', 'user_type' => 'staff']
+            ['name' => 'Admin Chief', 'user_type' => 'admin']
         );
     }
 

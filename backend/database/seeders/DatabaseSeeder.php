@@ -39,6 +39,7 @@ class DatabaseSeeder extends Seeder
             RefPaymentMethodSeeder::class,
             CustomerOrderSeeder::class,
             CustomerMessageReviewSeeder::class,
+            ChatConversationSeeder::class,
         ]);
     }
 }

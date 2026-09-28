@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useAdminStore } from "../admin.store";
 import type {
   CustomerProfile,
@@ -21,7 +21,15 @@ const selectedSegment = ref<
 const selectedCustomer = ref<CustomerProfile | null>(null);
 const isProfileModalOpen = ref(false);
 
-// TAB 2: Messages State (customer_message table)
+// TAB 2: Live Chat Desk State (conversations & messages API)
+const chatSearchQuery = ref("");
+const chatStatusFilter = ref<"all" | "active" | "resolved" | "closed">("all");
+const adminReplyInput = ref("");
+const adminChatScrollContainer = ref<HTMLElement | null>(null);
+const isSendingAdminReply = ref(false);
+let adminChatPollTimer: any = null;
+
+// Legacy Messages State (customer_message table)
 const messageSearchQuery = ref("");
 const messageStatusFilter = ref<"all" | "ongoing" | "resolve">("all");
 const selectedMessage = ref<CustomerMessageItem | null>(null);
@@ -73,9 +81,40 @@ const fetchDbCustomers = async () => {
 onMounted(async () => {
   await Promise.all([
     fetchDbCustomers(),
+    adminStore.fetchConversations(),
     adminStore.fetchCustomerMessages(),
     adminStore.fetchCustomerReviews(),
   ]);
+
+  if (adminStore.conversations.length > 0 && !adminStore.activeConversationId) {
+    selectConversation(adminStore.conversations[0].id);
+  }
+
+  adminChatPollTimer = setInterval(() => {
+    if (activeTab.value === "messages" && adminStore.activeConversationId) {
+      adminStore.fetchConversationMessages(adminStore.activeConversationId);
+    }
+  }, 4000);
+});
+
+onUnmounted(() => {
+  if (adminChatPollTimer) {
+    clearInterval(adminChatPollTimer);
+  }
+});
+
+watch(activeTab, (tab) => {
+  if (tab === "messages") {
+    if (adminStore.conversations.length === 0) {
+      adminStore.fetchConversations().then(() => {
+        if (adminStore.conversations.length > 0 && !adminStore.activeConversationId) {
+          selectConversation(adminStore.conversations[0].id);
+        }
+      });
+    } else if (!adminStore.activeConversationId && adminStore.conversations.length > 0) {
+      selectConversation(adminStore.conversations[0].id);
+    }
+  }
 });
 
 // Profile Helpers
@@ -108,6 +147,79 @@ const getSegmentBadge = (segment: string) => {
       return "bg-slate-100 text-slate-600 border-slate-200";
     default:
       return "bg-slate-100 text-slate-700";
+  }
+};
+
+// Live Chat Desk Helpers & Computed
+const totalUnreadChatCount = computed(() => {
+  return adminStore.conversations.reduce(
+    (acc, c) => acc + (c.unread_count || 0),
+    0,
+  );
+});
+
+const filteredConversations = computed(() => {
+  return adminStore.conversations.filter((c) => {
+    const matchesStatus =
+      chatStatusFilter.value === "all" || c.status === chatStatusFilter.value;
+    const q = chatSearchQuery.value.toLowerCase().trim();
+    const customerName = (c.customer?.name || "Customer").toLowerCase();
+    const customerEmail = (c.customer?.email || "").toLowerCase();
+    const latestText = (c.latest_message?.content || "").toLowerCase();
+    const matchesSearch =
+      !q ||
+      customerName.includes(q) ||
+      customerEmail.includes(q) ||
+      latestText.includes(q);
+    return matchesStatus && matchesSearch;
+  });
+});
+
+const scrollAdminChatToBottom = () => {
+  nextTick(() => {
+    if (adminChatScrollContainer.value) {
+      adminChatScrollContainer.value.scrollTop =
+        adminChatScrollContainer.value.scrollHeight;
+    }
+  });
+};
+
+const selectConversation = async (convId: number) => {
+  await adminStore.fetchConversationMessages(convId);
+  scrollAdminChatToBottom();
+};
+
+const handleSendAdminReply = async (customText?: string) => {
+  const content = (customText || adminReplyInput.value).trim();
+  if (!content || !adminStore.activeConversationId || isSendingAdminReply.value) return;
+
+  isSendingAdminReply.value = true;
+  adminReplyInput.value = "";
+  try {
+    await adminStore.sendAdminChatMessage(adminStore.activeConversationId, content);
+    scrollAdminChatToBottom();
+  } finally {
+    isSendingAdminReply.value = false;
+  }
+};
+
+const handleUpdateStatus = async (status: "active" | "closed" | "resolved") => {
+  if (!adminStore.activeConversationId) return;
+  await adminStore.updateChatConversationStatus(adminStore.activeConversationId, status);
+};
+
+const formatChatTime = (dateStr?: string) => {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    if (isToday) {
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    }
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch {
+    return dateStr;
   }
 };
 
@@ -270,7 +382,7 @@ const deleteReview = async (id: number) => {
           >
         </button>
 
-        <!-- Toggle 2: Customer Messages (customer_message table) -->
+        <!-- Toggle 2: Customer Live Chat Desk (conversations & messages table) -->
         <button
           type="button"
           class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
@@ -281,16 +393,16 @@ const deleteReview = async (id: number) => {
           "
           @click="activeTab = 'messages'"
         >
-          <span>💬 Customer Messages</span>
+          <span>💬 Live Chat Desk</span>
           <span
-            v-if="ongoingMessagesCount > 0"
+            v-if="totalUnreadChatCount > 0"
             class="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-extrabold shadow-2xs"
-            title="Ongoing inquiries requiring support reply"
+            title="Unread buyer messages"
           >
-            {{ ongoingMessagesCount }}
+            {{ totalUnreadChatCount }}
           </span>
           <span v-else class="text-[11px] text-slate-400 font-semibold">
-            ({{ adminStore.customerMessages.length }})
+            ({{ adminStore.conversations.length }})
           </span>
         </button>
 
@@ -452,199 +564,386 @@ const deleteReview = async (id: number) => {
       </div>
     </div>
 
-    <!-- TAB 2: Customer Messages (Integrated with /api/customer-messages & customer_message table) -->
+    <!-- TAB 2: Customer Live Chat Desk (Conversations & Real-Time Messages) -->
     <div v-else-if="activeTab === 'messages'" class="space-y-4">
-      <!-- Search & Status Filters for Messages -->
+      <!-- Chat Desk Container: Two Column Split View -->
       <div
-        class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4"
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] h-[720px]"
       >
-        <div class="relative w-full md:w-80">
-          <input
-            v-model="messageSearchQuery"
-            type="text"
-            placeholder="Search inquiries by subject, text, or customer..."
-            class="w-full text-xs px-3.5 py-2.5 pl-9 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-rose-500"
-          />
-          <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
-        </div>
-
-        <div
-          class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto"
-        >
-          <button
-            type="button"
-            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
-            :class="
-              messageStatusFilter === 'all'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
-            "
-            @click="messageStatusFilter = 'all'"
-          >
-            All Messages ({{ adminStore.customerMessages.length }})
-          </button>
-          <button
-            type="button"
-            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5"
-            :class="
-              messageStatusFilter === 'ongoing'
-                ? 'bg-white text-rose-700 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
-            "
-            @click="messageStatusFilter = 'ongoing'"
-          >
-            <span class="w-2 h-2 rounded-full bg-rose-600"></span>
-            <span>Ongoing ({{ ongoingMessagesCount }})</span>
-          </button>
-          <button
-            type="button"
-            class="px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5"
-            :class="
-              messageStatusFilter === 'resolve'
-                ? 'bg-white text-emerald-700 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
-            "
-            @click="messageStatusFilter = 'resolve'"
-          >
-            <span>✓ Resolved</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Messages List -->
-      <div
-        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100"
-      >
-        <div
-          v-if="adminStore.isLoadingMessages"
-          class="p-8 text-center text-xs text-slate-400 font-bold"
-        >
-          Loading messages from customer_message table...
-        </div>
-
-        <div
-          v-else-if="filteredMessages.length === 0"
-          class="p-8 text-center text-xs text-slate-400 space-y-1"
-        >
-          <div class="text-2xl">📭</div>
-          <p class="font-bold text-slate-600">No customer messages found.</p>
-          <p class="text-[11px]">
-            Inquiries submitted via the storefront contact or support form will
-            appear here.
-          </p>
-        </div>
-
-        <div
-          v-for="msg in filteredMessages"
-          :key="msg.id"
-          class="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors"
-        >
-          <div class="space-y-2 flex-1 min-w-0">
-            <!-- Header Badges -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <span
-                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800"
-              >
-                INQUIRY
-              </span>
-              <span class="text-xs font-extrabold text-slate-900">
-                {{ msg.subject }}
-              </span>
-              <span
-                v-if="msg.status === 'ongoing'"
-                class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200"
-              >
+        <!-- LEFT COLUMN: Conversation Threads List (4 cols) -->
+        <div class="lg:col-span-4 border-r border-slate-200 flex flex-col h-full bg-slate-50/50">
+          <!-- Thread List Header & Search -->
+          <div class="p-3.5 border-b border-slate-200 space-y-2.5 bg-white">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Conversations
+                </span>
                 <span
-                  class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"
-                ></span>
-                Ongoing
-              </span>
-              <span
-                v-else
-                class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
-              >
-                ✓ Resolved
-              </span>
-            </div>
-
-            <!-- Customer Inquiry Message Body -->
-            <p
-              class="text-xs text-slate-700 leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100"
-            >
-              "{{ msg.message }}"
-            </p>
-
-            <!-- Staff Support Reply (if answered) -->
-            <div
-              v-if="msg.staffReply"
-              class="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 space-y-1"
-            >
-              <div
-                class="flex items-center justify-between text-[10px] font-black text-emerald-800 uppercase tracking-wider"
-              >
-                <span>STAFF SUPPORT REPLY:</span>
-                <span
-                  v-if="msg.staffName"
-                  class="text-emerald-700 font-semibold normal-case"
+                  v-if="totalUnreadChatCount > 0"
+                  class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black"
                 >
-                  by {{ msg.staffName }} &bull;
-                  {{ msg.resolvedAt || "Resolved" }}
+                  {{ totalUnreadChatCount }} unread
                 </span>
               </div>
-              <p class="text-xs text-emerald-900 font-medium">
-                {{ msg.staffReply }}
+              <button
+                type="button"
+                class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
+                title="Refresh thread list"
+                :disabled="adminStore.isLoadingConversations"
+                @click="adminStore.fetchConversations()"
+              >
+                <span :class="{ 'inline-block animate-spin': adminStore.isLoadingConversations }">🔄</span>
+              </button>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative">
+              <input
+                v-model="chatSearchQuery"
+                type="text"
+                placeholder="Search by buyer name or message..."
+                class="w-full text-xs px-3 py-2 pl-8 rounded-xl bg-slate-100 border border-slate-200 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+              />
+              <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+            </div>
+
+            <!-- Status filter tabs -->
+            <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]">
+              <button
+                v-for="st in ['all', 'active', 'resolved', 'closed'] as const"
+                :key="st"
+                type="button"
+                class="flex-1 py-1 rounded-lg font-bold capitalize transition-all cursor-pointer text-center"
+                :class="
+                  chatStatusFilter === st
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                "
+                @click="chatStatusFilter = st"
+              >
+                {{ st }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Thread Items List -->
+          <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
+            <div
+              v-if="adminStore.isLoadingConversations && adminStore.conversations.length === 0"
+              class="p-8 text-center text-xs text-slate-400 font-medium"
+            >
+              <div class="inline-block animate-spin text-lg mb-1">⏳</div>
+              <p>Loading conversations...</p>
+            </div>
+
+            <div
+              v-else-if="filteredConversations.length === 0"
+              class="p-8 text-center text-xs text-slate-400 space-y-1"
+            >
+              <div class="text-2xl">📭</div>
+              <p class="font-bold text-slate-600">No conversations found</p>
+              <p class="text-[11px] text-slate-400">
+                Buyer messages from the storefront live chat will appear here.
               </p>
             </div>
 
-            <!-- Sender Metadata -->
-            <div
-              class="flex items-center gap-2.5 text-[11px] text-slate-400 pt-0.5"
-            >
-              <span class="font-bold text-slate-700">
-                {{ msg.customerName }} ({{ msg.email }})
-              </span>
-              <span v-if="msg.phone">&bull; {{ msg.phone }}</span>
-              <span>&bull;</span>
-              <span>{{ msg.createdAt }}</span>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div
-            class="flex items-center gap-2 self-start md:self-auto flex-shrink-0"
-          >
             <button
-              v-if="msg.status === 'ongoing'"
+              v-for="conv in filteredConversations"
+              :key="conv.id"
               type="button"
-              class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-2xs transition-all"
-              @click="openMessageReply(msg)"
-            >
-              Reply &amp; Resolve
-            </button>
-
-            <button
-              v-else
-              type="button"
-              class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 cursor-pointer transition-all"
-              title="Edit Staff Reply"
-              @click="openMessageReply(msg)"
-            >
-              Edit Reply
-            </button>
-
-            <button
-              type="button"
-              class="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-xs transition-colors cursor-pointer"
-              :title="
-                msg.status === 'resolve'
-                  ? 'Reopen inquiry'
-                  : 'Mark resolved without reply'
+              class="w-full p-3.5 text-left transition-all cursor-pointer flex items-start gap-3 relative"
+              :class="
+                adminStore.activeConversationId === conv.id
+                  ? 'bg-indigo-50/80 border-l-4 border-indigo-600 shadow-2xs'
+                  : 'hover:bg-slate-100/70 border-l-4 border-transparent'
               "
-              @click="toggleMessageStatus(msg)"
+              @click="selectConversation(conv.id)"
             >
-              {{ msg.status === "resolve" ? "↩️ Reopen" : "✓ Mark" }}
+              <!-- Avatar -->
+              <div
+                class="w-10 h-10 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 text-white shadow-2xs"
+                :class="
+                  adminStore.activeConversationId === conv.id
+                    ? 'bg-gradient-to-tr from-indigo-600 to-blue-600'
+                    : 'bg-slate-800'
+                "
+              >
+                {{ (conv.customer?.name || 'C').charAt(0).toUpperCase() }}
+              </div>
+
+              <!-- Thread Info -->
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-xs font-bold text-slate-900 truncate">
+                    {{ conv.customer?.name || 'Customer #' + conv.customer_id }}
+                  </span>
+                  <span class="text-[10px] text-slate-400 flex-shrink-0">
+                    {{ formatChatTime(conv.updated_at) }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    v-if="conv.customer?.customer_profile?.segment_rank"
+                    class="px-1.5 py-0.2 rounded text-[9px] font-bold border"
+                    :class="getSegmentBadge(conv.customer.customer_profile.segment_rank)"
+                  >
+                    {{ conv.customer.customer_profile.segment_rank }}
+                  </span>
+                  <span
+                    class="px-1.5 py-0.2 rounded-full text-[9px] font-bold uppercase tracking-wider"
+                    :class="
+                      conv.status === 'active'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : conv.status === 'resolved'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-slate-200 text-slate-700'
+                    "
+                  >
+                    {{ conv.status }}
+                  </span>
+                </div>
+
+                <p class="text-xs text-slate-500 truncate leading-snug">
+                  {{ conv.latest_message?.content || 'No messages yet' }}
+                </p>
+              </div>
+
+              <!-- Unread badge -->
+              <span
+                v-if="conv.unread_count && conv.unread_count > 0"
+                class="w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 absolute right-3 bottom-3 shadow-2xs"
+              >
+                {{ conv.unread_count }}
+              </span>
             </button>
           </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Active Chat Dialogue Stream (8 cols) -->
+        <div class="lg:col-span-8 flex flex-col h-full bg-white min-h-0">
+          <!-- State: No Conversation Selected -->
+          <div
+            v-if="!adminStore.activeConversation"
+            class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3"
+          >
+            <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl">
+              💬
+            </div>
+            <h3 class="text-sm font-bold text-slate-800">Select a Conversation</h3>
+            <p class="text-xs text-slate-500 max-w-sm">
+              Choose a buyer conversation from the left thread list to review their order history, inquiry, and reply in real-time.
+            </p>
+          </div>
+
+          <!-- State: Active Conversation Open -->
+          <template v-else>
+            <!-- Chat Room Header -->
+            <div class="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-black text-sm flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  {{ (adminStore.activeConversation.customer?.name || 'C').charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-xs sm:text-sm font-black text-slate-900">
+                      {{ adminStore.activeConversation.customer?.name || 'Collector' }}
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
+                      :class="
+                        adminStore.activeConversation.status === 'active'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : adminStore.activeConversation.status === 'resolved'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      "
+                    >
+                      {{ adminStore.activeConversation.status }}
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 flex items-center gap-2">
+                    <span>{{ adminStore.activeConversation.customer?.email }}</span>
+                    <span v-if="adminStore.activeConversation.customer?.phone">&bull; {{ adminStore.activeConversation.customer.phone }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status Action Buttons -->
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Status:</span>
+                <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    :class="
+                      adminStore.activeConversation.status === 'active'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    "
+                    @click="handleUpdateStatus('active')"
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    :class="
+                      adminStore.activeConversation.status === 'resolved'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    "
+                    @click="handleUpdateStatus('resolved')"
+                  >
+                    Resolved
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    :class="
+                      adminStore.activeConversation.status === 'closed'
+                        ? 'bg-slate-700 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    "
+                    @click="handleUpdateStatus('closed')"
+                  >
+                    Closed
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Messages Stream Area -->
+            <div
+              ref="adminChatScrollContainer"
+              class="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/40 text-xs min-h-0 scroll-smooth"
+            >
+              <!-- Loading spinner -->
+              <div
+                v-if="adminStore.isLoadingChatMessages && adminStore.activeConversationMessages.length === 0"
+                class="py-12 text-center text-slate-400 font-medium"
+              >
+                <div class="inline-block animate-spin text-xl mb-1">⏳</div>
+                <p>Loading messages...</p>
+              </div>
+
+              <!-- Empty Room -->
+              <div
+                v-else-if="adminStore.activeConversationMessages.length === 0"
+                class="py-12 text-center text-slate-400 space-y-1"
+              >
+                <div class="text-2xl">💬</div>
+                <p class="font-bold text-slate-600">No messages in this chat room yet</p>
+                <p class="text-[11px]">Send a message below to greet this customer.</p>
+              </div>
+
+              <!-- Message Dialogue Bubbles -->
+              <template v-else>
+                <div
+                  v-for="msg in adminStore.activeConversationMessages"
+                  :key="msg.id"
+                  class="flex flex-col"
+                  :class="
+                    msg.sender_id === adminStore.activeConversation.customer_id ||
+                    msg.sender?.user_type === 'customer'
+                      ? 'items-start'
+                      : 'items-end'
+                  "
+                >
+                  <!-- Bubble Sender Label -->
+                  <div class="flex items-center gap-1 text-[10px] text-slate-400 mb-1 px-1 font-semibold">
+                    <span v-if="msg.sender_id === adminStore.activeConversation.customer_id || msg.sender?.user_type === 'customer'">
+                      👤 {{ msg.sender?.name || adminStore.activeConversation.customer?.name || 'Customer' }}
+                    </span>
+                    <span v-else class="text-indigo-600 font-bold">
+                      🧑‍💼 {{ msg.sender?.name || adminStore.currentAdmin?.name || 'Shop Staff' }} (You)
+                    </span>
+                  </div>
+
+                  <!-- Speech Bubble -->
+                  <div
+                    class="max-w-[80%] p-3.5 rounded-2xl shadow-2xs text-xs leading-relaxed"
+                    :class="
+                      msg.sender_id === adminStore.activeConversation.customer_id ||
+                      msg.sender?.user_type === 'customer'
+                        ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
+                        : 'bg-indigo-600 text-white rounded-tr-xs shadow-indigo-600/20'
+                    "
+                  >
+                    <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
+                  </div>
+
+                  <!-- Bubble Timestamp & Read Receipt -->
+                  <div class="flex items-center gap-1 text-[9px] text-slate-400 mt-1 px-1">
+                    <span>{{ formatChatTime(msg.created_at) }}</span>
+                    <span
+                      v-if="
+                        msg.sender_id !== adminStore.activeConversation.customer_id &&
+                        msg.sender?.user_type !== 'customer'
+                      "
+                      :class="msg.is_read ? 'text-emerald-600 font-bold' : 'text-slate-400'"
+                    >
+                      &bull; {{ msg.is_read ? '✓✓ Seen by buyer' : '✓ Sent' }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Quick Macro Reply Chips -->
+            <div class="px-4 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+              <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] flex-shrink-0">
+                Quick:
+              </span>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
+                @click="handleSendAdminReply('Hello! Your order has been securely packed and handed over to our courier partner. 🚚')"
+              >
+                📦 Order Packed &amp; Shipped
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
+                @click="handleSendAdminReply('All our collectible booster boxes and single cards are 100% authentic Japanese imports. ✨')"
+              >
+                ✨ Authenticity Guaranteed
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap cursor-pointer transition-colors"
+                @click="handleSendAdminReply('Thank you for choosing RLG Hobby Shop! Please let us know if you need anything else.')"
+              >
+                🙏 Thank You Note
+              </button>
+            </div>
+
+            <!-- Message Composer -->
+            <div class="p-3.5 bg-white border-t border-slate-200">
+              <form
+                class="flex items-center gap-2"
+                @submit.prevent="handleSendAdminReply()"
+              >
+                <input
+                  v-model="adminReplyInput"
+                  type="text"
+                  placeholder="Type a message to customer... (Press Enter to send)"
+                  class="flex-1 bg-slate-50 border border-slate-300 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white transition-colors"
+                  :disabled="isSendingAdminReply"
+                  @keydown.enter.exact.prevent="handleSendAdminReply()"
+                />
+                <button
+                  type="submit"
+                  class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+                  :disabled="isSendingAdminReply || !adminReplyInput.trim()"
+                >
+                  <span v-if="isSendingAdminReply" class="animate-spin">⏳</span>
+                  <span v-else>Send ➤</span>
+                </button>
+              </form>
+            </div>
+          </template>
         </div>
       </div>
     </div>

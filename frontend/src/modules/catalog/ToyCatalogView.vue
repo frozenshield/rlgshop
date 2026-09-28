@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
+import { useCatalogStore } from "./catalog.store";
 import { useCatalogFilterComposable } from "./catalog-filter.composable";
 import ToyFilterBar from "./components/ToyFilterBar.vue";
 import ToyGrid from "./components/ToyGrid.vue";
 import ToyDetailModal from "./components/ToyDetailModal.vue";
+
+const catalogStore = useCatalogStore();
+
+onMounted(() => {
+  catalogStore.fetchProducts();
+});
 
 const {
   filteredToys,

@@ -7,10 +7,13 @@ import type {
   AgeGroup,
 } from "@/shared/types/toy.types";
 import { MOCK_TOYS_DATA } from "@/shared/constants/mock-toys.data";
+import { mapApiProductToToy } from "@/shared/utils/productMapper";
 
 export const useCatalogStore = defineStore("catalogStore", () => {
   // State
   const toys = ref<ToyProduct[]>(MOCK_TOYS_DATA);
+  const isLoading = ref(false);
+  const isLoaded = ref(false);
   const searchQuery = ref("");
   const selectedCategory = ref<ToyCategory | "all">("all");
   const selectedTcgSeries = ref<TcgSubCategory | "all">("all");
@@ -30,6 +33,36 @@ export const useCatalogStore = defineStore("catalogStore", () => {
   const isDetailModalOpen = ref(false);
 
   // Actions
+  const fetchProducts = async (force = false) => {
+    if (isLoaded.value && !force && toys.value.length > 0) return;
+    isLoading.value = true;
+    try {
+      const res = await fetch("/api/products?per_page=100");
+      if (res.ok) {
+        const json = await res.json();
+        const items = Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json)
+            ? json
+            : [];
+        if (items.length > 0) {
+          toys.value = items.map(mapApiProductToToy);
+          isLoaded.value = true;
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "Could not fetch database products for catalog, using fallback",
+        e,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Auto-fetch on store creation
+  fetchProducts();
+
   const openDetailModal = (toy: ToyProduct) => {
     selectedToyForModal.value = toy;
     isDetailModalOpen.value = true;
@@ -93,6 +126,8 @@ export const useCatalogStore = defineStore("catalogStore", () => {
 
   return {
     toys,
+    isLoading,
+    isLoaded,
     searchQuery,
     selectedCategory,
     selectedTcgSeries,
@@ -107,6 +142,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     selectedToyForModal,
     isDetailModalOpen,
 
+    fetchProducts,
     openDetailModal,
     closeDetailModal,
     setCategory,

@@ -22,8 +22,16 @@ class CustomerCartRequest extends FormRequest
      */
     public function rules(): array
     {
+        if ($this->isMethod('put') || $this->isMethod('patch')) {
+            return [
+                'customer_id' => 'nullable|integer|exists:users,id',
+                'product_id' => 'nullable|integer|exists:products,id',
+                'quantity' => 'required|integer|min:1',
+            ];
+        }
+
         return [
-            'customer_id' => 'required|integer|exists:users,id',
+            'customer_id' => 'nullable|integer|exists:users,id',
             'product_id' => 'required|integer|exists:products,id',
             'quantity' => 'required|integer|min:1',
         ];

@@ -99,7 +99,14 @@ const {
               :src="toy.imageUrl"
               :alt="toy.name"
               class="max-w-full max-h-full object-contain"
+              :class="{ 'opacity-55 grayscale-[35%]': toy.stock <= 0 }"
             />
+            <span
+              v-if="toy.stock <= 0"
+              class="absolute top-2.5 left-2.5 inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-md shadow-rose-600/40"
+            >
+              🚫 Sold Out
+            </span>
             <button
               type="button"
               class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/80 backdrop-blur-sm text-slate-300 hover:text-rose-400 border border-slate-700 flex items-center justify-center shadow-xs cursor-pointer hover:scale-110 transition-transform"
@@ -153,11 +160,13 @@ const {
               </div>
 
               <BaseButton
-                variant="primary"
+                :variant="toy.stock > 0 ? 'primary' : 'secondary'"
                 size="sm"
+                :disabled="toy.stock <= 0"
+                class="disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="addSingleToCart(toy.id)"
               >
-                Add to Cart
+                {{ toy.stock > 0 ? "Add to Cart" : "Sold Out" }}
               </BaseButton>
             </div>
           </div>

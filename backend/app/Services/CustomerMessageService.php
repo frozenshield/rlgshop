@@ -21,8 +21,10 @@ class CustomerMessageService
             if (! empty($filters['user_id'])) {
                 $query->where('user_id', $filters['user_id']);
             }
-        } else {
+        } elseif ($authId) {
             $query->where('user_id', $authId);
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         if (! empty($filters['status']) && $filters['status'] !== 'all') {
