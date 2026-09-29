@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from './auth.store'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
-onMounted(() => {
+onMounted(async () => {
   const token = route.query.token as string
   if (token) {
     localStorage.setItem('auth_token', token)
+    authStore.token = token
+    await authStore.fetchCurrentUser()
     router.push('/')
   } else {
     router.push('/login?error=auth_failed')
