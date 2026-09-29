@@ -120,6 +120,15 @@ export const useAuthStore = defineStore("authStore", () => {
         } catch (e) {
           console.warn('Could not fetch cart during auth', e);
         }
+
+        // Fetch the user's wishlist
+        try {
+          const { useWishlistStore } = await import('@/modules/wishlist/wishlist.store');
+          const wishlistStore = useWishlistStore();
+          await wishlistStore.fetchWishlist();
+        } catch (e) {
+          console.warn('Could not fetch wishlist during auth', e);
+        }
       }
     } catch {
       // Backend not running or offline; keep cached user
@@ -192,6 +201,15 @@ export const useAuthStore = defineStore("authStore", () => {
       cartStore.clearCart();
     } catch (e) {
       console.warn('Could not clear cart during logout', e);
+    }
+
+    // Clear the wishlist on logout
+    try {
+      const { useWishlistStore } = await import('@/modules/wishlist/wishlist.store');
+      const wishlistStore = useWishlistStore();
+      wishlistStore.clearWishlist();
+    } catch (e) {
+      console.warn('Could not clear wishlist during logout', e);
     }
 
     currentUser.value = {

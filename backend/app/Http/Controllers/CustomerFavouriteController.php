@@ -11,9 +11,9 @@ class CustomerFavouriteController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $customerFavourites = CustomerFavourite::all();
+        $customerFavourites = CustomerFavourite::where('user_id', $request->user()->id)->get();
 
         return response()->json([
             'message' => 'Customer favourites retrieved successfully',
@@ -26,7 +26,13 @@ class CustomerFavouriteController extends Controller
      */
     public function store(StoreCustomerFavouriteRequest $request)
     {
-        $customerFavourite = CustomerFavourite::create($request->validated());
+        $validated = $request->validated();
+        $validated['user_id'] = $request->user()->id;
+
+        $customerFavourite = CustomerFavourite::firstOrCreate(
+            ['user_id' => $validated['user_id'], 'product_id' => $validated['product_id']],
+            $validated
+        );
 
         return response()->json([
             'message' => 'Customer favourite created successfully',
@@ -37,12 +43,20 @@ class CustomerFavouriteController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(CustomerFavourite $customerFavourite)
+    public function destroy(Request $request, $productId)
     {
-        $customerFavourite->delete();
+        $deleted = CustomerFavourite::where('user_id', $request->user()->id)
+            ->where('product_id', $productId)
+            ->delete();
+
+        if ($deleted) {
+            return response()->json([
+                'message' => 'Customer favourite deleted successfully'
+            ]);
+        }
 
         return response()->json([
-            'message' => 'Customer favourite deleted successfully'
-        ]);
+            'message' => 'Customer favourite not found'
+        ], 404);
     }
 }
