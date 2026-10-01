@@ -106,8 +106,18 @@ const printDocument = () => {
   if (selectedOrder.value) {
     adminStore.markPackingSlipPrinted(selectedOrder.value.id);
   }
+  document.body.classList.add("printing-invoice");
   window.print();
+  setTimeout(() => {
+    document.body.classList.remove("printing-invoice");
+  }, 1000);
 };
+
+if (typeof window !== "undefined") {
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("printing-invoice");
+  });
+}
 
 const getStatusBadge = (status: OrderStatus) => {
   switch (status) {
@@ -651,111 +661,185 @@ const getStatusBadge = (status: OrderStatus) => {
     <teleport to="body">
       <div
         v-if="isInvoiceModalOpen && selectedOrder"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+        class="invoice-modal-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 print:p-0 print:static print:bg-white print:backdrop-blur-none print:z-auto print:block print:inset-auto"
       >
         <div
-          class="bg-white rounded-3xl max-w-xl w-full p-8 space-y-6 shadow-2xl border border-slate-200 font-display max-h-[90vh] overflow-y-auto"
+          id="printable-invoice"
+          class="invoice-modal-card bg-white rounded-3xl max-w-xl w-full p-8 space-y-6 shadow-2xl border border-slate-200 font-display max-h-[90vh] overflow-y-auto print:max-w-none print:w-full print:rounded-none print:shadow-none print:border-none print:p-0 print:max-h-none print:overflow-visible print:space-y-6"
         >
+          <!-- Invoice Header -->
           <div
-            class="flex items-start justify-between pb-4 border-b border-slate-200"
+            class="flex items-start justify-between pb-4 border-b-2 border-slate-800 print:border-slate-800"
           >
-            <div>
-              <span class="text-xl font-black text-slate-900 tracking-tight"
-                >RLG <span class="text-rose-600">HOBBY</span></span
-              >
-              <p class="text-[11px] text-slate-400">
-                Official Commercial Tax Invoice
-              </p>
+            <div class="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                alt="RLG Online Shop Logo"
+                class="h-12 w-auto object-contain print:h-14 drop-shadow-sm"
+              />
+              <div>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                  RLG <span class="text-rose-600">ONLINE SHOP</span>
+                </h2>
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Official Commercial Tax Invoice
+                </p>
+                <p class="text-[10px] text-slate-400 print:text-slate-500">
+                  Authentic Japanese Imports Vault &bull; Metro Manila, Philippines
+                </p>
+              </div>
             </div>
             <div class="text-right">
-              <p class="font-mono text-sm font-extrabold text-slate-900">
-                {{ selectedOrder.invoiceId }}
+              <span
+                class="inline-block text-[10px] font-black uppercase px-2.5 py-0.5 rounded bg-slate-900 text-white print:bg-slate-900 print:text-white mb-1"
+              >
+                Tax Invoice
+              </span>
+              <p class="font-mono text-base font-extrabold text-slate-900 tracking-tight">
+                {{ selectedOrder.invoiceId || 'INV-2026-001' }}
               </p>
-              <p class="text-[11px] text-slate-500">
+              <p class="text-xs text-slate-500 font-medium">
                 {{ selectedOrder.createdAt }}
+              </p>
+              <p class="text-[11px] text-slate-400 font-mono">
+                Order Ref: #{{ selectedOrder.id }}
               </p>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4 text-xs text-slate-600">
+          <!-- Billed / Shipped & Payment Grid -->
+          <div
+            class="grid grid-cols-2 gap-6 text-xs text-slate-700 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 print:bg-slate-50 print:border-slate-300"
+          >
             <div>
-              <h4 class="font-bold text-slate-900 mb-1">
-                Billed &amp; Shipped To:
+              <h4 class="font-black text-slate-900 uppercase tracking-wider text-[10px] mb-1.5 flex items-center gap-1.5">
+                <span>📦</span>
+                <span>Billed &amp; Shipped To:</span>
               </h4>
-              <p class="font-bold text-slate-800">
-                {{ selectedOrder.customerName }}
+              <p class="font-bold text-sm text-slate-900">
+                {{ selectedOrder.customerName || 'Valued Collector' }}
               </p>
-              <p>{{ selectedOrder.shippingAddress }}</p>
-              <p>{{ selectedOrder.city }}, {{ selectedOrder.postalCode }}</p>
-              <p>{{ selectedOrder.customerEmail }}</p>
+              <p class="text-slate-600 leading-relaxed mt-0.5">
+                {{ selectedOrder.shippingAddress || 'Registered Shipping Address' }}
+              </p>
+              <p class="text-slate-600 font-medium">
+                {{ selectedOrder.city ? `${selectedOrder.city}, ` : '' }}{{ selectedOrder.postalCode || 'Philippines' }}
+              </p>
+              <p class="text-slate-500 font-mono text-[11px] mt-1">
+                {{ selectedOrder.customerEmail }}
+              </p>
             </div>
-            <div class="text-right">
-              <h4 class="font-bold text-slate-900 mb-1">
-                Payment Information:
-              </h4>
-              <p>
-                <span class="font-bold">Method:</span>
-                {{ selectedOrder.paymentMethod }}
+
+            <div class="text-right flex flex-col justify-between">
+              <div>
+                <h4 class="font-black text-slate-900 uppercase tracking-wider text-[10px] mb-1.5">
+                  Payment Information:
+                </h4>
+                <p class="text-slate-700 font-semibold">
+                  <span class="text-slate-500 font-normal">Method:</span>
+                  {{ selectedOrder.paymentMethod }}
+                </p>
+                <div class="mt-1 flex items-center justify-end gap-1.5">
+                  <span
+                    class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 print:bg-emerald-100 print:text-emerald-900"
+                  >
+                    ✓ Paid &bull; Verified
+                  </span>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 font-mono mt-2">
+                Currency: <strong>Philippine Peso (PHP ₱)</strong>
               </p>
-              <p><span class="font-bold">Status:</span> Paid &bull; Verified</p>
-              <p><span class="font-bold">Currency:</span> PHP (₱)</p>
             </div>
           </div>
 
           <!-- Items Table -->
-          <table class="w-full text-xs text-left">
-            <thead>
-              <tr
-                class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200"
-              >
-                <th class="p-2">Item Description</th>
-                <th class="p-2 text-center">Qty</th>
-                <th class="p-2 text-right">Price</th>
-                <th class="p-2 text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="item in selectedOrder.items" :key="item.id">
-                <td class="p-2">
-                  <p class="font-bold text-slate-800">{{ item.name }}</p>
-                  <p class="text-[10px] text-slate-400 font-mono">
-                    SKU: {{ item.sku }}
-                  </p>
-                </td>
-                <td class="p-2 text-center font-bold">{{ item.quantity }}</td>
-                <td class="p-2 text-right">{{ formatCurrency(item.price) }}</td>
-                <td class="p-2 text-right font-bold">
-                  {{ formatCurrency(item.price * item.quantity) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="overflow-hidden rounded-xl border border-slate-200 print:border-slate-300">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr
+                  class="bg-slate-100 text-slate-800 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 print:bg-slate-100"
+                >
+                  <th class="p-3">Item Description</th>
+                  <th class="p-3 text-center">Qty</th>
+                  <th class="p-3 text-right">Unit Price</th>
+                  <th class="p-3 text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 print:divide-slate-200">
+                <tr v-for="item in selectedOrder.items" :key="item.id" class="hover:bg-slate-50/50">
+                  <td class="p-3">
+                    <p class="font-bold text-slate-900 text-xs">{{ item.name }}</p>
+                    <p class="text-[10px] text-slate-500 font-mono">
+                      SKU: {{ item.sku }}
+                    </p>
+                  </td>
+                  <td class="p-3 text-center font-bold text-slate-800">
+                    {{ item.quantity }}
+                  </td>
+                  <td class="p-3 text-right font-mono text-slate-700">
+                    {{ formatCurrency(item.price) }}
+                  </td>
+                  <td class="p-3 text-right font-mono font-bold text-slate-900">
+                    {{ formatCurrency(item.price * item.quantity) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <!-- Totals -->
-          <div
-            class="pt-3 border-t border-slate-200 space-y-1 text-xs text-slate-600 text-right"
-          >
+          <div class="pt-2 space-y-2 text-xs text-slate-600">
+            <div class="flex justify-between py-1 border-b border-slate-100 print:border-slate-200">
+              <span class="text-slate-500">Items Subtotal</span>
+              <span class="font-mono font-bold text-slate-800">
+                {{ formatCurrency(selectedOrder.total) }}
+              </span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-100 print:border-slate-200 text-[11px]">
+              <span class="text-slate-500">Shipping Armor &amp; Logistics (Courier Delivery)</span>
+              <span class="font-bold text-emerald-600 uppercase tracking-wide">Included / Free</span>
+            </div>
             <div
-              class="flex justify-between font-extrabold text-base text-slate-900 pt-2 border-t border-slate-200"
+              class="flex justify-between font-black text-lg text-slate-900 pt-2 border-t-2 border-slate-800 print:border-slate-800"
             >
               <span>Grand Total</span>
-              <span class="text-rose-600">{{
-                formatCurrency(selectedOrder.total)
-              }}</span>
+              <span class="text-rose-600 font-mono font-black text-xl">
+                {{ formatCurrency(selectedOrder.total) }}
+              </span>
             </div>
           </div>
 
-          <div class="flex gap-3 pt-3 border-t border-slate-100">
+          <!-- Official Document Footer Notice -->
+          <div
+            class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-slate-400 print:text-slate-600"
+          >
+            <div class="space-y-0.5">
+              <p class="font-bold text-slate-700">
+                Authenticity Guarantee: 100% Genuine Japanese Collector Imports
+              </p>
+              <p>
+                Thank you for your order with RLG Online Shop! For inquiries or support, contact support@rlghobby.com.
+              </p>
+            </div>
+            <div class="text-right font-mono text-[9px] text-slate-400 shrink-0">
+              <div class="tracking-widest font-bold">||||| | |||| ||| | ||||| ||</div>
+              <span>{{ selectedOrder.invoiceId || 'INV-2026-001' }}</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons (Hidden when printing) -->
+          <div class="flex gap-3 pt-3 border-t border-slate-100 print:hidden">
             <button
               type="button"
-              class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+              class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
               @click="isInvoiceModalOpen = false"
             >
               Close
             </button>
             <button
               type="button"
-              class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+              class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               @click="printDocument"
             >
               <span>🖨️ Download / Print PDF</span>
@@ -775,3 +859,56 @@ const getStatusBadge = (status: OrderStatus) => {
     />
   </div>
 </template>
+
+<style>
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
+  /* Force background colors and crisp borders */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* When printing invoice, hide root dashboard application */
+  body.printing-invoice #app,
+  body:has(#printable-invoice) #app {
+    display: none !important;
+  }
+
+  /* Invoice modal overlay becomes a static clean page container */
+  .invoice-modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Invoice card expands to full A4 page width cleanly without card borders or shadows */
+  .invoice-modal-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+</style>
