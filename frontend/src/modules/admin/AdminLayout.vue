@@ -165,27 +165,16 @@ watchEffect(() => {
       >
         <router-link
           to="/admin/dashboard"
-          class="flex items-center gap-3 overflow-hidden"
+          class="flex items-center gap-3 overflow-hidden group select-none"
         >
-          <div
-            class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 via-slate-800 to-indigo-600 flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-md"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              class="w-5 h-5 fill-none stroke-current"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <path d="m9 12 2 2 4-4" />
-              <path d="M12 3v4" />
-              <path d="M12 17v4" />
-            </svg>
-          </div>
+          <img
+            src="/logo.png"
+            alt="RLG Online Shop Logo"
+            class="w-10 h-10 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
+          />
           <div v-if="!isSidebarCollapsed" class="min-w-0">
             <h2 class="text-sm font-black text-white tracking-tight truncate">
-              RLG <span class="text-rose-500">HOBBY</span>
+              RLG <span class="text-amber-400">ONLINE SHOP</span>
             </h2>
             <p class="text-[10px] text-slate-400 font-medium">Command Center</p>
           </div>

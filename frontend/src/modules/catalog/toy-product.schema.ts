@@ -7,8 +7,10 @@ export const toyFilterSchema = yup.object({
     .oneOf([
       'all',
       'tcg',
+      'gunpla',
       'anime-figures',
       'anime-merchandise',
+      'toys-plushies',
     ])
     .default('all'),
   tcgSeries: yup

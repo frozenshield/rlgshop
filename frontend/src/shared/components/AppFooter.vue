@@ -90,24 +90,13 @@ const handleSubscribe = () => {
         <!-- Brand Info -->
         <div class="md:col-span-2 space-y-4">
           <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-900 via-rose-600 to-indigo-600 flex items-center justify-center p-2 shadow-sm text-white font-bold"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="w-5 h-5 fill-none stroke-current"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="4" />
-                <path d="m9 12 2 2 4-4" />
-                <path d="M12 3v4" />
-                <path d="M12 17v4" />
-              </svg>
-            </div>
+            <img
+              src="/logo.png"
+              alt="RLG Online Shop Logo"
+              class="w-12 h-12 object-contain drop-shadow-sm"
+            />
             <span class="text-2xl font-black text-slate-900 tracking-tight">
-              RLG <span class="text-rose-600">HOBBY</span>
+              RLG <span class="text-rose-600">ONLINE SHOP</span>
             </span>
           </div>
           <p class="text-sm text-slate-500 leading-relaxed max-w-sm">

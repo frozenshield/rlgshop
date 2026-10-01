@@ -22,6 +22,8 @@ export function mapApiProductToToy(p: any): ToyProduct {
     category = "anime-figures";
   } else if (p.ref_category_id === 4 || catDesc.includes("merch")) {
     category = "anime-merchandise";
+  } else if (p.ref_category_id === 5 || catDesc.includes("plush") || catDesc.includes("toy")) {
+    category = "toys-plushies";
   }
 
   // 2. Resolve TCG Series if applicable

@@ -905,7 +905,24 @@ const showFeedback = (msg: string) => {
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1"
+              >Active Brand Logo</label
+            >
+            <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200 h-[42px]">
+              <img
+                src="/logo.png"
+                alt="Active Shop Logo"
+                class="w-8 h-8 object-contain rounded-lg shadow-2xs"
+              />
+              <div class="text-[10px] text-slate-500 leading-tight">
+                <span class="font-bold text-slate-800 block">RLG Online Shop</span>
+                <span>Storefront, Admin &amp; Favicon</span>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label class="block font-bold text-slate-700 mb-1"
               >Store Legal Name</label

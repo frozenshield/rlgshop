@@ -64,30 +64,19 @@ const handleLogin = async () => {
       <!-- Top Branding Emblem -->
       <div class="text-center space-y-2">
         <router-link to="/" class="inline-flex items-center gap-3 group">
-          <div
-            class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 via-slate-800 to-indigo-600 flex items-center justify-center shadow-xl shadow-rose-900/20 border border-slate-700 group-hover:scale-105 transition-transform text-white"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              class="w-7 h-7 fill-none stroke-current"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <path d="m9 12 2 2 4-4" />
-              <path d="M12 3v4" />
-              <path d="M12 17v4" />
-            </svg>
-          </div>
+          <img
+            src="/logo.png"
+            alt="RLG Online Shop Logo"
+            class="w-14 h-14 object-contain group-hover:scale-105 transition-transform drop-shadow-lg"
+          />
           <div class="text-left">
             <h1
               class="text-xl font-black tracking-tight text-white flex items-center gap-1.5"
             >
-              RLG <span class="text-rose-500">HOBBY</span>
+              RLG <span class="text-amber-400">ONLINE SHOP</span>
               <span
                 class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
-                >OS</span
+                >ADMIN</span
               >
             </h1>
             <p class="text-[11px] text-slate-400 font-medium">

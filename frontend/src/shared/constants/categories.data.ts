@@ -119,4 +119,13 @@ export const CATEGORIES_DATA: CategoryInfo[] = [
     description:
       "Authentic plushies, die-cast Pokéballs, collector pin badges, keychains, apparel & trainer gear",
   },
+  {
+    id: "toys-plushies",
+    name: "Toys & Plushies",
+    icon: "🧸",
+    color: "#EC4899",
+    bgClass: "bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100",
+    description:
+      "Cuddly plushies, Nesoberi, squish pillows, capsule toys, Gachapon, blind boxes & novelty toys",
+  },
 ];

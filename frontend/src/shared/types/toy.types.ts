@@ -4,7 +4,8 @@ export type ToyCategory =
   | "tcg"
   | "gunpla"
   | "anime-figures"
-  | "anime-merchandise";
+  | "anime-merchandise"
+  | "toys-plushies";
 
 export type TcgSubCategory =
   | "pokemon"

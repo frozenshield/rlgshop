@@ -8,7 +8,7 @@ import { useAuthStore } from "@/modules/auth/auth.store";
 import { TCG_SERIES_DATA } from "@/shared/constants/categories.data";
 import { formatCurrency } from "../utils/currency.util";
 import BaseBadge from "./BaseBadge.vue";
-import type { TcgSubCategory } from "../types/toy.types";
+import type { TcgSubCategory, ToyCategory } from "../types/toy.types";
 
 const emit = defineEmits<{
   (e: "open-advisor"): void;
@@ -74,9 +74,7 @@ const handleSelectPreview = (toyId: string) => {
   localSearchText.value = "";
 };
 
-const navigateToCategory = (
-  cat: "tcg" | "anime-figures" | "anime-merchandise" | "all",
-) => {
+const navigateToCategory = (cat: ToyCategory | "all") => {
   catalogStore.setCategory(cat);
   isMobileMenuOpen.value = false;
   isTcgDropdownOpen.value = false;
@@ -120,34 +118,17 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           to="/"
           class="flex items-center gap-3 group select-none flex-shrink-0"
         >
-          <div
-            class="w-11 h-11 rounded-xl bg-gradient-to-tr from-slate-900 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200 text-white font-black text-xl border border-indigo-500/30"
-          >
-            <!-- Modern Hobby Emblem -->
-            <svg
-              viewBox="0 0 24 24"
-              class="w-6 h-6 fill-none stroke-current"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <path d="m9 12 2 2 4-4" />
-              <path d="M12 3v4" />
-              <path d="M12 17v4" />
-            </svg>
-          </div>
+          <img
+            src="/logo.png"
+            alt="RLG Online Shop Logo"
+            class="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-md"
+          />
           <div>
             <div class="flex items-center gap-2">
               <span
                 class="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-amber-400 transition-colors"
               >
-                RLG <span class="text-indigo-400">HOBBY</span>
-              </span>
-              <span
-                class="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-950/80 text-indigo-300 uppercase tracking-widest border border-indigo-500/30"
-              >
-                Shop
+                RLG <span class="text-amber-400">ONLINE SHOP</span>
               </span>
             </div>
             <p class="text-[11px] text-slate-400 font-medium tracking-wide">
@@ -285,6 +266,20 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             @click="navigateToCategory('anime-merchandise')"
           >
             <span>🛡️ Anime Merchandise</span>
+          </button>
+
+          <!-- Toys & Plushies Button -->
+          <button
+            type="button"
+            class="px-3 py-2 rounded-xl hover:text-pink-400 hover:bg-pink-950/40 transition-colors flex items-center gap-1 cursor-pointer"
+            :class="
+              catalogStore.selectedCategory === 'toys-plushies'
+                ? 'text-pink-400 bg-pink-950/60 border border-pink-500/30'
+                : ''
+            "
+            @click="navigateToCategory('toys-plushies')"
+          >
+            <span>🧸 Toys &amp; Plushies</span>
           </button>
 
           <!-- Smart Hobby Finder Trigger Button -->
