@@ -16,7 +16,7 @@ class ProductService
 {
     public function getProducts(array $filters): LengthAwarePaginator
     {
-        $query = Product::with(['category', 'subcategory', 'brand', 'pokemonSet', 'condition']);
+        $query = Product::with(['category', 'subcategory', 'brand', 'condition']);
 
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
@@ -48,7 +48,7 @@ class ProductService
         }
 
         $perPage = (int) ($filters['per_page'] ?? 15);
-        if ($perPage < 1 || $perPage > 100) {
+        if ($perPage < 1 || $perPage > 1000) {
             $perPage = 15;
         }
 

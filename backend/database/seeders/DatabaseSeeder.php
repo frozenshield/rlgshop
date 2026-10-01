@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
             RefOrderStatusSeeder::class,
             RefShippingCarrierSeeder::class,
             RefPaymentMethodSeeder::class,
+            ShippingTaxSeeder::class,
             CustomerOrderSeeder::class,
             CustomerMessageReviewSeeder::class,
             ChatConversationSeeder::class,

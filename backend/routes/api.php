@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\OnePieceSetController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
+use App\Http\Controllers\Api\ShippingTaxController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -277,6 +278,10 @@ Route::patch('/ref-payment-methods/{ref_payment_method}/status', function (Reque
         'data' => $refPaymentMethod,
     ]);
 });
+
+// Shipping Rates & VAT Rules API
+Route::get('/shipping-tax', [ShippingTaxController::class, 'index']);
+Route::match(['post', 'put', 'patch'], '/shipping-tax', [ShippingTaxController::class, 'update']);
 
 // Customer Orders & Fulfillment Lifecycle API
 Route::get('/customer-orders', [CustomerOrderController::class, 'index']);

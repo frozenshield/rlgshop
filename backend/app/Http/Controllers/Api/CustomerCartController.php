@@ -36,7 +36,6 @@ class CustomerCartController extends Controller
             'product.subcategory',
             'product.brand',
             'product.condition',
-            'product.pokemonSet',
         ])
             ->where('customer_id', $customerId)
             ->orderBy('created_at', 'desc')
@@ -72,7 +71,6 @@ class CustomerCartController extends Controller
             'product.subcategory',
             'product.brand',
             'product.condition',
-            'product.pokemonSet',
         ]);
 
         return response()->json([
@@ -102,7 +100,6 @@ class CustomerCartController extends Controller
             'product.subcategory',
             'product.brand',
             'product.condition',
-            'product.pokemonSet',
         ]);
 
         return response()->json([
