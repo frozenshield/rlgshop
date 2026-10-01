@@ -1,14 +1,29 @@
+import { storeToRefs } from "pinia";
+import { useWishlistStore } from "./wishlist.store";
+import { useCartStore } from "../cart/cart.store";
 import { storeToRefs } from 'pinia'
 import { useWishlistStore } from './wishlist.store'
 import { useCartStore } from '../cart/cart.store'
 
 export const useWishlistComposable = () => {
+  const wishlistStore = useWishlistStore();
+  const cartStore = useCartStore();
   const wishlistStore = useWishlistStore()
   const cartStore = useCartStore()
 
+  const { favoriteToyIds, favoriteToys, count } = storeToRefs(wishlistStore);
   const { favoriteToys, favoriteToyIds, count, isLoading, isSyncing } =
     storeToRefs(wishlistStore)
 
+  const moveAllToCart = () => {
+    favoriteToys.value.forEach((toy) => {
+      if (toy.stock > 0) {
+        cartStore.addItem(toy, 1);
+      }
+    });
+    wishlistStore.clearWishlist();
+    cartStore.openDrawer();
+  };
   const moveAllToCart = async () => {
     const toys = [...favoriteToys.value].filter((toy) => toy.stock > 0)
     for (const toy of toys) {
@@ -18,12 +33,17 @@ export const useWishlistComposable = () => {
     cartStore.openDrawer()
   }
 
+  const addSingleToCart = (toyId: string) => {
+    const toy = favoriteToys.value.find((t) => t.id === toyId);
   const addSingleToCart = async (toyId: string) => {
     const toy = favoriteToys.value.find((t) => t.id === toyId)
     if (toy && toy.stock > 0) {
+      cartStore.addItem(toy, 1);
+      wishlistStore.toggleFavorite(toyId);
       await cartStore.addItem(toy, 1)
       await wishlistStore.toggleFavorite(toyId)
     }
+  };
   }
 
   return {
@@ -38,5 +58,7 @@ export const useWishlistComposable = () => {
     fetchFavorites: wishlistStore.fetchFavorites,
     moveAllToCart,
     addSingleToCart,
+  };
+};
   }
 }

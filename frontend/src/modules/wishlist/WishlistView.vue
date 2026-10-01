@@ -2,8 +2,11 @@
 import { onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useWishlistComposable } from "./wishlist.composable";
+import { formatCurrency, formatAgeGroup } from "@/shared/utils/currency.util";
 import { formatCurrency } from "@/shared/utils/currency.util";
 import BaseButton from "@/shared/components/BaseButton.vue";
+import BaseRating from "@/shared/components/BaseRating.vue";
+import BaseBadge from "@/shared/components/BaseBadge.vue";
 
 const router = useRouter();
 const {
@@ -26,18 +29,27 @@ onMounted(() => {
 <template>
   <div class="min-h-screen py-10 font-display">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <!-- Wishlist Header -->
+      <div
+        class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5"
+      >
 
       <!-- ─── Page Header ──────────────────────────────────────────────────── -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <button
             type="button"
+            class="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 mb-1 cursor-pointer transition-colors"
             class="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 mb-2 cursor-pointer transition-colors"
             @click="router.back()"
           >
+            &larr; Back
             ← Back
           </button>
           <div class="flex items-center gap-3">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white">
+              Collector Wishlist
+            </h1>
             <div class="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-500/30 flex items-center justify-center text-xl">
               ❤️
             </div>
@@ -50,23 +62,29 @@ onMounted(() => {
               </p>
             </div>
             <span
+              class="bg-indigo-950/70 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/30"
               v-if="count > 0"
               class="bg-rose-950/60 text-rose-300 text-xs font-black px-3 py-1 rounded-full border border-rose-500/30 ml-1"
             >
+              {{ count }} saved items
               {{ count }} item{{ count !== 1 ? "s" : "" }}
             </span>
           </div>
         </div>
 
+        <div v-if="count > 0" class="flex items-center gap-3">
         <div v-if="count > 0" class="flex items-center gap-3 flex-shrink-0">
           <button
             type="button"
+            class="text-xs font-bold text-slate-400 hover:text-rose-400 cursor-pointer transition-colors"
             class="text-xs font-bold text-slate-400 hover:text-rose-400 cursor-pointer transition-colors px-3 py-2 rounded-lg hover:bg-rose-950/30 border border-transparent hover:border-rose-500/20"
             :disabled="isSyncing"
             @click="clearWishlist"
           >
             Clear All
           </button>
+          <BaseButton variant="primary" size="md" @click="moveAllToCart">
+            Move All to Cart 🛒
           <BaseButton
             variant="primary"
             size="md"
@@ -84,19 +102,31 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Empty State -->
+      <div
+        v-if="count === 0"
+        class="bg-slate-900/90 rounded-3xl p-16 text-center border border-slate-800 shadow-xl max-w-lg mx-auto space-y-4 my-8"
+      >
       <!-- ─── Loading Skeleton ─────────────────────────────────────────────── -->
       <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div
+          class="w-20 h-20 rounded-2xl bg-indigo-950/60 text-indigo-400 flex items-center justify-center text-3xl mx-auto border border-indigo-500/30 shadow-inner"
           v-for="i in 4"
           :key="i"
           class="bg-slate-900/90 rounded-3xl p-4 border border-slate-800 animate-pulse"
         >
+          🤍
           <div class="w-full aspect-square rounded-2xl bg-slate-800 mb-4" />
           <div class="h-3 bg-slate-800 rounded-full w-1/3 mb-3" />
           <div class="h-4 bg-slate-800 rounded-full w-4/5 mb-2" />
           <div class="h-4 bg-slate-800 rounded-full w-3/5 mb-4" />
           <div class="h-9 bg-slate-800 rounded-xl" />
         </div>
+        <h3 class="text-xl font-bold text-white">Your Wishlist is Empty</h3>
+        <p class="text-xs text-slate-400 max-w-sm mx-auto">
+          Save your favorite TCG booster boxes, model kits, and scale figures
+          here to track prices and availability!
+        </p>
       </div>
 
       <!-- ─── Empty State ───────────────────────────────────────────────────── -->
@@ -124,6 +154,7 @@ onMounted(() => {
           size="md"
           @click="router.push('/catalog')"
         >
+          Browse Products 🔍
           <span class="flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -134,6 +165,7 @@ onMounted(() => {
         </BaseButton>
       </div>
 
+      <!-- Wishlist Toys Grid -->
       <!-- ─── Favourites Grid ───────────────────────────────────────────────── -->
       <div
         v-else
@@ -142,22 +174,31 @@ onMounted(() => {
         <div
           v-for="toy in favoriteToys"
           :key="toy.id"
+          class="bg-slate-900/90 rounded-3xl p-4 border border-slate-800 hover:border-indigo-500/50 shadow-lg shadow-black/30 hover:shadow-indigo-500/10 transition-all flex flex-col justify-between"
           class="group relative bg-slate-900 rounded-3xl border border-slate-800 hover:border-rose-500/40 shadow-lg shadow-black/30 hover:shadow-rose-500/10 transition-all duration-300 flex flex-col overflow-hidden"
         >
+          <div
+            class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-950 mb-3 border border-slate-800/80 flex items-center justify-center p-2"
+          >
           <!-- Product Image -->
           <div class="relative w-full aspect-square bg-slate-950 border-b border-slate-800/80 flex items-center justify-center p-3 overflow-hidden">
             <img
               :src="toy.imageUrl"
               :alt="toy.name"
+              class="max-w-full max-h-full object-contain"
+              :class="{ 'opacity-55 grayscale-[35%]': toy.stock <= 0 }"
               class="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-105"
               :class="{ 'opacity-50 grayscale': toy.stock <= 0 }"
             />
+            <span
 
             <!-- Sold Out Badge -->
             <div
               v-if="toy.stock <= 0"
+              class="absolute top-2.5 left-2.5 inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wider shadow-md shadow-rose-600/40"
               class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
             >
+              🚫 Sold Out
               <span class="bg-rose-600/90 text-white text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg">
                 Sold Out
               </span>
@@ -174,11 +215,14 @@ onMounted(() => {
             <!-- Remove from Wishlist -->
             <button
               type="button"
+              class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/80 backdrop-blur-sm text-slate-300 hover:text-rose-400 border border-slate-700 flex items-center justify-center shadow-xs cursor-pointer hover:scale-110 transition-transform"
+              title="Remove"
               class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/80 backdrop-blur-sm text-rose-400 border border-rose-500/30 flex items-center justify-center shadow-sm cursor-pointer hover:bg-rose-600 hover:border-rose-600 hover:text-white hover:scale-110 transition-all duration-200"
               title="Remove from favourites"
               :disabled="isSyncing"
               @click="toggleFavorite(toy.id)"
             >
+              ✕
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd"
                   d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
@@ -187,6 +231,19 @@ onMounted(() => {
             </button>
           </div>
 
+          <div class="space-y-2 flex-1 flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-[11px] font-bold text-slate-400"
+              >
+                <span
+                  class="text-indigo-400 font-extrabold uppercase tracking-wide"
+                  >{{ toy.brand }}</span
+                >
+                <BaseBadge variant="secondary" size="sm">
+                  {{ formatAgeGroup(toy.ageGroup) }}
+                </BaseBadge>
+              </div>
           <!-- Product Info -->
           <div class="flex-1 flex flex-col p-4 space-y-3">
             <!-- Brand & Category -->
@@ -199,11 +256,27 @@ onMounted(() => {
               </span>
             </div>
 
+              <h4 class="text-sm font-bold text-white line-clamp-2 mt-1">
+                {{ toy.name }}
+              </h4>
             <!-- Name -->
             <h4 class="text-sm font-bold text-white line-clamp-2 leading-snug flex-1">
               {{ toy.name }}
             </h4>
 
+              <div class="mt-2">
+                <BaseRating
+                  :rating="toy.rating"
+                  :review-count="toy.reviewCount"
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            <div
+              class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2 mt-3"
+            >
+              <div>
             <!-- Price Row -->
             <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
               <div class="flex items-baseline gap-1.5">
@@ -211,6 +284,8 @@ onMounted(() => {
                   {{ formatCurrency(toy.price) }}
                 </span>
                 <span
+                  v-if="toy.originalPrice"
+                  class="text-xs text-slate-500 line-through ml-1.5 font-mono"
                   v-if="toy.originalPrice && toy.originalPrice > toy.price"
                   class="text-xs text-slate-500 line-through font-mono"
                 >
@@ -218,6 +293,11 @@ onMounted(() => {
                 </span>
               </div>
 
+              <BaseButton
+                :variant="toy.stock > 0 ? 'primary' : 'secondary'"
+                size="sm"
+                :disabled="toy.stock <= 0"
+                class="disabled:opacity-50 disabled:cursor-not-allowed"
               <button
                 v-if="toy.stock > 0"
                 type="button"
@@ -225,6 +305,8 @@ onMounted(() => {
                 :disabled="isSyncing"
                 @click="addSingleToCart(toy.id)"
               >
+                {{ toy.stock > 0 ? "Add to Cart" : "Sold Out" }}
+              </BaseButton>
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                     d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
