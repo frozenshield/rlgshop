@@ -1,45 +1,26 @@
 import { defineStore } from 'pinia'
-import { computed } from 'vue'
-import { useStorage } from '@vueuse/core'
 import { ref, computed } from 'vue'
 import type { ToyProduct } from '@/shared/types/toy.types'
-import { MOCK_TOYS_DATA } from '@/shared/constants/mock-toys.data'
 import { mapApiProductToToy } from '@/shared/utils/productMapper'
 import { useAuthStore } from '@/modules/auth/auth.store'
 
 const API_BASE = 'http://127.0.0.1:8000/api'
 
 export const useWishlistStore = defineStore('wishlistStore', () => {
-  // Store wishlist product IDs in localStorage
-  const favoriteToyIds = useStorage<string[]>('rlg-shop-wishlist-ids', [])
   const authStore = useAuthStore()
 
-  const count = computed(() => favoriteToyIds.value.length)
   // Full product objects loaded from backend
   const favoriteToys = ref<ToyProduct[]>([])
   const isLoading = ref(false)
   const isSyncing = ref(false)
 
-  // Map IDs back to full product objects
-  const favoriteToys = computed<ToyProduct[]>(() => {
-    return MOCK_TOYS_DATA.filter((toy) => favoriteToyIds.value.includes(toy.id))
-  })
   const count = computed(() => favoriteToys.value.length)
   const favoriteToyIds = computed(() => favoriteToys.value.map((t) => t.id))
 
   const isFavorite = (toyId: string): boolean => {
-    return favoriteToyIds.value.includes(toyId)
     return favoriteToys.value.some((t) => t.id === toyId)
   }
 
-  const toggleFavorite = (toyId: string): boolean => {
-    const index = favoriteToyIds.value.indexOf(toyId)
-    if (index > -1) {
-      favoriteToyIds.value.splice(index, 1)
-      return false
-    } else {
-      favoriteToyIds.value.push(toyId)
-      return true
   // ─── Build request headers ────────────────────────────────────────────────
   const getHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {
@@ -52,8 +33,6 @@ export const useWishlistStore = defineStore('wishlistStore', () => {
     return headers
   }
 
-  const clearWishlist = () => {
-    favoriteToyIds.value = []
   const getUserId = (): number => {
     return (authStore.currentUser?.id as number) || 1
   }
@@ -167,7 +146,6 @@ export const useWishlistStore = defineStore('wishlistStore', () => {
   return {
     favoriteToys,
     favoriteToyIds,
-    favoriteToys,
     count,
     isLoading,
     isSyncing,

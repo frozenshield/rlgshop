@@ -23,6 +23,7 @@ import type {
   AdminChatConversation,
   AdminChatMessage,
 } from "./admin.types";
+import { useCmsStore } from "@/modules/cms/cms.store";
 
 const getStoredAdminSession = (): AdminUser | null => {
   if (typeof window === "undefined" || !window.localStorage) return null;
@@ -663,33 +664,14 @@ export const useAdminStore = defineStore("adminStore", () => {
     ],
   );
 
-  // CMS Banners
-  const cmsBanners = useStorage<CMSBanner[]>("rlg-admin-cms-banners", [
-    {
-      id: "bnr-1",
-      title: "Build, Collect & Battle. Your Premier Hobby Store.",
-      subtitle:
-        "Factory-sealed TCG booster boxes, authentic Japanese Bandai Gunpla kits, detailed anime scale figures.",
-      badgeText: "RLG HOBBY SHOP • OFFICIAL IMPORTS VAULT",
-      ctaText: "Explore All Products",
-      ctaLink: "/catalog",
-      imageUrl:
-        "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=700&auto=format&fit=crop&q=80",
-      isActive: true,
+  // CMS Banners (Delegated to centralized useCmsStore with live backend API sync)
+  const cmsStore = useCmsStore();
+  const cmsBanners = computed({
+    get: () => cmsStore.banners,
+    set: (val: CMSBanner[]) => {
+      cmsStore.banners = val;
     },
-    {
-      id: "bnr-2",
-      title: "Level Up Your Collection: 10% - 20% Off Drops!",
-      subtitle:
-        "Apply collector code HOBBY10 or GUNPLA20 at checkout on all orders.",
-      badgeText: "Collector Welcome Coupon ⚡",
-      ctaText: "Shop Deals Now",
-      ctaLink: "/catalog",
-      imageUrl:
-        "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=700&auto=format&fit=crop&q=80",
-      isActive: true,
-    },
-  ]);
+  });
 
   // Staff & RBAC (Fetched directly from backend API /api/staff)
   if (typeof localStorage !== "undefined") {

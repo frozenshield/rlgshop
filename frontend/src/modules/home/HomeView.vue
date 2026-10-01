@@ -8,6 +8,7 @@ import PromotionalBanner from "./components/PromotionalBanner.vue";
 import ToyCard from "../catalog/components/ToyCard.vue";
 import ToyDetailModal from "../catalog/components/ToyDetailModal.vue";
 import type { ToyProduct } from "@/shared/types/toy.types";
+import { useCmsStore } from "@/modules/cms/cms.store";
 
 const emit = defineEmits<{
   (e: "open-advisor"): void;
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const catalogStore = useCatalogStore();
+const cmsStore = useCmsStore();
 
 interface StoreReview {
   id: number;
@@ -103,6 +105,7 @@ const displayedReviews = computed<StoreReview[]>(() => {
 onMounted(() => {
   catalogStore.fetchProducts();
   fetchLiveReviews();
+  cmsStore.fetchCmsData();
 });
 
 // Layer 1: Best Selling Collectibles
@@ -501,6 +504,67 @@ const goToCatalog = (
                   }}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. LAYER: Hobby Guides & Collector Articles (Dynamic from CMS) -->
+      <section v-if="cmsStore.publishedBlogs.length > 0" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <span class="text-xl">✍️</span>
+              <h2
+                class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight"
+              >
+                Hobby Guides &amp; Articles
+              </h2>
+              <span
+                class="hidden sm:inline-flex text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-indigo-950/70 text-indigo-300 border border-indigo-500/30"
+              >
+                Community Journal
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium mt-1">
+              Tournament meta breakdowns, modeling build tips, and preservation guides from our team
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            v-for="post in cmsStore.publishedBlogs"
+            :key="post.id"
+            class="bg-slate-900/90 rounded-3xl p-6 border border-slate-800 hover:border-indigo-500/50 shadow-xl shadow-black/40 hover:shadow-indigo-500/10 transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+            @click="cmsStore.openBlogModal(post)"
+          >
+            <div class="space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span
+                  class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/30"
+                >
+                  {{ post.category }}
+                </span>
+                <span class="text-slate-500 font-mono text-[11px]">{{ post.date }}</span>
+              </div>
+
+              <h3
+                class="text-lg font-black text-white group-hover:text-amber-400 transition-colors leading-snug"
+              >
+                {{ post.title }}
+              </h3>
+
+              <p class="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                {{ post.summary }}
+              </p>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-medium">By <strong class="text-slate-200">{{ post.author }}</strong></span>
+              <span class="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                Read Article &rarr;
+              </span>
             </div>
           </div>
         </div>

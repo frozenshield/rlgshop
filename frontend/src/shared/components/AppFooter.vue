@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useCmsStore } from "@/modules/cms/cms.store";
+
+const cmsStore = useCmsStore();
 
 const email = ref("");
 const subscribed = ref(false);
@@ -22,7 +25,8 @@ const handleSubscribe = () => {
         class="grid grid-cols-2 md:grid-cols-4 gap-6 pb-12 border-b border-slate-200/80"
       >
         <div
-          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80"
+          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors"
+          @click="cmsStore.openPageModal('faq')"
         >
           <div class="text-3xl">🚚</div>
           <div>
@@ -36,7 +40,8 @@ const handleSubscribe = () => {
         </div>
 
         <div
-          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80"
+          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors"
+          @click="cmsStore.openPageModal('about')"
         >
           <div class="text-3xl">🛡️</div>
           <div>
@@ -50,7 +55,8 @@ const handleSubscribe = () => {
         </div>
 
         <div
-          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80"
+          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors"
+          @click="cmsStore.openPageModal('terms')"
         >
           <div class="text-3xl">📦</div>
           <div>
@@ -64,7 +70,8 @@ const handleSubscribe = () => {
         </div>
 
         <div
-          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80"
+          class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors"
+          @click="cmsStore.openPageModal('terms')"
         >
           <div class="text-3xl">🤝</div>
           <div>
@@ -109,18 +116,30 @@ const handleSubscribe = () => {
             figures, and protective card accessories.
           </p>
           <div class="flex items-center gap-3 text-slate-400 text-lg">
-            <span
+            <button
+              type="button"
               class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-rose-100 hover:text-rose-600 transition-colors"
-              >🃏</span
+              title="About RLG Hobby Shop"
+              @click="cmsStore.openPageModal('about')"
             >
-            <span
+              🃏
+            </button>
+            <button
+              type="button"
               class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-rose-100 hover:text-rose-600 transition-colors"
-              >🤖</span
+              title="Gunpla & Model Kits"
+              @click="cmsStore.openPageModal('about')"
             >
-            <span
+              🤖
+            </button>
+            <button
+              type="button"
               class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-rose-100 hover:text-rose-600 transition-colors"
-              >🛡️</span
+              title="Authenticity Guarantee"
+              @click="cmsStore.openPageModal('terms')"
             >
+              🛡️
+            </button>
           </div>
         </div>
 
@@ -170,7 +189,7 @@ const handleSubscribe = () => {
           </ul>
         </div>
 
-        <!-- Customer Care -->
+        <!-- Customer Care & CMS Pages -->
         <div>
           <h4
             class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4"
@@ -180,7 +199,7 @@ const handleSubscribe = () => {
           <ul class="space-y-2 text-sm text-slate-600 font-medium">
             <li>
               <router-link
-                to="/catalog"
+                to="/orders"
                 class="hover:text-rose-600 transition-colors"
                 >Track Order Dispatch</router-link
               >
@@ -193,24 +212,45 @@ const handleSubscribe = () => {
               >
             </li>
             <li>
-              <a href="#" class="hover:text-rose-600 transition-colors"
-                >Authenticity Guarantee</a
+              <button
+                type="button"
+                class="hover:text-rose-600 transition-colors text-left cursor-pointer"
+                @click="cmsStore.openPageModal('about')"
               >
+                About Our Vault
+              </button>
             </li>
             <li>
-              <a href="#" class="hover:text-rose-600 transition-colors"
-                >Shipping &amp; Delivery Policies</a
+              <button
+                type="button"
+                class="hover:text-rose-600 transition-colors text-left cursor-pointer"
+                @click="cmsStore.openPageModal('terms')"
               >
+                Terms &amp; Authenticity
+              </button>
             </li>
             <li>
-              <a href="#" class="hover:text-rose-600 transition-colors"
-                >Collector FAQs</a
+              <button
+                type="button"
+                class="hover:text-rose-600 transition-colors text-left cursor-pointer"
+                @click="cmsStore.openPageModal('privacy')"
               >
+                Privacy Policy
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="hover:text-rose-600 transition-colors text-left cursor-pointer"
+                @click="cmsStore.openPageModal('faq')"
+              >
+                Collector FAQs
+              </button>
             </li>
             <li>
               <router-link
                 to="/admin/login"
-                class="text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-1 font-bold text-xs pt-1"
+                class="text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-1 font-bold text-xs pt-2"
                 ><span>Staff Portal &bull; Login</span>
                 <span
                   class="text-[9px] bg-slate-900 text-white px-1.5 py-0.2 rounded font-mono"

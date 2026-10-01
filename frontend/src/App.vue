@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import AppHeader from "./shared/components/AppHeader.vue";
 import AppFooter from "./shared/components/AppFooter.vue";
@@ -11,9 +11,13 @@ import UserSettingsModal from "./modules/auth/components/UserSettingsModal.vue";
 import AppToast from "./shared/components/AppToast.vue";
 import ToyShopParallaxBackground from "./shared/components/ToyShopParallaxBackground.vue";
 import StorefrontAiChatbot from "./shared/components/StorefrontAiChatbot.vue";
+import CmsPageModal from "./modules/cms/components/CmsPageModal.vue";
+import CmsBlogModal from "./modules/cms/components/CmsBlogModal.vue";
+import { useCmsStore } from "./modules/cms/cms.store";
 
 const route = useRoute();
 const isAdminRoute = computed(() => route.path.startsWith("/admin"));
+const cmsStore = useCmsStore();
 
 const isAdvisorOpen = ref(false);
 const isAuthOpen = ref(false);
@@ -40,6 +44,10 @@ const openAdvisorModal = () => {
 const closeAdvisorModal = () => {
   isAdvisorOpen.value = false;
 };
+
+onMounted(() => {
+  cmsStore.fetchCmsData();
+});
 
 if (typeof window !== "undefined") {
   window.addEventListener("open-auth-modal", () => {
@@ -116,6 +124,10 @@ if (typeof window !== "undefined") {
       @close="isSettingsOpen = false"
       @saved="(msg: string) => showToast(msg, 'success')"
     />
+
+    <!-- Global CMS Modals for Policy Pages & Blog Articles -->
+    <CmsPageModal v-if="!isAdminRoute" />
+    <CmsBlogModal v-if="!isAdminRoute" />
 
     <!-- Global Toast Notifications -->
     <AppToast

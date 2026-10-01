@@ -1,13 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import BaseButton from "@/shared/components/BaseButton.vue";
+import { useCmsStore } from "@/modules/cms/cms.store";
 
 const emit = defineEmits<{
   (e: "open-advisor"): void;
 }>();
 
 const router = useRouter();
+const cmsStore = useCmsStore();
+
+const hero = computed(() => {
+  return (
+    cmsStore.heroBanner || {
+      id: "bnr-1",
+      title: "Build, Collect & Battle. Your Premier Hobby Store.",
+      subtitle:
+        "Discover factory-sealed Trading Card Game booster boxes, authentic Japanese Bandai Gunpla kits, detailed anime scale figures, and premium card sleeves — shipped securely across the Philippines.",
+      badgeText: "RLG HOBBY SHOP • OFFICIAL IMPORTS VAULT",
+      ctaText: "Explore All Products",
+      ctaLink: "/catalog",
+      imageUrl:
+        "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=700&auto=format&fit=crop&q=80",
+      isActive: true,
+    }
+  );
+});
 
 const scrollY = ref(0);
 let ticking = false;
@@ -33,6 +51,7 @@ onUnmounted(() => {
 
 <template>
   <div
+    v-if="hero && hero.isActive"
     class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl border border-indigo-500/20 p-8 sm:p-12 lg:p-16 font-display group"
   >
     <!-- Rich Brand Ambient Glow Accents with Parallax Drift (30% Rich Brand Aura) -->
@@ -56,29 +75,34 @@ onUnmounted(() => {
       <!-- Left Content (7 cols) -->
       <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
         <div
+          v-if="hero.badgeText"
           class="inline-flex items-center gap-2 bg-indigo-950/70 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-indigo-300 border border-indigo-500/30 shadow-xs"
         >
           <span>✨</span>
-          <span>RLG HOBBY SHOP &bull; OFFICIAL IMPORTS VAULT</span>
+          <span>{{ hero.badgeText }}</span>
         </div>
 
         <h1
           class="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white"
         >
-          Build, Collect &amp; Battle. <br />
-          <span
-            class="bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent"
-          >
-            Your Premier Hobby Store.
-          </span>
+          <template v-if="hero.title.includes('.')">
+            {{ hero.title.split('.')[0] }}. <br />
+            <span
+              class="bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent"
+            >
+              {{ hero.title.split('.').slice(1).join('.').trim() }}
+            </span>
+          </template>
+          <template v-else>
+            {{ hero.title }}
+          </template>
         </h1>
 
         <p
-          class="text-sm sm:text-base text-slate-300 max-w-xl font-normal leading-relaxed mx-auto lg:mx-0"
+          v-if="hero.subtitle"
+          class="text-sm sm:text-base text-slate-300 max-w-xl font-normal leading-relaxed mx-auto lg:mx-0 whitespace-pre-line"
         >
-          Discover factory-sealed Trading Card Game booster boxes, authentic
-          Japanese Bandai Gunpla kits, detailed anime scale figures, and premium
-          card sleeves — shipped securely across the Philippines.
+          {{ hero.subtitle }}
         </p>
 
         <!-- CTA Buttons (10% High-Contrast Accent for Primary Action) -->
@@ -88,9 +112,9 @@ onUnmounted(() => {
           <button
             type="button"
             class="px-6 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-sm sm:text-base shadow-lg shadow-amber-400/25 border border-amber-300 transition-all cursor-pointer flex items-center gap-2"
-            @click="router.push('/catalog')"
+            @click="router.push(hero.ctaLink || '/catalog')"
           >
-            <span>Explore All Products</span>
+            <span>{{ hero.ctaText || 'Explore All Products' }}</span>
             <span>&rarr;</span>
           </button>
 
@@ -135,8 +159,8 @@ onUnmounted(() => {
             }"
           >
             <img
-              src="https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=700&auto=format&fit=crop&q=80"
-              alt="Hobby Collectibles & TCG"
+              :src="hero.imageUrl || 'https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=700&auto=format&fit=crop&q=80'"
+              :alt="hero.title"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
           </div>
