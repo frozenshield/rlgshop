@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RefPokemonSet extends Model
 {
@@ -13,6 +14,7 @@ class RefPokemonSet extends Model
     protected $table = 'ref_pokemon_set';
 
     protected $fillable = [
+        'subcategories_id',
         'series',
         'series_years',
         'japanese_set',
@@ -22,6 +24,14 @@ class RefPokemonSet extends Model
         'notes',
         'release_order',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'subcategories_id' => 'integer',
+            'release_order' => 'integer',
+        ];
+    }
 
     /**
      * Scope a query to search across Japanese set, code, English set, or series.
@@ -52,5 +62,21 @@ class RefPokemonSet extends Model
         }
 
         return $query->where('series', $series);
+    }
+
+    /**
+     * Get the subcategory this Pokemon set belongs to.
+     */
+    public function subcategory(): BelongsTo
+    {
+        return $this->belongsTo(RefSubcategory::class, 'subcategories_id');
+    }
+
+    /**
+     * Compatibility alias for ref_subcategory_id.
+     */
+    public function getRefSubcategoryIdAttribute(): ?int
+    {
+        return $this->subcategories_id;
     }
 }

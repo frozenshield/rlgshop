@@ -8,6 +8,7 @@ use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefSubcategory;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 class ProductSeeder extends Seeder
 {
@@ -241,7 +242,7 @@ class ProductSeeder extends Seeder
         }
 
         if (Product::count() < 500) {
-            \Illuminate\Support\Facades\Artisan::call('products:populate', ['count' => 500]);
+            Artisan::call('products:populate', ['count' => 500]);
         }
     }
 }

@@ -8,17 +8,17 @@ use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefPokemonSet;
 use App\Models\RefSubcategory;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ProductService
 {
-    public function getProducts(array $filters): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getProducts(array $filters): LengthAwarePaginator
     {
         $query = Product::with(['category', 'subcategory', 'brand', 'pokemonSet', 'condition']);
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
@@ -26,25 +26,22 @@ class ProductService
             });
         }
 
-        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        if (! empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('status', strtolower(trim($filters['status'])));
         }
 
-        if (!empty($filters['category_id'])) {
+        if (! empty($filters['category_id'])) {
             $query->where('ref_category_id', (int) $filters['category_id']);
         }
-        if (!empty($filters['brand_id'])) {
+        if (! empty($filters['brand_id'])) {
             $query->where('ref_brand_id', (int) $filters['brand_id']);
         }
-        if (!empty($filters['pokemon_set_id'])) {
-            $query->where('ref_pokemon_set_id', (int) $filters['pokemon_set_id']);
-        }
 
-        if (!empty($filters['sort_by'])) {
+        if (! empty($filters['sort_by'])) {
             $sortField = in_array($filters['sort_by'], ['name', 'price', 'stock', 'created_at'])
                 ? $filters['sort_by']
                 : 'created_at';
-            $sortOrder = (!empty($filters['sort_dir']) && strtolower($filters['sort_dir']) === 'asc') ? 'asc' : 'desc';
+            $sortOrder = (! empty($filters['sort_dir']) && strtolower($filters['sort_dir']) === 'asc') ? 'asc' : 'desc';
             $query->orderBy($sortField, $sortOrder);
         } else {
             $query->orderBy('created_at', 'desc');
@@ -132,7 +129,6 @@ class ProductService
             'ref_subcategory_id' => $subcategoryId,
             'ref_brand_id' => $brandId,
             'ref_condition_id' => $conditionId,
-            'ref_pokemon_set_id' => $pokemonSetId,
             'weight' => $weight,
             'length' => $length,
             'width' => $width,
@@ -142,7 +138,7 @@ class ProductService
             'gallery_images' => $data['gallery_images'] ?? null,
         ]);
 
-        $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
+        $product->load(['category', 'subcategory', 'brand', 'condition']);
 
         Log::info('Product created in database', ['product_id' => $product->id, 'name' => $product->name]);
 
@@ -151,15 +147,6 @@ class ProductService
 
     public function updateProduct(Product $product, array $data): Product
     {
-        if (isset($data['pokemon_set']) && ! isset($data['ref_pokemon_set_id'])) {
-            $setName = $data['pokemon_set'];
-            $setRecord = RefPokemonSet::where('japanese_set', $setName)
-                ->orWhere('japanese_code', $setName)
-                ->orWhere('english_set', $setName)
-                ->first();
-            $data['ref_pokemon_set_id'] = $setRecord?->id;
-        }
-
         if (isset($data['description']) && ! empty($data['description'])) {
             $data['description'] = $this->cleanPlainTextDescription((string) $data['description']);
         }
@@ -169,7 +156,8 @@ class ProductService
         }
 
         $product->update($data);
-        return $product->load(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
+
+        return $product->load(['category', 'subcategory', 'brand', 'condition']);
     }
 
     public function checkDuplicate(array $data): \Illuminate\Support\Collection
@@ -236,6 +224,7 @@ class ProductService
         $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $desc = str_replace("\xc2\xa0", ' ', $desc);
         $desc = preg_replace("/\n{3,}/", "\n\n", $desc);
+
         return trim($desc);
     }
 }

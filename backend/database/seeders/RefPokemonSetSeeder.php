@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\RefPokemonSet;
+use App\Models\RefSubcategory;
 use Illuminate\Database\Seeder;
 
 class RefPokemonSetSeeder extends Seeder
@@ -956,7 +957,11 @@ class RefPokemonSetSeeder extends Seeder
             ],
         ];
 
+        $pokemonSubcategory = RefSubcategory::where('desc', 'Pokemon')->first();
+        $subcategoryId = $pokemonSubcategory?->id;
+
         foreach ($sets as $set) {
+            $set['subcategories_id'] = $subcategoryId;
             RefPokemonSet::updateOrCreate(
                 [
                     'series' => $set['series'],

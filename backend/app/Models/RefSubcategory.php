@@ -33,4 +33,20 @@ class RefSubcategory extends Model
     {
         return $this->hasMany(Product::class, 'ref_subcategory_id');
     }
+
+    /**
+     * Get Pokemon sets belonging to this subcategory.
+     */
+    public function pokemonSets(): HasMany
+    {
+        return $this->hasMany(RefPokemonSet::class, 'subcategories_id');
+    }
+
+    /**
+     * Get One Piece sets belonging to this subcategory.
+     */
+    public function onePieceSets(): HasMany
+    {
+        return $this->hasMany(RefOnePieceSet::class, 'subcategories_id');
+    }
 }

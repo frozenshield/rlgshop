@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             PromoCodeSeeder::class,
             ProductSeeder::class,
             RefPokemonSetSeeder::class,
+            RefOnePieceSetSeeder::class,
             RefOrderStatusSeeder::class,
             RefShippingCarrierSeeder::class,
             RefPaymentMethodSeeder::class,

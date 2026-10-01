@@ -11,11 +11,11 @@ class PokemonSetService
     {
         $query = RefPokemonSet::query();
 
-        if (!empty($filters['series'])) {
+        if (! empty($filters['series'])) {
             $query->where('series', $filters['series']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('english_set', 'like', "%{$search}%")

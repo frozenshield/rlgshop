@@ -51,6 +51,14 @@ class RefCategorySeeder extends Seeder
                 'Posters & Wall Scrolls',
                 'Stationery & Clear Files',
             ],
+            'Toys & Plushies' => [
+                'Pokemon Plushies',
+                'Anime Plushies',
+                'Squishmallows & Pillows',
+                'Capsule Toys (Gachapon)',
+                'Blind Box Vinyl Toys',
+                'Action Toys & Playsets',
+            ],
         ];
 
         foreach ($data as $catName => $subcategories) {

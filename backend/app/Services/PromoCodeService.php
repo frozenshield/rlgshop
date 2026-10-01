@@ -11,7 +11,7 @@ class PromoCodeService
     {
         $query = PromoCode::query();
 
-        if (!empty($filters['active_only'])) {
+        if (! empty($filters['active_only'])) {
             $query->where('is_active', true)
                 ->where(function ($q): void {
                     $q->whereNull('expiry_date')
@@ -19,7 +19,7 @@ class PromoCodeService
                 });
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $term = trim($filters['search']);
             $query->where('code', 'like', "%{$term}%")
                 ->orWhere('description', 'like', "%{$term}%");
@@ -87,6 +87,7 @@ class PromoCodeService
     public function toggleStatus(PromoCode $promoCode): PromoCode
     {
         $promoCode->update(['is_active' => ! $promoCode->is_active]);
+
         return $promoCode;
     }
 

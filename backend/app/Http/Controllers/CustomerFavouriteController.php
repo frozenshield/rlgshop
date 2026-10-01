@@ -2,20 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreCustomerFavouriteRequest;
 use App\Models\CustomerFavourite;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CustomerFavouriteController extends Controller
 {
     /**
-     * Display a listing of the resource.
      * Resolve the active customer ID from Sanctum auth token, request input, or fallback.
      */
-    public function index()
     protected function resolveUserId(Request $request): int
     {
-        $customerFavourites = CustomerFavourite::all();
         $user = auth('sanctum')->user() ?? auth()->user();
         if ($user) {
             return (int) $user->id;
@@ -33,7 +30,7 @@ class CustomerFavouriteController extends Controller
     /**
      * Display a listing of the customer's favourites with full product data.
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $userId = $this->resolveUserId($request);
 
@@ -42,29 +39,24 @@ class CustomerFavouriteController extends Controller
             'product.subcategory',
             'product.brand',
             'product.condition',
-            'product.pokemonSet',
         ])
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
-            'message' => 'Customer favourites retrieved successfully',
-            'data' => $customerFavourites
             'success' => true,
             'count' => $customerFavourites->count(),
+            'message' => 'Customer favourites retrieved successfully',
             'data' => $customerFavourites,
         ]);
     }
 
     /**
-     * Store a newly created resource in storage.
      * Store a newly created favourite (toggle: remove if already exists).
      */
-    public function store(StoreCustomerFavouriteRequest $request)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        $customerFavourite = CustomerFavourite::create($request->validated());
         $userId = $this->resolveUserId($request);
 
         $validated = $request->validate([
@@ -78,6 +70,7 @@ class CustomerFavouriteController extends Controller
 
         if ($existing) {
             $existing->delete();
+
             return response()->json([
                 'success' => true,
                 'action' => 'removed',
@@ -91,8 +84,6 @@ class CustomerFavouriteController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Customer favourite created successfully',
-            'data' => $customerFavourite
             'success' => true,
             'action' => 'added',
             'message' => 'Added to favourites',
@@ -103,12 +94,11 @@ class CustomerFavouriteController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(CustomerFavourite $customerFavourite)
+    public function destroy(CustomerFavourite $customerFavourite): JsonResponse
     {
         $customerFavourite->delete();
 
         return response()->json([
-            'message' => 'Customer favourite deleted successfully'
             'success' => true,
             'message' => 'Customer favourite deleted successfully',
         ]);

@@ -22,8 +22,6 @@ class UpdateProductRequest extends FormRequest
             'ref_category_id' => 'nullable|integer',
             'ref_subcategory_id' => 'nullable|integer',
             'ref_condition_id' => 'nullable|integer',
-            'ref_pokemon_set_id' => 'nullable|integer',
-            'pokemon_set' => 'nullable|string',
             'price' => 'nullable|numeric|min:0',
             'weight' => 'nullable|numeric|min:0',
             'length' => 'nullable|numeric|min:0',

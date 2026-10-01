@@ -3,19 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\PokemonSetService;
+use App\Services\OnePieceSetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class PokemonSetController extends Controller
+class OnePieceSetController extends Controller
 {
     public function __construct(
-        protected PokemonSetService $pokemonSetService
+        protected OnePieceSetService $onePieceSetService
     ) {}
 
+    /**
+     * Display a listing of One Piece sets.
+     */
     public function index(Request $request): JsonResponse
     {
-        $sets = $this->pokemonSetService->getSets($request->all());
+        $sets = $this->onePieceSetService->getSets($request->all());
 
         return response()->json([
             'success' => true,
@@ -24,14 +27,17 @@ class PokemonSetController extends Controller
         ]);
     }
 
-    public function show(string $pokemon_set): JsonResponse
+    /**
+     * Display the specified One Piece set.
+     */
+    public function show(string $onepiece_set): JsonResponse
     {
-        $set = $this->pokemonSetService->show($pokemon_set);
+        $set = $this->onePieceSetService->show($onepiece_set);
 
         if (! $set) {
             return response()->json([
                 'success' => false,
-                'message' => 'Pokemon set not found.',
+                'message' => 'One Piece set not found.',
             ], 404);
         }
 
@@ -41,13 +47,16 @@ class PokemonSetController extends Controller
         ]);
     }
 
-    public function series(): JsonResponse
+    /**
+     * List distinct One Piece product lines.
+     */
+    public function productLines(): JsonResponse
     {
-        $series = $this->pokemonSetService->getSeries();
+        $lines = $this->onePieceSetService->getProductLines();
 
         return response()->json([
             'success' => true,
-            'data' => $series,
+            'data' => $lines,
         ]);
     }
 }

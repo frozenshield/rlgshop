@@ -26,9 +26,9 @@ class AccessMatrixService
 
     public function getStaffModules(array $filters, ?Staff $staff = null): array
     {
-        if (! $staff && !empty($filters['staff_id'])) {
+        if (! $staff && ! empty($filters['staff_id'])) {
             $staff = Staff::with('role')->find($filters['staff_id']);
-        } elseif (! $staff && !empty($filters['email'])) {
+        } elseif (! $staff && ! empty($filters['email'])) {
             $staff = Staff::with('role')->where('email', trim($filters['email']))->first();
         }
 
@@ -38,10 +38,10 @@ class AccessMatrixService
         if ($staff) {
             $role = $staff->role;
             $roleId = $staff->ref_staff_role_id;
-        } elseif (!empty($filters['role_id'])) {
-            $roleId = (int)$filters['role_id'];
+        } elseif (! empty($filters['role_id'])) {
+            $roleId = (int) $filters['role_id'];
             $role = RefStaffRole::find($roleId);
-        } elseif (!empty($filters['role'])) {
+        } elseif (! empty($filters['role'])) {
             $roleTerm = trim(strtolower($filters['role']));
 
             if (str_contains($roleTerm, 'super') || str_contains($roleTerm, 'admin')) {
@@ -64,7 +64,7 @@ class AccessMatrixService
             $roleId = $role?->id;
         }
 
-        $includeAll = !empty($filters['include_all']) || !empty($filters['include_forbidden']);
+        $includeAll = ! empty($filters['include_all']) || ! empty($filters['include_forbidden']);
 
         $query = AccessMatrix::with('module')->where('role_id', $roleId);
 
@@ -114,6 +114,7 @@ class AccessMatrixService
     {
         $accessMatrix->update($data);
         $accessMatrix->load(['role', 'module']);
+
         return $accessMatrix;
     }
 }

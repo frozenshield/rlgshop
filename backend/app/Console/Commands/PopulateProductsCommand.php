@@ -7,7 +7,6 @@ use App\Models\RefBrand;
 use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefPokemonSet;
-use App\Models\RefSubcategory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
@@ -102,7 +101,7 @@ class PopulateProductsCommand extends Command
         $totalTemplates = count($templates);
 
         $created = 0;
-        $existingSkus = Product::pluck('sku')->flip()->toArray();
+        $existingSkus = Product::whereNotNull('sku')->pluck('sku')->flip()->toArray();
 
         $bar = $this->output->createProgressBar($targetCount);
         $bar->start();
@@ -142,15 +141,15 @@ class PopulateProductsCommand extends Command
     ): array {
         $name = $template['name'];
         if ($cycle > 0) {
-            $variantSuffixes = ['[Restock Wave ' . ($cycle + 1) . ']', '[Collector Special Pack]', '[Japanese Import Edition]', '[Limited First Print]', '[Display Box Bundle]'];
-            $name .= ' ' . $variantSuffixes[$cycle % count($variantSuffixes)];
+            $variantSuffixes = ['[Restock Wave '.($cycle + 1).']', '[Collector Special Pack]', '[Japanese Import Edition]', '[Limited First Print]', '[Display Box Bundle]'];
+            $name .= ' '.$variantSuffixes[$cycle % count($variantSuffixes)];
         }
 
         // Generate base SKU
         $baseSku = $template['sku'];
-        $sku = $cycle > 0 ? "{$baseSku}-V" . ($cycle + 1) : $baseSku;
+        $sku = $cycle > 0 ? "{$baseSku}-V".($cycle + 1) : $baseSku;
         if (isset($existingSkus[$sku])) {
-            $sku = "{$sku}-" . strtoupper(Str::random(3));
+            $sku = "{$sku}-".strtoupper(Str::random(3));
         }
 
         // Resolve brand
@@ -160,7 +159,7 @@ class PopulateProductsCommand extends Command
         $catObj = $categories->get($template['category']);
         $catId = $catObj?->id ?? 1;
         $subId = null;
-        if ($catObj && !empty($template['subcategory'])) {
+        if ($catObj && ! empty($template['subcategory'])) {
             $subObj = $catObj->subcategories->firstWhere('desc', $template['subcategory']);
             $subId = $subObj?->id;
         }
@@ -170,7 +169,7 @@ class PopulateProductsCommand extends Command
 
         // Resolve Pokemon set if applicable
         $pokemonSetId = null;
-        if (!empty($template['pokemon_code'])) {
+        if (! empty($template['pokemon_code'])) {
             $set = $pokemonSets->firstWhere('japanese_code', $template['pokemon_code']);
             $pokemonSetId = $set?->id;
         }
@@ -197,7 +196,6 @@ class PopulateProductsCommand extends Command
             'ref_category_id' => $catId,
             'ref_subcategory_id' => $subId,
             'ref_condition_id' => $condId,
-            'ref_pokemon_set_id' => $pokemonSetId,
             'condition_id' => $condId,
             'weight' => (float) ($template['weight'] ?? 350.00),
             'length' => (float) ($template['length'] ?? 14.00),

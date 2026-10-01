@@ -43,9 +43,6 @@ class StoreProductRequest extends FormRequest
             'height' => 'nullable|numeric|min:0',
             'dimensionHeight' => 'nullable|numeric|min:0',
             'status' => 'nullable|string',
-            'pokemon_set' => 'nullable|string',
-            'ref_pokemon_set_id' => 'nullable|integer',
-            'pokemon_set_id' => 'nullable|integer',
             'image_url' => 'nullable|string',
             'gallery_images' => 'nullable|array',
         ];

@@ -12,11 +12,11 @@ class StaffService
     {
         $query = Staff::with(['role.accessMatrices.module']);
 
-        if (!empty($filters['role_id'])) {
+        if (! empty($filters['role_id'])) {
             $query->where('ref_staff_role_id', (int) $filters['role_id']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $term = trim($filters['search']);
             $query->where(function ($q) use ($term): void {
                 $q->where('name', 'like', "%{$term}%")

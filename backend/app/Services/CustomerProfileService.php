@@ -14,7 +14,7 @@ class CustomerProfileService
     {
         $query = CustomerProfile::with(['user', 'shippingAddress']);
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -25,7 +25,7 @@ class CustomerProfileService
             });
         }
 
-        if (!empty($filters['segment'])) {
+        if (! empty($filters['segment'])) {
             $query->where('segment', $filters['segment'])
                 ->orWhere('segment_rank', $filters['segment']);
         }

@@ -13,18 +13,18 @@ class CustomerReviewService
     {
         $query = CustomerReview::with(['user.customerProfile', 'product', 'staff']);
 
-        if (!empty($filters['stars'])) {
+        if (! empty($filters['stars'])) {
             $stars = (int) $filters['stars'];
             if ($stars >= 1 && $stars <= 5) {
                 $query->where('stars', $stars);
             }
         }
 
-        if (!empty($filters['product_id'])) {
+        if (! empty($filters['product_id'])) {
             $query->where('product_id', (int) $filters['product_id']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $status = strtolower(trim((string) $filters['status']));
             if ($status === 'replied') {
                 $query->whereNotNull('staff_reply');
@@ -33,7 +33,7 @@ class CustomerReviewService
             }
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('message', 'like', "%{$search}%")

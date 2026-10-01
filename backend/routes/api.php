@@ -4,18 +4,20 @@ use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Api\ChatConversationController;
+use App\Http\Controllers\Api\CmsController;
 use App\Http\Controllers\Api\CustomerCartController;
 use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\CustomerReviewController;
-use App\Http\Controllers\CustomerFavouriteController;
+use App\Http\Controllers\Api\OnePieceSetController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\CustomerFavouriteController;
 use App\Models\AccessMatrix;
 use App\Models\RefBrand;
 use App\Models\RefCategory;
@@ -191,6 +193,9 @@ Route::get('/conditions', function () {
 Route::get('/pokemon-sets/series', [PokemonSetController::class, 'series']);
 Route::get('/pokemon-sets/{pokemon_set}', [PokemonSetController::class, 'show']);
 Route::get('/pokemon-sets', [PokemonSetController::class, 'index']);
+Route::get('/onepiece-sets/product-lines', [OnePieceSetController::class, 'productLines']);
+Route::get('/onepiece-sets/{onepiece_set}', [OnePieceSetController::class, 'show']);
+Route::get('/onepiece-sets', [OnePieceSetController::class, 'index']);
 Route::get('/staff-roles', function () {
     return response()->json(RefStaffRole::with('accessMatrices.module')->get());
 });
@@ -291,6 +296,11 @@ Route::delete('/customer-cart/{customer_cart}', [CustomerCartController::class, 
 Route::get('/customer-favourites', [CustomerFavouriteController::class, 'index']);
 Route::post('/customer-favourites', [CustomerFavouriteController::class, 'store']);
 Route::delete('/customer-favourites/{customer_favourite}', [CustomerFavouriteController::class, 'destroy']);
+
+// Content Management System (CMS) API
+Route::get('/cms', [CmsController::class, 'index']);
+Route::get('/cms/{key}', [CmsController::class, 'show']);
+Route::match(['post', 'put'], '/cms/{key}', [CmsController::class, 'update']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {

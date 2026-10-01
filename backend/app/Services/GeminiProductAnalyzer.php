@@ -138,7 +138,7 @@ EOT;
                 break;
             }
 
-            $lastError = $response->json('error.message') ?? 'HTTP ' . $response->status();
+            $lastError = $response->json('error.message') ?? 'HTTP '.$response->status();
             Log::warning("Gemini model {$model} failed: {$lastError}. Trying fallback model if available...");
         }
 
@@ -194,7 +194,7 @@ EOT;
             }
             $words = preg_split('/\s+/', trim($result['title'])) ?: [];
             $slug = strtoupper(implode('-', array_map(
-                fn($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
+                fn ($w) => substr(preg_replace('/[^A-Z0-9]/i', '', $w), 0, 6),
                 array_slice($words, 0, 3)
             )));
             $rand = strtoupper(Str::random(4));
@@ -204,7 +204,7 @@ EOT;
 
         // Determine if product is Pokemon TCG (strictly applicable only to Pokemon TCG)
         $isPokemonTcg = (bool) ($result['is_pokemon_tcg'] ?? false);
-        $fullText = ($result['title'] ?? '') . ' ' . ($result['brand'] ?? '') . ' ' . ($result['primary_category'] ?? '') . ' ' . ($result['secondary_category'] ?? '') . ' ' . implode(' ', (array) ($result['tags'] ?? ''));
+        $fullText = ($result['title'] ?? '').' '.($result['brand'] ?? '').' '.($result['primary_category'] ?? '').' '.($result['secondary_category'] ?? '').' '.implode(' ', (array) ($result['tags'] ?? ''));
 
         if (! $isPokemonTcg && (stripos($fullText, 'pokemon') !== false || stripos($fullText, 'pokémon') !== false)) {
             if (stripos($fullText, 'card') !== false || stripos($fullText, 'tcg') !== false || stripos($fullText, 'booster') !== false || stripos($fullText, 'pack') !== false || stripos($fullText, 'box') !== false) {
@@ -337,7 +337,7 @@ EOT;
 
             // Save image to public storage so it can be previewed/used
             $path = $image->store('products', 'public');
-            $storedUrl = asset('storage/' . $path);
+            $storedUrl = asset('storage/'.$path);
 
             return [$mimeType, $base64Data, $storedUrl];
         }
@@ -406,6 +406,7 @@ EOT;
 
             if ($compressed && strlen($compressed) > 0) {
                 $mimeType = 'image/jpeg';
+
                 return base64_encode($compressed);
             }
         } catch (\Throwable $e) {
@@ -428,7 +429,7 @@ EOT;
 
         $lines = [];
         foreach ($categories as $cat) {
-            $subNames = $cat->subcategories->map(fn($s) => "{$s->desc} (ID: {$s->id})")->join(', ');
+            $subNames = $cat->subcategories->map(fn ($s) => "{$s->desc} (ID: {$s->id})")->join(', ');
             $lines[] = "- {$cat->desc} (ID: {$cat->id}): [{$subNames}]";
         }
 
@@ -446,7 +447,7 @@ EOT;
             return '- The Pokémon Company, Bandai, Banpresto, Good Smile Company, Bushiroad, Takara Tomy, Konami, Kotobukiya';
         }
 
-        return $brands->map(fn($b) => "- {$b->name} (ID: {$b->id})")->join("\n");
+        return $brands->map(fn ($b) => "- {$b->name} (ID: {$b->id})")->join("\n");
     }
 
     /**
@@ -460,7 +461,7 @@ EOT;
             return '- Near Mint, Damaged, Lightly Played, Moderately Played, Heavily Played, MISB, BIB, Loose, Brandnew';
         }
 
-        return $conditions->map(fn($c) => "- {$c->desc} (ID: {$c->id})")->join("\n");
+        return $conditions->map(fn ($c) => "- {$c->desc} (ID: {$c->id})")->join("\n");
     }
 
     /**
