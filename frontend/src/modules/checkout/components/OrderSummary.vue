@@ -14,19 +14,29 @@ const cartStore = useCartStore();
 const deliveryFee = computed(() => {
   switch (props.selectedDeliveryOption) {
     case "express":
-      return 12.99;
+      return 250.00;
     case "gift-wrapped":
-      return 7.99;
+      return 180.00;
     case "standard":
     default:
       return cartStore.standardShippingCost;
   }
 });
 
+const taxableBase = computed(() =>
+  Math.max(0, cartStore.subtotal - cartStore.promoDiscount),
+);
+
+const vatPercentage = computed(() => cartStore.vatPercentage);
+
+const vatAmount = computed(() =>
+  (taxableBase.value * vatPercentage.value) / 100,
+);
+
 const orderTotal = computed(() => {
   return Math.max(
     0,
-    cartStore.subtotal - cartStore.promoDiscount + deliveryFee.value,
+    taxableBase.value + deliveryFee.value + vatAmount.value,
   );
 });
 </script>
@@ -93,13 +103,38 @@ const orderTotal = computed(() => {
         <span>-{{ formatCurrency(cartStore.promoDiscount) }}</span>
       </div>
 
-      <div class="flex justify-between">
-        <span>Delivery Option</span>
+      <!-- Delivery / Logistics Option -->
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-1.5">
+          <span>Nationwide Shipping</span>
+          <span
+            v-if="deliveryFee === 0"
+            class="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full"
+          >
+            FREE &ge; {{ formatCurrency(cartStore.freeShippingThreshold) }}
+          </span>
+        </div>
         <span class="font-bold text-slate-800">
           {{ deliveryFee === 0 ? "FREE" : formatCurrency(deliveryFee) }}
         </span>
       </div>
 
+      <!-- Philippine VAT Percentage (%) from shipping_tax table -->
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-1.5">
+          <span>Philippine VAT ({{ vatPercentage }}%)</span>
+          <span
+            class="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md"
+          >
+            BIR 12%
+          </span>
+        </div>
+        <span class="font-bold text-slate-800">
+          {{ formatCurrency(vatAmount) }}
+        </span>
+      </div>
+
+      <!-- Final Total -->
       <div
         class="flex justify-between text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200"
       >

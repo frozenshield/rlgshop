@@ -108,11 +108,21 @@ export interface PlacedOrder {
   items: CartItem[];
   subtotal: number;
   shippingCost: number;
+  vatPercentage?: number;
+  vatAmount?: number;
   discountAmount: number;
   total: number;
   shippingDetails: CheckoutFormData;
   createdAt: string;
   estimatedDeliveryDate: string;
+}
+
+export interface ShippingTaxSettings {
+  id?: number;
+  standard_shipping_fee: number;
+  free_shipping_threshold: number;
+  vat_percentage: number;
+  is_active: boolean;
 }
 
 export interface ToyFilterState {

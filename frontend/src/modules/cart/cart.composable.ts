@@ -19,6 +19,8 @@ export const useCartComposable = () => {
     freeShippingProgress,
     amountNeededForFreeShipping,
     standardShippingCost,
+    vatPercentage,
+    vatAmount,
     grandTotal,
   } = storeToRefs(store);
 
@@ -56,6 +58,8 @@ export const useCartComposable = () => {
     freeShippingProgress,
     amountNeededForFreeShipping,
     standardShippingCost,
+    vatPercentage,
+    vatAmount,
     grandTotal,
     promoInput,
     promoStatus,

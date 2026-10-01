@@ -96,30 +96,65 @@ export const useCartStore = defineStore("cartStore", () => {
     return (subtotal.value * promoDiscountPercentage.value) / 100;
   });
 
-  // Free shipping threshold at ₱5,000 (or $50)
-  const freeShippingThreshold = 5000;
+  // Shipping & VAT rules from backend shipping_tax table
+  const standardShippingFee = ref(100);
+  const freeShippingThreshold = ref(2500);
+  const vatPercentage = ref(12);
+
+  const fetchShippingTax = async () => {
+    try {
+      const res = await fetch("/api/shipping-tax");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          const d = json.data;
+          if (d.standard_shipping_fee !== undefined) {
+            standardShippingFee.value = Number(d.standard_shipping_fee) || 100;
+          }
+          if (d.free_shipping_threshold !== undefined) {
+            freeShippingThreshold.value = Number(d.free_shipping_threshold) || 2500;
+          }
+          if (d.vat_percentage !== undefined) {
+            vatPercentage.value = Number(d.vat_percentage) || 12;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch shipping & tax config from API, using defaults", e);
+    }
+  };
+  fetchShippingTax();
+
   const freeShippingProgress = computed(() => {
-    if (subtotal.value >= freeShippingThreshold) return 100;
+    if (subtotal.value >= freeShippingThreshold.value) return 100;
     return Math.min(
       100,
-      Math.round((subtotal.value / freeShippingThreshold) * 100),
+      Math.round((subtotal.value / freeShippingThreshold.value) * 100),
     );
   });
 
   const amountNeededForFreeShipping = computed(() => {
-    const diff = freeShippingThreshold - subtotal.value;
+    const diff = freeShippingThreshold.value - subtotal.value;
     return diff > 0 ? diff : 0;
   });
 
   const standardShippingCost = computed(() => {
     if (selectedItems.value.length === 0) return 0;
-    return subtotal.value >= freeShippingThreshold ? 0 : 150;
+    return subtotal.value >= freeShippingThreshold.value ? 0 : standardShippingFee.value;
   });
+
+  const taxableBase = computed(() =>
+    Math.max(0, subtotal.value - promoDiscount.value),
+  );
+
+  const vatAmount = computed(() =>
+    (taxableBase.value * vatPercentage.value) / 100,
+  );
 
   const grandTotal = computed(() => {
     return Math.max(
       0,
-      subtotal.value - promoDiscount.value + standardShippingCost.value,
+      subtotal.value - promoDiscount.value + standardShippingCost.value + vatAmount.value,
     );
   });
 
@@ -398,9 +433,14 @@ export const useCartStore = defineStore("cartStore", () => {
     freeShippingThreshold,
     freeShippingProgress,
     amountNeededForFreeShipping,
+    standardShippingFee,
     standardShippingCost,
+    vatPercentage,
+    vatAmount,
+    taxableBase,
     grandTotal,
     isLoading,
+    fetchShippingTax,
 
     openDrawer,
     closeDrawer,

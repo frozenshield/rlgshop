@@ -21,6 +21,9 @@ onMounted(async () => {
   if (adminStore.orders.length === 0) {
     await adminStore.fetchOrders();
   }
+  if (adminStore.inventory.length === 0) {
+    await adminStore.fetchInventory();
+  }
 });
 </script>
 

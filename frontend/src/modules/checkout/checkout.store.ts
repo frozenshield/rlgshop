@@ -63,9 +63,12 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
 
     const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const shippingFee = getDeliveryFee(data.deliveryOption);
+    const taxableBase = Math.max(0, cartStore.subtotal - cartStore.promoDiscount);
+    const vatPercentage = cartStore.vatPercentage;
+    const vatAmount = (taxableBase * vatPercentage) / 100;
     const orderTotal = Math.max(
       0,
-      cartStore.subtotal - cartStore.promoDiscount + shippingFee,
+      taxableBase + shippingFee + vatAmount,
     );
 
     const deliveryDays = data.deliveryOption === "express" ? 2 : 4;
@@ -77,6 +80,8 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
       items: selectedList,
       subtotal: cartStore.subtotal,
       shippingCost: shippingFee,
+      vatPercentage,
+      vatAmount,
       discountAmount: cartStore.promoDiscount,
       total: orderTotal,
       shippingDetails: { ...data },
@@ -102,6 +107,9 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
           city: data.city,
           postal_code: data.postalCode,
           payment_method: data.paymentMethod.toUpperCase(),
+          total_amount: orderTotal,
+          shipping_amount: shippingFee,
+          tax_amount: vatAmount,
           notes: data.notes || undefined,
           items: selectedList.map((item) => ({
             product_name: item.toy.name,

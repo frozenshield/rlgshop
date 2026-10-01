@@ -16,6 +16,8 @@ const {
   subtotal,
   promoDiscount,
   standardShippingCost,
+  vatPercentage,
+  vatAmount,
   grandTotal,
   promoInput,
   promoStatus,
@@ -238,6 +240,19 @@ const handleExploreToys = () => {
                       ? "FREE"
                       : formatCurrency(standardShippingCost)
                   }}
+                </span>
+              </div>
+              <div class="flex justify-between items-center text-slate-300">
+                <div class="flex items-center gap-1.5">
+                  <span>Philippine VAT ({{ vatPercentage }}%)</span>
+                  <span
+                    class="text-[9px] font-bold text-amber-400 px-1.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-500/30"
+                  >
+                    BIR
+                  </span>
+                </div>
+                <span class="font-bold text-white font-mono">
+                  {{ formatCurrency(vatAmount) }}
                 </span>
               </div>
               <div

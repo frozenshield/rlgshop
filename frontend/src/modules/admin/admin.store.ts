@@ -1174,10 +1174,59 @@ export const useAdminStore = defineStore("adminStore", () => {
   };
 
   // Inventory Actions
-  const updateStock = (itemId: string, newStock: number) => {
+  const isLoadingInventory = ref(false);
+
+  const fetchInventory = async () => {
+    isLoadingInventory.value = true;
+    try {
+      const res = await fetch("/api/products?per_page=1000");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          inventory.value = json.data.map((p: any) => ({
+            id: String(p.id),
+            sku: p.sku || `PRD-${p.id}`,
+            barcode: p.barcode || (p.sku ? `BC-${p.sku}` : `BC-${p.id}`),
+            name: p.name,
+            category: p.category?.desc || "General",
+            condition: p.condition?.desc || "Brandnew",
+            stock: Number(p.stock) || 0,
+            lowStockThreshold: 5,
+            costPrice:
+              Number(p.cost_price || (Number(p.price) * 0.7).toFixed(2)) || 0,
+            sellingPrice: Number(p.price) || 0,
+            vendor: p.brand?.name || "Various",
+            leadTimeDays: 7,
+            variants: [],
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load inventory products from backend:", e);
+    } finally {
+      isLoadingInventory.value = false;
+    }
+  };
+
+  const updateStock = async (itemId: string, newStock: number) => {
     const item = inventory.value.find((i) => i.id === itemId);
     if (item) {
       item.stock = newStock;
+    }
+    const isDbProduct = !isNaN(Number(itemId));
+    if (isDbProduct) {
+      try {
+        await fetch(`/api/products/${itemId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ stock: newStock }),
+        });
+      } catch (e) {
+        console.error("Failed to persist stock update to backend:", e);
+      }
     }
   };
 
@@ -1565,6 +1614,8 @@ export const useAdminStore = defineStore("adminStore", () => {
     fetchOrderStatuses,
     fetchOrders,
     inventory,
+    isLoadingInventory,
+    fetchInventory,
     customers,
     inquiries,
     customerMessages,

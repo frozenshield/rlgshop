@@ -15,31 +15,7 @@ const isCsvModalOpen = ref(false);
 const notificationMessage = ref("");
 
 const fetchDbProducts = async () => {
-  try {
-    const res = await fetch("/api/products");
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        adminStore.inventory = json.data.map((p: any) => ({
-          id: String(p.id),
-          sku: p.sku || `PRD-${p.id}`,
-          barcode: p.barcode || (p.sku ? `BC-${p.sku}` : `BC-${p.id}`),
-          name: p.name,
-          category: p.category?.desc || "General",
-          condition: p.condition?.desc || "Brandnew",
-          stock: Number(p.stock) || 0,
-          lowStockThreshold: 5,
-          costPrice: Number(p.cost_price) || 0,
-          sellingPrice: Number(p.price) || 0,
-          vendor: p.brand?.name || "Various",
-          leadTimeDays: 7,
-          variants: [],
-        }));
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load products from database", e);
-  }
+  await adminStore.fetchInventory();
 };
 
 onMounted(() => {
@@ -186,6 +162,15 @@ const showNotification = (msg: string) => {
       <div class="flex items-center gap-2">
         <button
           type="button"
+          :disabled="adminStore.isLoadingInventory"
+          class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+          @click="fetchDbProducts"
+        >
+          <span :class="{ 'animate-spin': adminStore.isLoadingInventory }">🔄</span>
+          <span>Refresh Stock</span>
+        </button>
+        <button
+          type="button"
           class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
           @click="triggerExportCsv"
         >
@@ -278,15 +263,25 @@ const showNotification = (msg: string) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-if="filteredInventory.length === 0">
+            <tr v-if="adminStore.isLoadingInventory">
+              <td colspan="7" class="p-12 text-center text-slate-400">
+                <div class="inline-block animate-spin text-3xl mb-3">⏳</div>
+                <p class="font-bold text-slate-700 text-sm">
+                  Loading real-time product inventory...
+                </p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Fetching catalog items and current stock levels from the database.
+                </p>
+              </td>
+            </tr>
+            <tr v-else-if="filteredInventory.length === 0">
               <td colspan="7" class="p-8 text-center text-slate-400">
                 <div class="text-3xl mb-2">📦</div>
                 <p class="font-bold text-slate-700 text-xs">
-                  No products in inventory yet
+                  No products in inventory matching criteria
                 </p>
                 <p class="text-[11px] text-slate-400 mt-1">
-                  Upload products from the Product Upload page to track
-                  real-time stock.
+                  Upload products from the Product Upload page or clear active search filters.
                 </p>
               </td>
             </tr>
