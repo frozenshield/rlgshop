@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('shipping_tax', function (Blueprint $table): void {
             $table->id();
+            $table->string('name')->default('Standard Logistics & Philippine VAT');
             $table->decimal('standard_shipping_fee', 10, 2)->default(100.00); // Standard Nationwide Shipping (PHP)
             $table->decimal('free_shipping_threshold', 10, 2)->default(2500.00); // Free Shipping Order Threshold (PHP)
             $table->decimal('vat_percentage', 5, 2)->default(12.00); // Philippine VAT Percentage (%)

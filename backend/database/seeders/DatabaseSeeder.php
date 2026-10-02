@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             CustomerOrderSeeder::class,
             CustomerMessageReviewSeeder::class,
             ChatConversationSeeder::class,
+            LocalizationSeeder::class,
         ]);
     }
 }

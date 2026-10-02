@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\CustomerReviewController;
+use App\Http\Controllers\Api\LocalizationController;
 use App\Http\Controllers\Api\OnePieceSetController;
 use App\Http\Controllers\Api\PokemonSetController;
 use App\Http\Controllers\Api\ProductController;
@@ -281,7 +282,17 @@ Route::patch('/ref-payment-methods/{ref_payment_method}/status', function (Reque
 
 // Shipping Rates & VAT Rules API
 Route::get('/shipping-tax', [ShippingTaxController::class, 'index']);
-Route::match(['post', 'put', 'patch'], '/shipping-tax', [ShippingTaxController::class, 'update']);
+Route::post('/shipping-tax', [ShippingTaxController::class, 'store']);
+Route::put('/shipping-tax/{shipping_tax}', [ShippingTaxController::class, 'update']);
+Route::patch('/shipping-tax/{shipping_tax}/toggle', [ShippingTaxController::class, 'toggle']);
+Route::delete('/shipping-tax/{shipping_tax}', [ShippingTaxController::class, 'destroy']);
+Route::match(['put', 'patch'], '/shipping-tax', [ShippingTaxController::class, 'update']);
+
+// Store Localization & Currency / Weight Units API
+Route::get('/ref-currencies', [LocalizationController::class, 'currencies']);
+Route::get('/ref-weight-units', [LocalizationController::class, 'weightUnits']);
+Route::get('/localization', [LocalizationController::class, 'show']);
+Route::match(['post', 'put', 'patch'], '/localization', [LocalizationController::class, 'update']);
 
 // Customer Orders & Fulfillment Lifecycle API
 Route::get('/customer-orders', [CustomerOrderController::class, 'index']);

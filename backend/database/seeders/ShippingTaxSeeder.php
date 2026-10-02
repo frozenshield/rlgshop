@@ -15,6 +15,7 @@ class ShippingTaxSeeder extends Seeder
         ShippingTax::updateOrCreate(
             ['id' => 1],
             [
+                'name' => 'Standard Logistics & Philippine VAT',
                 'standard_shipping_fee' => 100.00,
                 'free_shipping_threshold' => 2500.00,
                 'vat_percentage' => 12.00,

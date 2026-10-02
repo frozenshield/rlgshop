@@ -18,6 +18,7 @@ class ShippingTax extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'name',
         'standard_shipping_fee',
         'free_shipping_threshold',
         'vat_percentage',

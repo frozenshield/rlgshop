@@ -9,6 +9,7 @@ use App\Models\RefCondition;
 use App\Models\RefPokemonSet;
 use App\Models\RefSubcategory;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -160,7 +161,7 @@ class ProductService
         return $product->load(['category', 'subcategory', 'brand', 'condition']);
     }
 
-    public function checkDuplicate(array $data): \Illuminate\Support\Collection
+    public function checkDuplicate(array $data): Collection
     {
         $duplicates = collect();
 
