@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccessMatrixController;
+use App\Http\Controllers\Api\AiArticleController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
 use App\Http\Controllers\Api\ChatConversationController;
@@ -183,6 +184,7 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 Route::post('/ai/analyze-product-image', [AiProductController::class, 'analyzeImage']);
 Route::post('/ai/chat', [AiChatbotController::class, 'chat']);
 Route::get('/ai/chat/quick-prompts', [AiChatbotController::class, 'quickPrompts']);
+Route::post('/ai/generate-article', [AiArticleController::class, 'generate']);
 Route::get('/categories', function () {
     return response()->json(RefCategory::with('subcategories')->get());
 });
