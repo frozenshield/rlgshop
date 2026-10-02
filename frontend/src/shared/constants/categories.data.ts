@@ -35,26 +35,15 @@ export const TCG_SERIES_DATA: TcgSeriesInfo[] = [
       "Scarlet & Violet, 151, Elite Trainer Boxes, Booster Boxes, PSA Graded Holos & Ultra Rares",
   },
   {
-    id: "one-piece",
-    name: "One Piece Card Game",
-    shortName: "One Piece",
-    icon: "🏴‍☠️",
-    badgeColor: "bg-red-600 text-white border-red-700",
-    accentColor: "#EE1515",
-    bgClass: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
+    id: "yugioh",
+    name: "Yu-Gi-Oh! OCG / TCG",
+    shortName: "Yu-Gi-Oh!",
+    icon: "👁️",
+    badgeColor: "bg-purple-700 text-white border-purple-800",
+    accentColor: "#7E22CE",
+    bgClass: "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100",
     description:
-      "Bandai OP-01 through OP-09 Booster Boxes, Manga Parallel Rares, Starter Decks & Leaders",
-  },
-  {
-    id: "hololive",
-    name: "Hololive Official Card Game",
-    shortName: "Hololive",
-    icon: "🎤",
-    badgeColor: "bg-cyan-500 text-white border-cyan-600",
-    accentColor: "#00D1FF",
-    bgClass: "bg-cyan-50 text-cyan-800 border-cyan-200 hover:bg-cyan-100",
-    description:
-      "Official Hololive OCG, Cover Corp VTuber Booster Boxes, Signed Foil Cards & Oshi Decks",
+      "Konami Official Card Game, Quarter Century Secret Rares, Booster Boxes & Structure Decks",
   },
   {
     id: "duel-masters",
@@ -68,6 +57,50 @@ export const TCG_SERIES_DATA: TcgSeriesInfo[] = [
       "Takara Tomy Japanese Booster Boxes, Revolution Final Chapter, Super Decks & Legend Cards",
   },
   {
+    id: "one-piece",
+    name: "One Piece Card Game",
+    shortName: "One Piece",
+    icon: "🏴‍☠️",
+    badgeColor: "bg-red-600 text-white border-red-700",
+    accentColor: "#EE1515",
+    bgClass: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
+    description:
+      "Bandai OP-01 through OP-09 Booster Boxes, Manga Parallel Rares, Starter Decks & Leaders",
+  },
+  {
+    id: "gundam-tcg",
+    name: "Gundam Card Game",
+    shortName: "Gundam TCG",
+    icon: "🤖",
+    badgeColor: "bg-blue-600 text-white border-blue-700",
+    accentColor: "#2563EB",
+    bgClass: "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100",
+    description:
+      "Bandai Gundam Card Game, Mobile Suit Pilot cards, Starter Decks & Collector Booster Boxes",
+  },
+  {
+    id: "hololive",
+    name: "Hololive Official Card Game",
+    shortName: "Hololive",
+    icon: "🎤",
+    badgeColor: "bg-cyan-500 text-white border-cyan-600",
+    accentColor: "#00D1FF",
+    bgClass: "bg-cyan-50 text-cyan-800 border-cyan-200 hover:bg-cyan-100",
+    description:
+      "Official Hololive OCG, Cover Corp VTuber Booster Boxes, Signed Foil Cards & Oshi Decks",
+  },
+  {
+    id: "dragon-ball",
+    name: "Dragon Ball Super Card Game",
+    shortName: "Dragon Ball",
+    icon: "🐉",
+    badgeColor: "bg-orange-500 text-white border-orange-600",
+    accentColor: "#F97316",
+    bgClass: "bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100",
+    description:
+      "Bandai Fusion World & Masters Booster Boxes, Secret Rares, God Rares & Starter Decks",
+  },
+  {
     id: "weiss-schwarz",
     name: "Weiß Schwarz",
     shortName: "Weiß Schwarz",
@@ -79,6 +112,17 @@ export const TCG_SERIES_DATA: TcgSeriesInfo[] = [
     description:
       "Bushiroad Anime Crossover Sets, Frieren, Bocchi, Hololive & Gold Foil SP Signature Cards",
   },
+  {
+    id: "battle-spirit",
+    name: "Battle Spirits TCG",
+    shortName: "Battle Spirits",
+    icon: "🔥",
+    badgeColor: "bg-rose-600 text-white border-rose-700",
+    accentColor: "#E11D48",
+    bgClass: "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100",
+    description:
+      "Bandai Battle Spirits Booster Packs, Saga Brave Decks, X-Rare & Collaboration Cards",
+  },
 ];
 
 export const CATEGORIES_DATA: CategoryInfo[] = [
@@ -89,7 +133,7 @@ export const CATEGORIES_DATA: CategoryInfo[] = [
     color: "#3B4CCA",
     bgClass: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
     description:
-      "Pokémon, One Piece, Hololive, Duel Masters & Weiß Schwarz Booster Boxes, Packs & Singles",
+      "Pokémon, Yu-Gi-Oh!, One Piece, Dragon Ball, Gundam, Hololive & more Japanese Booster Boxes & Singles",
     subCategories: TCG_SERIES_DATA,
   },
   {

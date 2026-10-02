@@ -32,18 +32,43 @@ export function mapApiProductToToy(p: any): ToyProduct {
 
   // 2. Resolve TCG Series if applicable
   const subDesc = (p.subcategory?.desc || "").toLowerCase();
+  const subId = Number(p.ref_subcategory_id || p.subcategory?.id || 0);
   let tcgSeries: TcgSubCategory | undefined = undefined;
   if (category === "tcg") {
-    if (subDesc.includes("pokemon")) {
+    if (subId === 1 || subDesc.includes("pokemon")) {
       tcgSeries = "pokemon";
-    } else if (subDesc.includes("one piece") || subDesc.includes("one-piece")) {
-      tcgSeries = "one-piece";
-    } else if (subDesc.includes("hololive")) {
-      tcgSeries = "hololive";
-    } else if (subDesc.includes("duel")) {
+    } else if (
+      subId === 2 ||
+      subDesc.includes("yugioh") ||
+      subDesc.includes("yu-gi-oh")
+    ) {
+      tcgSeries = "yugioh";
+    } else if (subId === 3 || subDesc.includes("duel")) {
       tcgSeries = "duel-masters";
-    } else if (subDesc.includes("weiss")) {
+    } else if (
+      subId === 4 ||
+      subDesc.includes("one piece") ||
+      subDesc.includes("one-piece")
+    ) {
+      tcgSeries = "one-piece";
+    } else if (subId === 5 || subDesc.includes("gundam")) {
+      tcgSeries = "gundam-tcg";
+    } else if (subId === 6 || subDesc.includes("hololive")) {
+      tcgSeries = "hololive";
+    } else if (
+      subId === 7 ||
+      subDesc.includes("dragon ball") ||
+      subDesc.includes("dragonball")
+    ) {
+      tcgSeries = "dragon-ball";
+    } else if (subId === 8 || subDesc.includes("weiss")) {
       tcgSeries = "weiss-schwarz";
+    } else if (
+      subId === 9 ||
+      subDesc.includes("battle spirit") ||
+      subDesc.includes("battle-spirit")
+    ) {
+      tcgSeries = "battle-spirit";
     } else {
       // Default to pokemon if TCG
       tcgSeries = "pokemon";
@@ -125,10 +150,24 @@ export function mapApiProductToToy(p: any): ToyProduct {
     ageGroup: "9-12",
     pokemonType:
       tcgSeries === "pokemon"
-        ? "TCG ⚡"
-        : tcgSeries === "one-piece"
-          ? "One Piece 🏴‍☠️"
-          : undefined,
+        ? "Pokémon ⚡"
+        : tcgSeries === "yugioh"
+          ? "Yu-Gi-Oh! 👁️"
+          : tcgSeries === "duel-masters"
+            ? "Duel Masters ⚔️"
+            : tcgSeries === "one-piece"
+              ? "One Piece 🏴‍☠️"
+              : tcgSeries === "gundam-tcg"
+                ? "Gundam TCG 🤖"
+                : tcgSeries === "hololive"
+                  ? "Hololive 🎤"
+                  : tcgSeries === "dragon-ball"
+                    ? "Dragon Ball 🐉"
+                    : tcgSeries === "weiss-schwarz"
+                      ? "Weiß Schwarz ✨"
+                      : tcgSeries === "battle-spirit"
+                        ? "Battle Spirits 🔥"
+                        : undefined,
     price,
     originalPrice: price > 0 ? Math.round(price * 1.15) : undefined,
     discountPercent: 15,

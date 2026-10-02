@@ -9,10 +9,14 @@ export type ToyCategory =
 
 export type TcgSubCategory =
   | "pokemon"
-  | "one-piece"
-  | "hololive"
+  | "yugioh"
   | "duel-masters"
-  | "weiss-schwarz";
+  | "one-piece"
+  | "gundam-tcg"
+  | "hololive"
+  | "dragon-ball"
+  | "weiss-schwarz"
+  | "battle-spirit";
 
 export interface CustomerReview {
   id: string;
