@@ -111,9 +111,9 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
   <header
     class="sticky top-0 z-40 bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg transition-all font-display"
   >
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20 gap-4">
-        <!-- Logo -->
+    <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20 gap-3 xl:gap-6">
+        <!-- 1. Left: Logo -->
         <router-link
           to="/"
           class="flex items-center gap-3 group select-none flex-shrink-0"
@@ -137,13 +137,13 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           </div>
         </router-link>
 
-        <!-- Desktop Navigation Links -->
+        <!-- 2. Center: Desktop Navigation Links (Dynamically Centered) -->
         <nav
-          class="hidden md:flex items-center gap-1 lg:gap-2 text-sm font-bold text-slate-300"
+          class="hidden lg:flex items-center justify-center flex-1 min-w-0 mx-2 gap-1 xl:gap-1.5 text-xs xl:text-sm font-bold text-slate-300"
         >
           <router-link
             to="/"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
+            class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors whitespace-nowrap"
             active-class="text-indigo-400 bg-indigo-950/60 border border-indigo-500/30"
           >
             Home
@@ -151,7 +151,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
 
           <router-link
             to="/catalog"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors"
+            class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors whitespace-nowrap"
             active-class="text-indigo-400 bg-indigo-950/60 border border-indigo-500/30"
             @click="catalogStore.setCategory('all')"
           >
@@ -166,7 +166,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           >
             <button
               type="button"
-              class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+              class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
               :class="
                 catalogStore.selectedCategory === 'tcg'
                   ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
@@ -242,7 +242,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Gunpla Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'gunpla'
                 ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
@@ -256,7 +256,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Anime Figures Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'anime-figures'
                 ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
@@ -270,7 +270,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Anime Merchandise Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'anime-merchandise'
                 ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
@@ -284,7 +284,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Toys & Plushies Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-pink-400 hover:bg-pink-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            class="px-2.5 py-1.5 rounded-xl hover:text-pink-400 hover:bg-pink-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'toys-plushies'
                 ? 'text-pink-400 bg-pink-950/60 border border-pink-500/30'
@@ -298,7 +298,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Smart Hobby Finder Trigger Button -->
           <button
             type="button"
-            class="px-3 py-1.5 rounded-xl text-slate-200 bg-slate-900 hover:bg-slate-800 transition-all flex items-center gap-1.5 border border-slate-700 shadow-sm cursor-pointer active:scale-95 text-xs font-bold"
+            class="px-2.5 py-1.5 rounded-xl text-slate-200 bg-slate-900 hover:bg-slate-800 hover:text-amber-300 transition-all flex items-center gap-1.5 border border-slate-700/80 shadow-xs cursor-pointer active:scale-95 text-xs font-bold whitespace-nowrap"
             @click="emit('open-advisor')"
           >
             <span>🎯</span>
@@ -308,78 +308,77 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Track Order Link -->
           <router-link
             to="/orders"
-            class="px-3 py-2 rounded-xl text-slate-300 hover:text-amber-400 hover:bg-slate-800/60 transition-colors flex items-center gap-1.5 text-xs font-bold"
+            class="px-2.5 py-1.5 rounded-xl text-slate-300 hover:text-amber-400 hover:bg-slate-800/60 transition-colors flex items-center gap-1.5 text-xs font-bold whitespace-nowrap"
           >
             <span>📦</span>
             <span>Track Order</span>
           </router-link>
         </nav>
 
-        <!-- Search Bar with Live Popover -->
-        <div class="relative hidden sm:block flex-1 max-w-xs lg:max-w-sm">
-          <div class="relative">
-            <label for="desktop-search" class="sr-only">Search Products</label>
-            <input
-              id="desktop-search"
-              v-model="localSearchText"
-              type="text"
-              aria-label="Search cards, Gunpla, scale figures, sleeves"
-              placeholder="Search cards, Gunpla, figures, sleeves..."
-              class="w-full bg-slate-950 text-sm text-white rounded-full pl-10 pr-4 py-2.5 border border-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 placeholder-slate-500 transition-all"
-              @focus="isSearchFocused = true"
-              @keyup.enter="handleSearchSubmit"
-            />
-            <svg
-              class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2.5"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <!-- 3. Right: Actions (Search, Google Sign-In, Wishlist & Cart) -->
+        <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <!-- Search Bar with Live Popover -->
+          <div class="relative hidden sm:block">
+            <div class="relative flex items-center">
+              <label for="desktop-search" class="sr-only">Search Products</label>
+              <input
+                id="desktop-search"
+                v-model="localSearchText"
+                type="text"
+                aria-label="Search cards, Gunpla, scale figures, sleeves"
+                placeholder="Search..."
+                class="w-32 md:w-36 xl:w-48 focus:w-60 bg-slate-950 text-xs text-white rounded-full pl-8 pr-3 py-2 border border-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 placeholder-slate-500 transition-all duration-300"
+                @focus="isSearchFocused = true"
+                @keyup.enter="handleSearchSubmit"
               />
-            </svg>
-          </div>
-
-          <!-- Live Search Autocomplete Popover -->
-          <div
-            v-if="isSearchFocused && searchPreviewResults.length > 0"
-            class="absolute top-12 left-0 right-0 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-2 space-y-1 z-50 animate-scale-up font-display"
-          >
-            <div
-              class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1"
-            >
-              Matching Products:
+              <svg
+                class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
             </div>
-            <button
-              v-for="item in searchPreviewResults"
-              :key="item.id"
-              type="button"
-              class="w-full text-left flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800 cursor-pointer transition-colors"
-              @mousedown.prevent="handleSelectPreview(item.id)"
-            >
-              <img
-                :src="item.imageUrl"
-                :alt="item.name"
-                class="w-10 h-10 rounded-lg object-cover bg-slate-950 border border-slate-800"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-bold text-white truncate">
-                  {{ item.name }}
-                </p>
-                <p class="text-[11px] text-amber-400 font-extrabold font-mono">
-                  {{ formatCurrency(item.price) }}
-                </p>
-              </div>
-            </button>
-          </div>
-        </div>
 
-        <!-- Right: Actions (Google Sign-In, Wishlist & Cart) -->
-        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Live Search Autocomplete Popover -->
+            <div
+              v-if="isSearchFocused && searchPreviewResults.length > 0"
+              class="absolute top-full mt-2 right-0 w-80 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-2 space-y-1 z-50 animate-scale-up font-display"
+            >
+              <div
+                class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1"
+              >
+                Matching Products:
+              </div>
+              <button
+                v-for="item in searchPreviewResults"
+                :key="item.id"
+                type="button"
+                class="w-full text-left flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800 cursor-pointer transition-colors"
+                @mousedown.prevent="handleSelectPreview(item.id)"
+              >
+                <img
+                  :src="item.imageUrl"
+                  :alt="item.name"
+                  class="w-10 h-10 rounded-lg object-cover bg-slate-950 border border-slate-800"
+                />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold text-white truncate">
+                    {{ item.name }}
+                  </p>
+                  <p class="text-[11px] text-amber-400 font-extrabold font-mono">
+                    {{ formatCurrency(item.price) }}
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
           <!-- Collector Account Avatar / Dropdown OR Sign-In Button -->
           <div class="relative hidden sm:flex items-center">
             <!-- If Logged In: Show Collector Avatar & Dropdown -->
@@ -704,7 +703,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Mobile Hamburger Toggle -->
           <button
             type="button"
-            class="md:hidden p-2 rounded-2xl hover:bg-slate-100 text-slate-600"
+            class="lg:hidden p-2 rounded-2xl hover:bg-slate-800 text-slate-300 transition-colors"
             aria-label="Toggle navigation menu"
             @click="isMobileMenuOpen = !isMobileMenuOpen"
           >
@@ -736,7 +735,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
       <!-- Mobile Dropdown Navigation -->
       <div
         v-if="isMobileMenuOpen"
-        class="md:hidden py-4 border-t border-slate-200 space-y-2"
+        class="lg:hidden py-4 border-t border-slate-800 space-y-2"
       >
         <div class="px-2 pb-2">
           <label for="mobile-search" class="sr-only"
