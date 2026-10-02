@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AbandonedCartController;
 use App\Http\Controllers\Api\AccessMatrixController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AiArticleController;
@@ -16,8 +17,10 @@ use App\Http\Controllers\Api\HobbyArticleController;
 use App\Http\Controllers\Api\LocalizationController;
 use App\Http\Controllers\Api\OnePieceSetController;
 use App\Http\Controllers\Api\PokemonSetController;
+use App\Http\Controllers\Api\ProductBundleController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PromoCodeController;
+use App\Http\Controllers\Api\SeoMetadataController;
 use App\Http\Controllers\Api\ShippingTaxController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Auth\AuthController;
@@ -333,7 +336,29 @@ Route::delete('/hobby-articles/{id}', [HobbyArticleController::class, 'destroy']
 Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
 Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
 Route::get('/admin/analytics/realtime', [AdminDashboardController::class, 'realtimeAnalytics']);
-Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+// Upsell & Frequently Bought Together Bundles API
+Route::get('/product-bundles', [ProductBundleController::class, 'index']);
+Route::post('/product-bundles', [ProductBundleController::class, 'store']);
+Route::get('/product-bundles/{id}', [ProductBundleController::class, 'show']);
+Route::put('/product-bundles/{id}', [ProductBundleController::class, 'update']);
+Route::post('/product-bundles/{id}/toggle', [ProductBundleController::class, 'toggle']);
+Route::delete('/product-bundles/{id}', [ProductBundleController::class, 'destroy']);
+
+// Abandoned Carts & Email Recovery API
+Route::get('/admin/abandoned-carts', [AbandonedCartController::class, 'index']);
+Route::post('/admin/abandoned-carts/{id}/send-reminder', [AbandonedCartController::class, 'sendReminder']);
+Route::post('/admin/abandoned-carts/dispatch-all', [AbandonedCartController::class, 'dispatchAll']);
+Route::get('/cart/recover/{token}', [AbandonedCartController::class, 'recover']);
+Route::delete('/admin/abandoned-carts/{id}', [AbandonedCartController::class, 'destroy']);
+
+// Search Engine Optimization (SEO) & AI Metadata API
+Route::get('/seo-metadata', [SeoMetadataController::class, 'index']);
+Route::get('/seo-metadata/lookup', [SeoMetadataController::class, 'getByRoute']);
+Route::post('/seo-metadata/generate-ai', [SeoMetadataController::class, 'generateAi']);
+Route::post('/seo-metadata', [SeoMetadataController::class, 'store']);
+Route::get('/seo-metadata/{id}', [SeoMetadataController::class, 'show']);
+Route::put('/seo-metadata/{id}', [SeoMetadataController::class, 'update']);
+Route::delete('/seo-metadata/{id}', [SeoMetadataController::class, 'destroy']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {
