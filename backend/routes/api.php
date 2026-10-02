@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AbandonedCartController;
 use App\Http\Controllers\Api\AccessMatrixController;
+use App\Http\Controllers\Api\AdminAnalyticsController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AiArticleController;
 use App\Http\Controllers\Api\AiChatbotController;
@@ -336,6 +337,11 @@ Route::delete('/hobby-articles/{id}', [HobbyArticleController::class, 'destroy']
 Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
 Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
 Route::get('/admin/analytics/realtime', [AdminDashboardController::class, 'realtimeAnalytics']);
+
+// Admin Analytics & Executive Reporting (sp_get_analytics_executive_report & Excel Export)
+Route::get('/admin/analytics/report', [AdminAnalyticsController::class, 'report']);
+Route::get('/admin/analytics/export', [AdminAnalyticsController::class, 'export']);
+
 // Upsell & Frequently Bought Together Bundles API
 Route::get('/product-bundles', [ProductBundleController::class, 'index']);
 Route::post('/product-bundles', [ProductBundleController::class, 'store']);

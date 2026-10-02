@@ -258,7 +258,7 @@ class SeoMetadataController extends Controller
                 'focus_keyword' => $product->name,
                 'canonical_url' => "https://rlghobby.ph/products/{$product->id}",
                 'og_title' => $product->name,
-                'og_description' => mb_substr($product->description ?? "Authentic collector item at RLG Hobby Shop", 0, 150),
+                'og_description' => mb_substr($product->description ?? 'Authentic collector item at RLG Hobby Shop', 0, 150),
                 'og_image_url' => $product->image_url,
                 'twitter_card' => 'summary_large_image',
                 'robots' => 'index, follow',
@@ -277,4 +277,3 @@ class SeoMetadataController extends Controller
         }
     }
 }
-

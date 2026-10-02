@@ -9,7 +9,6 @@ use App\Models\CustomerCart;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -359,4 +358,3 @@ class AbandonedCartController extends Controller
         ]);
     }
 }
-

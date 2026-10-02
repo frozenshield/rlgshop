@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,7 +44,7 @@ class ProductBundle extends Model
     /**
      * Get Eloquent models for bundled companion products.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, Product>
+     * @return Collection<int, Product>
      */
     public function getBundledProductsAttribute()
     {
@@ -55,4 +56,3 @@ class ProductBundle extends Model
         return Product::whereIn('id', $ids)->get();
     }
 }
-
