@@ -122,24 +122,23 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
   <header
     class="sticky top-0 z-40 bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg transition-all font-display"
   >
-    <div class="max-w-7xl 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20 gap-4">
-        <!-- Left: Logo + Desktop Navigation Links Group (Never overlaps) -->
-        <div class="flex items-center gap-3 xl:gap-5 min-w-0">
-          <!-- Logo & Shop Brand -->
+    <div class="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20 gap-3 xl:gap-6">
+        <!-- Left: Logo & Shop Brand (Flex-shrink-0 to guarantee no squishing) -->
+        <div class="flex items-center flex-shrink-0">
           <router-link
             to="/"
-            class="flex items-center gap-3 group select-none flex-shrink-0"
+            class="flex items-center gap-3 group select-none"
           >
             <img
               src="/logo.png"
               alt="RLG Online Shop Logo"
-              class="h-11 xl:h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-md"
+              class="h-10 xl:h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-md"
             />
             <div class="hidden sm:block">
               <div class="flex items-center gap-2">
                 <span
-                  class="text-lg xl:text-xl font-black tracking-tight text-white group-hover:text-amber-400 transition-colors whitespace-nowrap"
+                  class="text-base xl:text-xl font-black tracking-tight text-white group-hover:text-amber-400 transition-colors whitespace-nowrap"
                 >
                   RLG <span class="text-amber-400">ONLINE SHOP</span>
                 </span>
@@ -149,14 +148,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
               </p>
             </div>
           </router-link>
+        </div>
 
-          <!-- Divider between Logo and Nav -->
-          <div class="hidden xl:block h-7 w-[1px] bg-slate-800 flex-shrink-0"></div>
-
-          <!-- Desktop Navigation Links -->
-          <nav
-            class="hidden lg:flex items-center gap-1 xl:gap-1.5 text-xs xl:text-sm font-bold text-slate-300"
-          >
+        <!-- Center: Desktop Navigation Links (Dynamically centered with balanced margins) -->
+        <nav
+          class="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 2xl:gap-2 text-xs xl:text-sm font-bold text-slate-300 flex-1 min-w-0 px-2 xl:px-4"
+        >
           <router-link
             to="/"
             class="px-2.5 py-1.5 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors whitespace-nowrap"
@@ -171,7 +168,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             active-class="text-indigo-400 bg-indigo-950/60 border border-indigo-500/30"
             @click="catalogStore.setCategory('all')"
           >
-            All Products
+            <span>All<span class="hidden xl:inline"> Products</span></span>
           </router-link>
 
           <!-- TCG Dropdown Menu -->
@@ -190,7 +187,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
               "
               @click="navigateToCategory('tcg')"
             >
-              <span>🃏 TCG Cards</span>
+              <span>🃏 TCG<span class="hidden xl:inline"> Cards</span></span>
               <svg
                 class="w-3.5 h-3.5 transition-transform"
                 :class="isTcgDropdownOpen ? 'rotate-180' : ''"
@@ -280,7 +277,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             "
             @click="navigateToCategory('anime-figures')"
           >
-            <span>🥋 Anime Figures</span>
+            <span>🥋 <span class="hidden 2xl:inline">Anime </span>Figures</span>
           </button>
 
           <!-- Anime Merchandise Button -->
@@ -294,7 +291,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             "
             @click="navigateToCategory('anime-merchandise')"
           >
-            <span>🛡️ Anime Merchandise</span>
+            <span>🛡️ <span class="hidden 2xl:inline">Anime </span>Merch<span class="hidden 2xl:inline">andise</span></span>
           </button>
 
           <!-- Toys & Plushies Button -->
@@ -308,13 +305,12 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             "
             @click="navigateToCategory('toys-plushies')"
           >
-            <span>🧸 Toys &amp; Plushies</span>
+            <span>🧸 <span class="hidden 2xl:inline">Toys &amp; </span>Plushies</span>
           </button>
         </nav>
-      </div>
 
-      <!-- Right: Actions (Search, Google Sign-In, Wishlist & Cart) -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <!-- Right: Actions (Search, Google Sign-In, Wishlist & Cart) -->
+        <div class="flex items-center gap-2 sm:gap-2.5 xl:gap-3 flex-shrink-0 justify-end">
           <!-- Search Icon Button (Pure icon, zero navbar clutter) -->
           <button
             type="button"
