@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CustomerMessageController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\CustomerReviewController;
+use App\Http\Controllers\Api\HobbyArticleController;
 use App\Http\Controllers\Api\LocalizationController;
 use App\Http\Controllers\Api\OnePieceSetController;
 use App\Http\Controllers\Api\PokemonSetController;
@@ -319,6 +320,13 @@ Route::delete('/customer-favourites/{customer_favourite}', [CustomerFavouriteCon
 Route::get('/cms', [CmsController::class, 'index']);
 Route::get('/cms/{key}', [CmsController::class, 'show']);
 Route::match(['post', 'put'], '/cms/{key}', [CmsController::class, 'update']);
+
+// Hobby Articles & Guides API
+Route::get('/hobby-articles', [HobbyArticleController::class, 'index']);
+Route::post('/hobby-articles', [HobbyArticleController::class, 'store']);
+Route::get('/hobby-articles/{idOrSlug}', [HobbyArticleController::class, 'show']);
+Route::put('/hobby-articles/{id}', [HobbyArticleController::class, 'update']);
+Route::delete('/hobby-articles/{id}', [HobbyArticleController::class, 'destroy']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {

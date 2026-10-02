@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsContent;
+use App\Models\HobbyArticle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CmsController extends Controller
 {
@@ -85,13 +87,43 @@ class CmsController extends Controller
     }
 
     /**
+     * Helper to retrieve blogs from hobby_articles table or fallback.
+     */
+    protected function getBlogsList(): array
+    {
+        $articles = HobbyArticle::orderBy('published_at', 'desc')->orderBy('id', 'desc')->get();
+
+        if ($articles->isNotEmpty()) {
+            return $articles->map(function (HobbyArticle $article): array {
+                return [
+                    'id' => (string) $article->id,
+                    'slug' => $article->slug,
+                    'title' => $article->title,
+                    'category' => $article->category,
+                    'author' => $article->author,
+                    'date' => $article->published_at ? $article->published_at->format('Y-m-d') : now()->toDateString(),
+                    'status' => $article->status,
+                    'summary' => $article->summary,
+                    'content' => $article->content,
+                    'image_url' => $article->image_url,
+                    'sources' => $article->sources,
+                    'is_featured' => $article->is_featured,
+                    'views_count' => $article->views_count,
+                ];
+            })->all();
+        }
+
+        return $this->getContent('blogs', $this->defaultBlogs());
+    }
+
+    /**
      * Retrieve all CMS contents in one payload.
      */
     public function index(): JsonResponse
     {
         $banners = $this->getContent('banners', $this->defaultBanners());
         $pages = $this->getContent('pages', $this->defaultPages());
-        $blogs = $this->getContent('blogs', $this->defaultBlogs());
+        $blogs = $this->getBlogsList();
 
         return response()->json([
             'success' => true,
@@ -108,10 +140,17 @@ class CmsController extends Controller
      */
     public function show(string $key): JsonResponse
     {
+        if ($key === 'blogs') {
+            return response()->json([
+                'success' => true,
+                'key' => 'blogs',
+                'data' => $this->getBlogsList(),
+            ]);
+        }
+
         $defaults = match ($key) {
             'banners' => $this->defaultBanners(),
             'pages' => $this->defaultPages(),
-            'blogs' => $this->defaultBlogs(),
             default => [],
         };
 
@@ -140,6 +179,41 @@ class CmsController extends Controller
             ['key' => $key],
             ['value' => $value]
         );
+
+        // When blogs are updated via CMS, synchronize them into hobby_articles table
+        if ($key === 'blogs' && is_array($value)) {
+            foreach ($value as $item) {
+                if (! is_array($item) || empty($item['title'])) {
+                    continue;
+                }
+
+                $title = trim($item['title']);
+                $slug = ! empty($item['slug']) ? $item['slug'] : Str::slug($title);
+                $articleId = isset($item['id']) && is_numeric($item['id']) ? (int) $item['id'] : null;
+
+                $updateData = [
+                    'title' => $title,
+                    'category' => $item['category'] ?? 'TCG Strategy',
+                    'author' => $item['author'] ?? 'RLG Editorial Staff',
+                    'published_at' => $item['date'] ?? $item['published_at'] ?? now()->toDateString(),
+                    'status' => $item['status'] ?? 'Published',
+                    'summary' => $item['summary'] ?? '',
+                    'content' => $item['content'] ?? $item['summary'] ?? '',
+                    'image_url' => $item['image_url'] ?? null,
+                    'sources' => $item['sources'] ?? null,
+                    'is_featured' => ! empty($item['is_featured']),
+                ];
+
+                if ($articleId && HobbyArticle::find($articleId)) {
+                    HobbyArticle::where('id', $articleId)->update($updateData);
+                } else {
+                    HobbyArticle::updateOrCreate(
+                        ['slug' => $slug],
+                        array_merge($updateData, ['slug' => $slug])
+                    );
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

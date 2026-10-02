@@ -51,4 +51,3 @@ class AiArticleGenerationTest extends TestCase
             ->assertJsonValidationErrors(['topic']);
     }
 }
-

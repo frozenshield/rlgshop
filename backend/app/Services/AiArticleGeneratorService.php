@@ -53,7 +53,7 @@ class AiArticleGeneratorService
         $apiKey = config('services.gemini.api_key');
         $model = config('services.gemini.model', 'gemini-2.5-flash');
 
-        $trustedSourcesInfo = <<<SOURCES
+        $trustedSourcesInfo = <<<'SOURCES'
 Trusted sources guidelines by category:
 - One Piece Card Game: Official Bandai One Piece Portal (en.onepiece-cardgame.com), One Piece Top Decks (onepiecetopdecks.com), Limitless TCG (limitlesstcg.com), Bandai TCG Tournament Regulations.
 - Pokémon TCG: Official Pokémon Portal (pokemon.com), JustinBasil Meta Guides (justinbasil.com), Limitless TCG, Pokellector database.
@@ -198,4 +198,3 @@ EOT;
         ];
     }
 }
-

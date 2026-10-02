@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
             CustomerMessageReviewSeeder::class,
             ChatConversationSeeder::class,
             LocalizationSeeder::class,
+            HobbyArticleSeeder::class,
         ]);
     }
 }
