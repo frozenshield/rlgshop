@@ -18,35 +18,65 @@ class CustomerOrderService
     public function getOrders(array $filters): Collection
     {
         $query = CustomerOrder::with([
-            'customerProfile.user',
             'status',
             'items',
-            'fulfillment.carrier'
+            'fulfillment.carrier',
+            'fulfillments.carrier',
+            'customerProfile.shippingAddress',
+            'customerProfile.user',
         ]);
 
-        if (!empty($filters['status'])) {
-            $statusStr = strtolower(trim($filters['status']));
-            $query->whereHas('status', function ($q) use ($statusStr): void {
-                $q->where('name', $statusStr);
-            });
-        }
-
         if (!empty($filters['search'])) {
-            $search = trim($filters['search']);
+            $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search): void {
                 $q->where('order_number', 'like', "%{$search}%")
-                    ->orWhereHas('customerProfile', function ($pq) use ($search): void {
-                        $pq->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('customerProfile', function ($cq) use ($search): void {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
                             ->orWhereHas('user', function ($uq) use ($search): void {
-                                $uq->where('name', 'like', "%{$search}%")
-                                    ->orWhere('email', 'like', "%{$search}%");
+                                $uq->where('email', 'like', "%{$search}%")
+                                    ->orWhere('name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('shippingAddress', function ($aq) use ($search): void {
+                                $aq->where('shipping_address', 'like', "%{$search}%")
+                                    ->orWhere('city', 'like', "%{$search}%");
                             });
+                    })
+                    ->orWhereHas('fulfillment', function ($fq) use ($search): void {
+                        $fq->where('tracking_number', 'like', "%{$search}%");
                     });
             });
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        if (!empty($filters['status']) && $filters['status'] !== 'All') {
+            $statusInput = $filters['status'];
+            if (is_numeric($statusInput)) {
+                $query->where('ref_order_status_id', $statusInput);
+            } else {
+                $statusSlug = strtolower(trim((string) $statusInput));
+                $query->whereHas('status', function ($sq) use ($statusSlug): void {
+                    $sq->where('name', $statusSlug)
+                        ->orWhere('label', 'like', $statusSlug);
+                });
+            }
+        }
+
+        if (!empty($filters['carrier_id'])) {
+            $query->whereHas('fulfillment', function ($fq) use ($filters): void {
+                $fq->where('ref_shipping_carrier_id', $filters['carrier_id']);
+            });
+        }
+
+        $sortBy = $filters['sort_by'] ?? 'created_at';
+        $sortDir = strtolower((string) ($filters['sort_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if (in_array($sortBy, ['order_date', 'total_amount', 'created_at', 'order_number'])) {
+            $query->orderBy($sortBy, $sortDir);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->get();
     }
 
     public function createOrder(array $data, ?User $currentUser = null): CustomerOrder
@@ -56,7 +86,12 @@ class CustomerOrderService
                 return $carry + ((float) $item['price'] * (int) $item['quantity']);
             }, 0);
 
-            $orderNumber = 'ORD-' . strtoupper(Str::random(8));
+            $orderNumber = $data['order_number'] ?? 'ORD-' . strtoupper(Str::random(8));
+
+            // ensure unique order number
+            while (CustomerOrder::where('order_number', $orderNumber)->exists()) {
+                $orderNumber = 'ORD-' . strtoupper(Str::random(8));
+            }
 
             $statusName = $data['status_name'] ?? 'pending';
             $statusId = $data['ref_order_status_id'] ?? null;

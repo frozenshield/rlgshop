@@ -12,25 +12,27 @@ class CustomerProfileService
 {
     public function getProfiles(array $filters): Collection
     {
-        $query = CustomerProfile::with(['user', 'shippingAddress']);
+        $query = CustomerProfile::with('user');
+
+        if (!empty($filters['segment']) && $filters['segment'] !== 'All') {
+            $query->where('segment', $filters['segment']);
+        }
 
         if (!empty($filters['search'])) {
-            $search = trim($filters['search']);
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('email', 'like', "%{$search}%");
+            $term = trim((string)$filters['search']);
+            $query->where(function ($q) use ($term): void {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('username', 'like', "%{$term}%")
+                    ->orWhere('phone', 'like', "%{$term}%")
+                    ->orWhere('city', 'like', "%{$term}%")
+                    ->orWhereHas('user', function ($uq) use ($term): void {
+                        $uq->where('email', 'like', "%{$term}%")
+                            ->orWhere('name', 'like', "%{$term}%");
                     });
             });
         }
 
-        if (!empty($filters['segment'])) {
-            $query->where('segment', $filters['segment'])
-                ->orWhere('segment_rank', $filters['segment']);
-        }
-
-        return $query->orderBy('created_at', 'desc')->get();
+        return $query->orderBy('id', 'desc')->get();
     }
 
     public function createProfile(array $data): CustomerProfile

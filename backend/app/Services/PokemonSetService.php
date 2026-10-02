@@ -4,28 +4,39 @@ namespace App\Services;
 
 use App\Models\RefPokemonSet;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class PokemonSetService
 {
-    public function getSets(array $filters): Collection
+    public function getSets(array $filters): Collection|LengthAwarePaginator
     {
         $query = RefPokemonSet::query();
 
         if (!empty($filters['series'])) {
-            $query->where('series', $filters['series']);
+            $query->bySeries($filters['series']);
+        }
+
+        if (!empty($filters['set_type'])) {
+            $query->where('set_type', $filters['set_type']);
         }
 
         if (!empty($filters['search'])) {
-            $search = trim($filters['search']);
-            $query->where(function ($q) use ($search): void {
-                $q->where('english_set', 'like', "%{$search}%")
-                    ->orWhere('japanese_set', 'like', "%{$search}%")
-                    ->orWhere('english_code', 'like', "%{$search}%")
-                    ->orWhere('japanese_code', 'like', "%{$search}%");
-            });
+            $query->search($filters['search']);
         }
 
-        return $query->orderBy('id', 'desc')->get();
+        if (!empty($filters['code'])) {
+            $code = trim($filters['code']);
+            $query->where('japanese_code', 'like', "%{$code}%");
+        }
+
+        $query->orderBy('release_order', 'asc');
+
+        if (!empty($filters['paginate']) && filter_var($filters['paginate'], FILTER_VALIDATE_BOOLEAN)) {
+            $perPage = (int) ($filters['per_page'] ?? 25);
+            return $query->paginate($perPage);
+        }
+
+        return $query->get();
     }
 
     public function show(string $identifier): ?RefPokemonSet

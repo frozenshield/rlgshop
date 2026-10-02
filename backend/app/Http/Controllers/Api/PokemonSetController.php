@@ -18,9 +18,13 @@ class PokemonSetController extends Controller
     {
         $sets = $this->pokemonSetService->getSets($request->all());
 
+        if (is_array($sets) && isset($sets['data'])) {
+             return response()->json(array_merge(['success' => true], $sets));
+        }
+
         return response()->json([
             'success' => true,
-            'count' => $sets->count(),
+            'count' => count($sets),
             'data' => $sets,
         ]);
     }

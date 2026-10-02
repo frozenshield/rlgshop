@@ -14,48 +14,35 @@ use Illuminate\Support\Str;
 
 class ProductService
 {
-    public function getProducts(array $filters): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getProducts(array $filters): Collection
     {
-        $query = Product::with(['category', 'subcategory', 'brand', 'pokemonSet', 'condition']);
+        $query = Product::with(['category', 'subcategory', 'brand', 'condition', 'pokemonSet']);
 
-        if (!empty($filters['search'])) {
-            $search = trim($filters['search']);
-            $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%");
-            });
-        }
-
-        if (!empty($filters['status']) && $filters['status'] !== 'all') {
-            $query->where('status', strtolower(trim($filters['status'])));
+        if (!empty($filters['status'])) {
+            $query->where('status', strtolower(trim((string)$filters['status'])));
         }
 
         if (!empty($filters['category_id'])) {
             $query->where('ref_category_id', (int) $filters['category_id']);
         }
+
         if (!empty($filters['brand_id'])) {
             $query->where('ref_brand_id', (int) $filters['brand_id']);
         }
-        if (!empty($filters['pokemon_set_id'])) {
-            $query->where('ref_pokemon_set_id', (int) $filters['pokemon_set_id']);
+
+        if (!empty($filters['condition_id'])) {
+            $query->where('ref_condition_id', (int) $filters['condition_id']);
         }
 
-        if (!empty($filters['sort_by'])) {
-            $sortField = in_array($filters['sort_by'], ['name', 'price', 'stock', 'created_at'])
-                ? $filters['sort_by']
-                : 'created_at';
-            $sortOrder = (!empty($filters['sort_dir']) && strtolower($filters['sort_dir']) === 'asc') ? 'asc' : 'desc';
-            $query->orderBy($sortField, $sortOrder);
-        } else {
-            $query->orderBy('created_at', 'desc');
+        if (!empty($filters['search'])) {
+            $term = trim((string)$filters['search']);
+            $query->where(function ($q) use ($term): void {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('description', 'like', "%{$term}%");
+            });
         }
 
-        $perPage = (int) ($filters['per_page'] ?? 15);
-        if ($perPage < 1 || $perPage > 100) {
-            $perPage = 15;
-        }
-
-        return $query->paginate($perPage);
+        return $query->orderBy('id', 'desc')->get();
     }
 
     public function createProduct(array $data): Product

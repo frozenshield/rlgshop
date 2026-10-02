@@ -3,23 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AnalyzeProductImageRequest;
 use App\Services\GeminiProductAnalyzer;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class AiProductController extends Controller
 {
-    /**
-     * Analyze a product image and return AI-generated details.
-     */
-    public function analyzeImage(Request $request, GeminiProductAnalyzer $analyzer): JsonResponse
-    {
-        $request->validate([
-            'image' => 'nullable|file|image|max:15360',
-            'image_url' => 'nullable|url',
-        ]);
+    public function __construct(
+        protected GeminiProductAnalyzer $analyzerService
+    ) {}
 
+    public function analyzeImage(AnalyzeProductImageRequest $request): JsonResponse
+    {
         if (! $request->hasFile('image') && ! $request->filled('image_url')) {
             return response()->json([
                 'success' => false,
@@ -29,7 +25,7 @@ class AiProductController extends Controller
 
         try {
             $imageInput = $request->file('image') ?? $request->input('image_url');
-            $productData = $analyzer->analyze($imageInput);
+            $productData = $this->analyzerService->analyze($imageInput);
 
             return response()->json([
                 'success' => true,
