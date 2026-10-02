@@ -38,4 +38,3 @@ return new class extends Migration
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_get_analytics_executive_report;');
     }
 };
-

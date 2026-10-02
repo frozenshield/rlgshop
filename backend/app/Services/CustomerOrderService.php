@@ -2,15 +2,19 @@
 
 namespace App\Services;
 
+use App\Mail\StaticQrPaymentInstructionMail;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderFulfillment;
 use App\Models\CustomerOrderItem;
 use App\Models\CustomerProfile;
 use App\Models\CustomerShippmentAddress;
 use App\Models\RefOrderStatus;
+use App\Models\RefPaymentMerch;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class CustomerOrderService
@@ -144,14 +148,53 @@ class CustomerOrderService
                 $customerProfileId = $profile->id;
             }
 
+            $rawMethod = strtoupper(trim((string) ($data['payment_method'] ?? 'CARD')));
+            $isQrPayment = str_contains($rawMethod, 'QR') || str_contains($rawMethod, 'WALLET');
+            $qrMerchant = null;
+
+            if ($isQrPayment || ! empty($data['qr_merchant_code'])) {
+                $merchantCode = strtolower(trim((string) ($data['qr_merchant_code'] ?? '')));
+                if ($merchantCode) {
+                    $qrMerchant = RefPaymentMerch::where('code', $merchantCode)->first();
+                }
+                if (! $qrMerchant && str_contains($rawMethod, 'GOTYME')) {
+                    $qrMerchant = RefPaymentMerch::where('code', 'gotyme')->first();
+                } elseif (! $qrMerchant && str_contains($rawMethod, 'GCASH')) {
+                    $qrMerchant = RefPaymentMerch::where('code', 'gcash')->first();
+                } elseif (! $qrMerchant && str_contains($rawMethod, 'MARIBANK')) {
+                    $qrMerchant = RefPaymentMerch::where('code', 'maribank')->first();
+                } elseif (! $qrMerchant && str_contains($rawMethod, 'MAYA')) {
+                    $qrMerchant = RefPaymentMerch::where('code', 'paymaya')->first();
+                }
+
+                if (! $qrMerchant && $isQrPayment) {
+                    $qrMerchant = RefPaymentMerch::where('code', 'gotyme')->first()
+                        ?? RefPaymentMerch::first();
+                }
+
+                if ($qrMerchant) {
+                    $isQrPayment = true;
+                    $paymentMethodName = 'QR - '.$qrMerchant->name;
+                    $paymentStatus = 'Pending';
+                    $statusId = 1; // Pending manual verification
+                } else {
+                    $paymentMethodName = 'QR Code';
+                    $paymentStatus = 'Pending';
+                    $statusId = 1;
+                }
+            } else {
+                $paymentMethodName = $data['payment_method'] ?? 'Card';
+                $paymentStatus = $data['payment_status'] ?? 'Paid';
+            }
+
             $order = CustomerOrder::create([
                 'order_number' => $orderNumber,
                 'order_date' => now(),
                 'customer_profile_id' => $customerProfileId,
                 'user_id' => $userId,
                 'total_amount' => $totalAmount,
-                'payment_method' => $data['payment_method'] ?? 'GCASH',
-                'payment_status' => $data['payment_status'] ?? 'Paid',
+                'payment_method' => $paymentMethodName,
+                'payment_status' => $paymentStatus,
                 'ref_order_status_id' => $statusId,
                 'invoice_id' => 'INV-'.date('Y').'-'.rand(100, 999),
                 'notes' => $data['notes'] ?? null,
@@ -170,6 +213,21 @@ class CustomerOrderService
                     'subtotal' => $price * $qty,
                     'image_url' => $item['image_url'] ?? null,
                 ]);
+            }
+
+            // Option 1: Trigger Static QR Email with attached QR image
+            if ($isQrPayment) {
+                $recipientEmail = $data['customer_email']
+                    ?? $order->customerProfile?->email
+                    ?? $currentUser?->email;
+
+                if ($recipientEmail) {
+                    try {
+                        Mail::to($recipientEmail)->send(new StaticQrPaymentInstructionMail($order, $qrMerchant));
+                    } catch (\Throwable $e) {
+                        Log::warning('Static QR payment instruction email could not be delivered: '.$e->getMessage());
+                    }
+                }
             }
 
             return $order->load(['customerProfile.user', 'customerProfile.shippingAddress', 'status', 'items', 'fulfillment.carrier']);

@@ -33,6 +33,7 @@ use App\Models\RefCategory;
 use App\Models\RefCondition;
 use App\Models\RefModule;
 use App\Models\RefOrderStatus;
+use App\Models\RefPaymentMerch;
 use App\Models\RefPaymentMethod;
 use App\Models\RefShippingCarrier;
 use App\Models\RefStaffRole;
@@ -261,7 +262,7 @@ Route::get('/ref-shipping-carriers', function () {
 });
 Route::get('/ref-payment-methods', function (Request $request) {
     $status = $request->query('status');
-    $query = RefPaymentMethod::query();
+    $query = RefPaymentMethod::with(['merchants' => fn ($q) => $q->where('is_active', true)]);
 
     if ($status === 'active') {
         $query->where('status', 'active');
@@ -273,6 +274,10 @@ Route::get('/ref-payment-methods', function (Request $request) {
     }
 
     return response()->json($query->orderBy('id')->get());
+});
+
+Route::get('/ref-payment-merchants', function () {
+    return response()->json(RefPaymentMerch::with('paymentMethod')->where('is_active', true)->orderBy('id')->get());
 });
 Route::patch('/ref-payment-methods/{ref_payment_method}/status', function (Request $request, RefPaymentMethod $refPaymentMethod) {
     $validated = $request->validate([

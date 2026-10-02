@@ -14,12 +14,12 @@ class RefPaymentMethodSeeder extends Seeder
     {
         $methods = [
             [
-                'name' => 'gcash',
-                'code' => 'gcash',
-                'label' => 'GCash',
+                'name' => 'qr',
+                'code' => 'qr',
+                'label' => 'Static QR Code',
                 'status' => 'active',
-                'description' => 'Philippines leading mobile e-wallet (QR / Mobile Number)',
-                'icon' => 'pi pi-mobile',
+                'description' => 'Scan QR via GoTyme, GCash, MariBank, or Maya',
+                'icon' => 'pi pi-qrcode',
             ],
             [
                 'name' => 'stripe',
@@ -36,14 +36,6 @@ class RefPaymentMethodSeeder extends Seeder
                 'status' => 'active',
                 'description' => 'Fast and secure worldwide payments via PayPal account',
                 'icon' => 'pi pi-paypal',
-            ],
-            [
-                'name' => 'paymaya',
-                'code' => 'paymaya',
-                'label' => 'PayMaya',
-                'status' => 'active',
-                'description' => 'Maya digital bank & e-wallet payment gateway',
-                'icon' => 'pi pi-wallet',
             ],
             [
                 'name' => 'visa/master card',

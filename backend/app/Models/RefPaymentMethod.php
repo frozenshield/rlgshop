@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RefPaymentMethod extends Model
 {
@@ -35,5 +36,13 @@ class RefPaymentMethod extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Associated sub-merchants / wallets (e.g. for QR payment).
+     */
+    public function merchants(): HasMany
+    {
+        return $this->hasMany(RefPaymentMerch::class, 'ref_payment_method_id');
     }
 }

@@ -29,6 +29,7 @@ class StoreCustomerOrderRequest extends FormRequest
             'city' => 'nullable|string',
             'postal_code' => 'nullable|string',
             'payment_method' => 'nullable|string',
+            'qr_merchant_code' => 'nullable|string|max:50',
             'payment_status' => 'nullable|in:Pending,Paid,Failed,Refunded',
             'ref_order_status_id' => 'nullable|exists:ref_order_status,id',
             'status_name' => 'nullable|string',
