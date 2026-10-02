@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccessMatrixController;
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AiArticleController;
 use App\Http\Controllers\Api\AiChatbotController;
 use App\Http\Controllers\Api\AiProductController;
@@ -327,6 +328,11 @@ Route::post('/hobby-articles', [HobbyArticleController::class, 'store']);
 Route::get('/hobby-articles/{idOrSlug}', [HobbyArticleController::class, 'show']);
 Route::put('/hobby-articles/{id}', [HobbyArticleController::class, 'update']);
 Route::delete('/hobby-articles/{id}', [HobbyArticleController::class, 'destroy']);
+
+// Admin Dashboard & Telemetry API (Powered by sp_get_admin_dashboard_metrics)
+Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
+Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
+Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
 // Authenticated user & actions
 Route::middleware('auth:sanctum')->group(function () {
