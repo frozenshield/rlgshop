@@ -329,9 +329,10 @@ Route::get('/hobby-articles/{idOrSlug}', [HobbyArticleController::class, 'show']
 Route::put('/hobby-articles/{id}', [HobbyArticleController::class, 'update']);
 Route::delete('/hobby-articles/{id}', [HobbyArticleController::class, 'destroy']);
 
-// Admin Dashboard & Telemetry API (Powered by sp_get_admin_dashboard_metrics)
+// Admin Dashboard & Telemetry API (Powered by sp_get_admin_dashboard_metrics & GA4 Realtime)
 Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
 Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
+Route::get('/admin/analytics/realtime', [AdminDashboardController::class, 'realtimeAnalytics']);
 Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
 // Authenticated user & actions

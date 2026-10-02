@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerOrder;
+use App\Services\GoogleAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,10 @@ use Throwable;
 
 class AdminDashboardController extends Controller
 {
+    public function __construct(
+        protected GoogleAnalyticsService $gaService
+    ) {}
+
     /**
      * Retrieve metrics from MySQL stored procedure, with fallback for SQLite tests.
      */
@@ -68,6 +73,7 @@ class AdminDashboardController extends Controller
         }
 
         $metrics = $this->getMetricsData($timeframe);
+        $realtimeTelemetry = $this->gaService->getRealtimeTelemetry();
 
         // Top performing products by revenue & units sold
         $topProducts = DB::table('customer_order_items')
@@ -166,7 +172,12 @@ class AdminDashboardController extends Controller
                     'pending_orders_count' => (int) $metrics->pending_orders_count,
                     'low_stock_count' => (int) $metrics->low_stock_count,
                     'unread_inquiries_count' => (int) $metrics->unread_inquiries_count,
-                    'active_visitors_today' => (int) $metrics->active_visitors_today,
+                    'active_visitors_today' => (int) $realtimeTelemetry['active_users'],
+                    'checkout_active_visitors' => (int) $realtimeTelemetry['checkout_active_users'],
+                    'telemetry_source' => $realtimeTelemetry['source'],
+                    'telemetry_label' => $realtimeTelemetry['label'],
+                    'telemetry_window' => $realtimeTelemetry['window_description'],
+                    'ga4_configured' => (bool) $realtimeTelemetry['configured'],
                     'revenue_growth_pct' => (float) $metrics->revenue_growth_pct,
                     'order_velocity_pct' => (float) $metrics->order_velocity_pct,
                     'aov_bundle_lift' => (float) $metrics->aov_bundle_lift,
@@ -179,7 +190,7 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     * Get standalone dashboard metrics from stored procedure.
+     * Get standalone dashboard metrics from stored procedure and GA4 realtime telemetry.
      */
     public function metrics(Request $request): JsonResponse
     {
@@ -189,11 +200,31 @@ class AdminDashboardController extends Controller
         }
 
         $metrics = $this->getMetricsData($timeframe);
+        $realtime = $this->gaService->getRealtimeTelemetry();
+
+        $metrics->active_visitors_today = $realtime['active_users'];
+        $metrics->checkout_active_visitors = $realtime['checkout_active_users'];
+        $metrics->telemetry_source = $realtime['source'];
+        $metrics->telemetry_label = $realtime['label'];
+        $metrics->ga4_configured = $realtime['configured'];
 
         return response()->json([
             'success' => true,
             'timeframe' => $timeframe,
             'data' => $metrics,
+        ]);
+    }
+
+    /**
+     * Get Google Analytics 4 Realtime telemetry status and report.
+     */
+    public function realtimeAnalytics(): JsonResponse
+    {
+        $telemetry = $this->gaService->getRealtimeTelemetry();
+
+        return response()->json([
+            'success' => true,
+            'data' => $telemetry,
         ]);
     }
 }

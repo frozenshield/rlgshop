@@ -112,4 +112,24 @@ class AdminDashboardTest extends TestCase
                 ],
             ]);
     }
+
+    public function test_realtime_analytics_endpoint_returns_telemetry(): void
+    {
+        $response = $this->getJson('/api/admin/analytics/realtime');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'configured',
+                    'source',
+                    'label',
+                    'active_users',
+                    'checkout_active_users',
+                    'window_description',
+                    'timestamp',
+                ],
+            ]);
+    }
 }

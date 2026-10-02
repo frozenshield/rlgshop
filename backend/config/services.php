@@ -46,4 +46,9 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
+    'ga4' => [
+        'property_id' => env('GA4_PROPERTY_ID'),
+        'credentials_json' => env('GA4_SERVICE_ACCOUNT_CREDENTIALS'),
+    ],
+
 ];
