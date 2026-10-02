@@ -112,7 +112,8 @@ export const useCartStore = defineStore("cartStore", () => {
             standardShippingFee.value = Number(d.standard_shipping_fee) || 100;
           }
           if (d.free_shipping_threshold !== undefined) {
-            freeShippingThreshold.value = Number(d.free_shipping_threshold) || 2500;
+            freeShippingThreshold.value =
+              Number(d.free_shipping_threshold) || 2500;
           }
           if (d.vat_percentage !== undefined) {
             vatPercentage.value = Number(d.vat_percentage) || 12;
@@ -120,7 +121,10 @@ export const useCartStore = defineStore("cartStore", () => {
         }
       }
     } catch (e) {
-      console.warn("Failed to fetch shipping & tax config from API, using defaults", e);
+      console.warn(
+        "Failed to fetch shipping & tax config from API, using defaults",
+        e,
+      );
     }
   };
   fetchShippingTax();
@@ -140,21 +144,26 @@ export const useCartStore = defineStore("cartStore", () => {
 
   const standardShippingCost = computed(() => {
     if (selectedItems.value.length === 0) return 0;
-    return subtotal.value >= freeShippingThreshold.value ? 0 : standardShippingFee.value;
+    return subtotal.value >= freeShippingThreshold.value
+      ? 0
+      : standardShippingFee.value;
   });
 
   const taxableBase = computed(() =>
     Math.max(0, subtotal.value - promoDiscount.value),
   );
 
-  const vatAmount = computed(() =>
-    (taxableBase.value * vatPercentage.value) / 100,
+  const vatAmount = computed(
+    () => (taxableBase.value * vatPercentage.value) / 100,
   );
 
   const grandTotal = computed(() => {
     return Math.max(
       0,
-      subtotal.value - promoDiscount.value + standardShippingCost.value + vatAmount.value,
+      subtotal.value -
+        promoDiscount.value +
+        standardShippingCost.value +
+        vatAmount.value,
     );
   });
 

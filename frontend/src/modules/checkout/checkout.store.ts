@@ -63,13 +63,13 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
 
     const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const shippingFee = getDeliveryFee(data.deliveryOption);
-    const taxableBase = Math.max(0, cartStore.subtotal - cartStore.promoDiscount);
+    const taxableBase = Math.max(
+      0,
+      cartStore.subtotal - cartStore.promoDiscount,
+    );
     const vatPercentage = cartStore.vatPercentage;
     const vatAmount = (taxableBase * vatPercentage) / 100;
-    const orderTotal = Math.max(
-      0,
-      taxableBase + shippingFee + vatAmount,
-    );
+    const orderTotal = Math.max(0, taxableBase + shippingFee + vatAmount);
 
     const deliveryDays = data.deliveryOption === "express" ? 2 : 4;
     const estDate = new Date();

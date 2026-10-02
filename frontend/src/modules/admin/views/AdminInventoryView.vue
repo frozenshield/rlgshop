@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useAdminStore } from "../admin.store";
 import type { InventoryItem } from "../admin.types";
 import { formatCurrency } from "@/shared/utils/currency.util";
@@ -13,6 +13,11 @@ const isVariantModalOpen = ref(false);
 const isVendorModalOpen = ref(false);
 const isCsvModalOpen = ref(false);
 const notificationMessage = ref("");
+
+// Pagination State (Default 10 per page, dynamic user selection)
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+const pageSizeOptions = [10, 20, 50, 100];
 
 const fetchDbProducts = async () => {
   await adminStore.fetchInventory();
@@ -28,18 +33,106 @@ const categories = computed(() => {
 });
 
 const filteredInventory = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
   return adminStore.inventory.filter((item) => {
     const matchesCategory =
       selectedCategory.value === "All" ||
       item.category === selectedCategory.value;
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      item.barcode.includes(searchQuery.value) ||
-      item.vendor.toLowerCase().includes(searchQuery.value.toLowerCase());
-    return matchesCategory && matchesSearch;
+    if (!matchesCategory) return false;
+
+    if (!query) return true;
+
+    return (
+      item.name.toLowerCase().includes(query) ||
+      item.sku.toLowerCase().includes(query) ||
+      (item.barcode && item.barcode.toLowerCase().includes(query)) ||
+      (item.vendor && item.vendor.toLowerCase().includes(query)) ||
+      (item.condition && item.condition.toLowerCase().includes(query)) ||
+      (item.category && item.category.toLowerCase().includes(query))
+    );
   });
 });
+
+// Reset page to 1 whenever filters or page size change
+watch([searchQuery, selectedCategory, itemsPerPage], () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredInventory.value.length / itemsPerPage.value));
+});
+
+// Guard currentPage within bounds if totalPages shrinks
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal) {
+    currentPage.value = newTotal;
+  }
+});
+
+const paginatedInventory = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredInventory.value.slice(start, start + itemsPerPage.value);
+});
+
+const paginationStart = computed(() => {
+  if (filteredInventory.value.length === 0) return 0;
+  return (currentPage.value - 1) * itemsPerPage.value + 1;
+});
+
+const paginationEnd = computed(() => {
+  return Math.min(
+    currentPage.value * itemsPerPage.value,
+    filteredInventory.value.length,
+  );
+});
+
+const displayedPages = computed(() => {
+  const current = currentPage.value;
+  const total = totalPages.value;
+  const delta = 2;
+
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | string)[] = [];
+  const left = Math.max(2, current - delta);
+  const right = Math.min(total - 1, current + delta);
+
+  pages.push(1);
+  if (left > 2) {
+    pages.push("...");
+  }
+
+  for (let i = left; i <= right; i++) {
+    pages.push(i);
+  }
+
+  if (right < total - 1) {
+    pages.push("...");
+  }
+  pages.push(total);
+
+  return pages;
+});
+
+const setPage = (page: number | string) => {
+  if (typeof page === "number" && page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
 
 const editingStockId = ref<string | null>(null);
 const pendingStockValue = ref<number>(0);
@@ -206,39 +299,65 @@ const showNotification = (msg: string) => {
 
     <!-- Filters Bar -->
     <div
-      class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4"
+      class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4"
     >
-      <div class="relative w-full md:w-80">
+      <!-- Search Input with Clear Button -->
+      <div class="relative w-full lg:w-96">
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search by SKU, barcode, name, or vendor..."
-          class="w-full text-xs px-3.5 py-2.5 pl-9 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-rose-500"
+          placeholder="Search by SKU, barcode, name, vendor, condition..."
+          class="w-full text-xs px-3.5 py-2.5 pl-9 pr-8 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-rose-500 transition-colors"
         />
         <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+        <button
+          v-if="searchQuery"
+          type="button"
+          class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-200 cursor-pointer transition-colors"
+          title="Clear search"
+          @click="searchQuery = ''"
+        >
+          ✕
+        </button>
       </div>
 
-      <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
-        <span class="text-xs font-bold text-slate-400 whitespace-nowrap"
-          >Category:</span
-        >
-        <div
-          class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200"
-        >
-          <button
-            v-for="cat in categories"
-            :key="cat"
-            type="button"
-            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
-            :class="
-              selectedCategory === cat
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
-            "
-            @click="selectedCategory = cat"
+      <div class="flex items-center gap-3 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+        <!-- Category Filter -->
+        <div class="flex items-center gap-2 overflow-x-auto">
+          <span class="text-xs font-bold text-slate-400 whitespace-nowrap"
+            >Category:</span
           >
-            {{ cat }}
-          </button>
+          <div
+            class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200"
+          >
+            <button
+              v-for="cat in categories"
+              :key="cat"
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
+              :class="
+                selectedCategory === cat
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              "
+              @click="selectedCategory = cat"
+            >
+              {{ cat }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Rows Per Page Selector -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-400 whitespace-nowrap">Show:</span>
+          <select
+            v-model.number="itemsPerPage"
+            class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500 cursor-pointer shadow-xs"
+          >
+            <option v-for="size in pageSizeOptions" :key="size" :value="size">
+              {{ size }} / page
+            </option>
+          </select>
         </div>
       </div>
     </div>
@@ -286,7 +405,7 @@ const showNotification = (msg: string) => {
               </td>
             </tr>
             <tr
-              v-for="item in filteredInventory"
+              v-for="item in paginatedInventory"
               :key="item.id"
               class="hover:bg-slate-50/70 transition-colors"
             >
@@ -520,6 +639,109 @@ const showNotification = (msg: string) => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Table Pagination Footer -->
+      <div
+        v-if="!adminStore.isLoadingInventory && filteredInventory.length > 0"
+        class="p-4 bg-slate-50 border-t border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-600"
+      >
+        <!-- Left: Summary & Per Page Selection -->
+        <div class="flex items-center gap-4 flex-wrap">
+          <div>
+            Showing <span class="font-bold text-slate-900">{{ paginationStart }}</span> to
+            <span class="font-bold text-slate-900">{{ paginationEnd }}</span> of
+            <span class="font-bold text-slate-900">{{ filteredInventory.length }}</span> items
+            <span
+              v-if="filteredInventory.length !== adminStore.inventory.length"
+              class="text-slate-400"
+            >
+              (filtered from {{ adminStore.inventory.length }} total)
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Per Page:</span>
+            <select
+              v-model.number="itemsPerPage"
+              class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:border-rose-500 cursor-pointer shadow-xs"
+            >
+              <option v-for="size in pageSizeOptions" :key="size" :value="size">
+                {{ size }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right: Page Navigation Controls -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- First Page Button -->
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs"
+            title="First Page"
+            @click="setPage(1)"
+          >
+            «
+          </button>
+
+          <!-- Previous Page Button -->
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs"
+            @click="prevPage"
+          >
+            ‹ Prev
+          </button>
+
+          <!-- Numbered Page Buttons -->
+          <div class="flex items-center gap-1">
+            <template v-for="(p, idx) in displayedPages" :key="idx">
+              <span
+                v-if="p === '...'"
+                class="px-2 py-1 text-slate-400 select-none font-bold"
+              >
+                ...
+              </span>
+              <button
+                v-else
+                type="button"
+                class="min-w-8 h-8 px-2 rounded-lg font-bold text-xs transition-all cursor-pointer shadow-xs"
+                :class="
+                  currentPage === p
+                    ? 'bg-rose-600 text-white shadow-rose-200 border border-rose-600'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                "
+                @click="setPage(p)"
+              >
+                {{ p }}
+              </button>
+            </template>
+          </div>
+
+          <!-- Next Page Button -->
+          <button
+            type="button"
+            :disabled="currentPage === totalPages"
+            class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs"
+            @click="nextPage"
+          >
+            Next ›
+          </button>
+
+          <!-- Last Page Button -->
+          <button
+            type="button"
+            :disabled="currentPage === totalPages"
+            class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs"
+            title="Last Page"
+            @click="setPage(totalPages)"
+          >
+            »
+          </button>
+        </div>
       </div>
     </div>
 

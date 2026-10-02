@@ -14,9 +14,9 @@ const cartStore = useCartStore();
 const deliveryFee = computed(() => {
   switch (props.selectedDeliveryOption) {
     case "express":
-      return 250.00;
+      return 250.0;
     case "gift-wrapped":
-      return 180.00;
+      return 180.0;
     case "standard":
     default:
       return cartStore.standardShippingCost;
@@ -29,15 +29,12 @@ const taxableBase = computed(() =>
 
 const vatPercentage = computed(() => cartStore.vatPercentage);
 
-const vatAmount = computed(() =>
-  (taxableBase.value * vatPercentage.value) / 100,
+const vatAmount = computed(
+  () => (taxableBase.value * vatPercentage.value) / 100,
 );
 
 const orderTotal = computed(() => {
-  return Math.max(
-    0,
-    taxableBase.value + deliveryFee.value + vatAmount.value,
-  );
+  return Math.max(0, taxableBase.value + deliveryFee.value + vatAmount.value);
 });
 </script>
 
