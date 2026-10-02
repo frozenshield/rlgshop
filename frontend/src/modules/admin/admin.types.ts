@@ -385,3 +385,82 @@ export interface DashboardData {
   top_referrers: DashboardTopReferrer[];
   recent_orders: any[];
 }
+
+export interface ExecutiveKpis {
+  gross_sales: number;
+  total_refunds: number;
+  net_store_sales: number;
+  vat_collected: number;
+  est_logistics_expense: number;
+  total_orders: number;
+  average_order_value: number;
+  tied_up_capital: number;
+  total_inventory_units: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+  total_active_skus: number;
+  active_customers_count: number;
+  total_cart_items: number;
+  total_favourites_count: number;
+}
+
+export interface MonthlyTrajectoryItem {
+  month_key: string;
+  month: string;
+  year: number;
+  gross: number;
+  refunds: number;
+  net: number;
+  orders: number;
+  height: string;
+}
+
+export interface HighVelocityItem {
+  sku: string;
+  name: string;
+  stock: number;
+  price: number;
+  velocityPerDay: number;
+  daysToStockout: number;
+  runRate: 'Critical' | 'High' | 'Moderate';
+}
+
+export interface DeadStockItem {
+  sku: string;
+  name: string;
+  stock: number;
+  price: number;
+  daysInStock: number;
+  unitsSold30d: number;
+  tiedUpCapital: number;
+}
+
+export interface CategoryDistributionItem {
+  id: number;
+  name: string;
+  revenue: number;
+  unitsSold: number;
+  productCount: number;
+  sharePct: number;
+}
+
+export interface PaymentGatewayItem {
+  method: string;
+  orders: number;
+  volume: number;
+  sharePct: number;
+}
+
+export interface ExecutiveAnalyticsReportResponse {
+  success: boolean;
+  timeframe: string;
+  period_label: string;
+  generated_at: string;
+  currency: string;
+  kpis: ExecutiveKpis;
+  monthlyTrajectory: MonthlyTrajectoryItem[];
+  highVelocityItems: HighVelocityItem[];
+  deadStockItems: DeadStockItem[];
+  categoryDistribution: CategoryDistributionItem[];
+  paymentGatewayDistribution: PaymentGatewayItem[];
+}
