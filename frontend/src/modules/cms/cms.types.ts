@@ -17,15 +17,27 @@ export interface CMSStaticPages {
   [key: string]: string;
 }
 
+export interface ArticleSourceCitation {
+  name: string;
+  url?: string;
+  note?: string;
+}
+
 export interface CMSBlogPost {
-  id: string;
+  id: string | number;
+  slug?: string;
   title: string;
   category: string;
   author: string;
-  date: string;
+  date?: string;
+  published_at?: string;
   status: string;
   summary: string;
   content?: string;
+  image_url?: string;
+  sources?: ArticleSourceCitation[];
+  views_count?: number;
+  is_featured?: boolean;
 }
 
 export interface CMSPayload {

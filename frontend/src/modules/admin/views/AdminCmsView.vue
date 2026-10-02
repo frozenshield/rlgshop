@@ -14,7 +14,7 @@ const selectedPage = ref<'about' | 'terms' | 'privacy' | 'faq'>('about')
 
 // Blog Editor State
 const isEditingBlog = ref(false)
-const editingPostId = ref<string | null>(null)
+const editingPostId = ref<string | number | null>(null)
 const blogTitle = ref('')
 const blogCategory = ref('TCG Strategy')
 const blogAuthor = ref('Chief Deck Architect')
@@ -127,11 +127,12 @@ const publishGeneratedArticle = async () => {
     status: 'Published',
     summary: generatedArticle.value.summary.trim(),
     content: generatedArticle.value.content.trim(),
+    sources: generatedArticle.value.sources || [],
   })
 
   await cmsStore.saveBlogs(cmsStore.blogs)
   isAiModalOpen.value = false
-  triggerSaveAlert(`AI-Generated Article "${generatedArticle.value.title}" published and live on storefront!`)
+  triggerSaveAlert(`AI-Generated Article "${generatedArticle.value.title}" published and saved to database!`)
 }
 
 const openGeneratedInManualEditor = () => {
@@ -231,7 +232,7 @@ const openEditPost = (post: CMSBlogPost) => {
 const savePost = async () => {
   if (!blogTitle.value.trim()) return
 
-  if (editingPostId.value) {
+  if (editingPostId.value !== null) {
     // Update existing post
     const index = cmsStore.blogs.findIndex((b) => b.id === editingPostId.value)
     if (index !== -1) {
@@ -244,7 +245,7 @@ const savePost = async () => {
         content: blogContent.value.trim() || blogSummary.value.trim(),
       }
     }
-    triggerSaveAlert('Article updated and saved to storefront!')
+    triggerSaveAlert('Article updated and saved to database!')
   } else {
     // Add new post
     cmsStore.blogs.unshift({
@@ -257,15 +258,22 @@ const savePost = async () => {
       summary: blogSummary.value.trim() || blogContent.value.slice(0, 120) + '...',
       content: blogContent.value.trim() || blogSummary.value.trim(),
     })
-    triggerSaveAlert('New article published and live on storefront!')
+    triggerSaveAlert('New article published and saved to database!')
   }
 
   await cmsStore.saveBlogs(cmsStore.blogs)
   isEditingBlog.value = false
 }
 
-const deletePost = async (id: string) => {
+const deletePost = async (id: string | number) => {
   if (confirm('Are you sure you want to delete this article?')) {
+    if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+      try {
+        await fetch(`/api/hobby-articles/${id}`, { method: 'DELETE' })
+      } catch (e) {
+        console.error('Failed to delete from hobby-articles API', e)
+      }
+    }
     cmsStore.blogs = cmsStore.blogs.filter((b) => b.id !== id)
     await cmsStore.saveBlogs(cmsStore.blogs)
     triggerSaveAlert('Article removed.')
