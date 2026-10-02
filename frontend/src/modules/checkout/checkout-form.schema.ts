@@ -37,9 +37,10 @@ export const checkoutFormSchema = yup.object({
   giftMessage: yup.string().trim().default(''),
   paymentMethod: yup
     .string()
-    .oneOf(['card', 'wallet', 'cod'])
+    .oneOf(['card', 'qr', 'wallet', 'cod'])
     .required('Please choose a payment method')
-    .default('card'),
+    .default('qr'),
+  qrMerchantCode: yup.string().trim().default('gotyme'),
   cardNumber: yup.string().when('paymentMethod', {
     is: 'card',
     then: (schema) =>

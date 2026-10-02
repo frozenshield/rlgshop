@@ -118,7 +118,8 @@ export interface CheckoutFormData {
   notes?: string;
   deliveryOption: "standard" | "express" | "gift-wrapped";
   giftMessage?: string;
-  paymentMethod: "card" | "wallet" | "cod";
+  paymentMethod: "card" | "qr" | "wallet" | "cod";
+  qrMerchantCode?: "gotyme" | "gcash" | "maribank" | "paymaya" | string;
   cardNumber?: string;
   cardExpiry?: string;
   cardCvv?: string;

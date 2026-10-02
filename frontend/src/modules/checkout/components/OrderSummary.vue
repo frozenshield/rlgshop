@@ -118,14 +118,7 @@ const orderTotal = computed(() => {
 
       <!-- Philippine VAT Percentage (%) from shipping_tax table -->
       <div class="flex justify-between items-center">
-        <div class="flex items-center gap-1.5">
-          <span>Philippine VAT ({{ vatPercentage }}%)</span>
-          <span
-            class="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md"
-          >
-            BIR 12%
-          </span>
-        </div>
+        <span>Philippine VAT ({{ vatPercentage }}%)</span>
         <span class="font-bold text-slate-800">
           {{ formatCurrency(vatAmount) }}
         </span>

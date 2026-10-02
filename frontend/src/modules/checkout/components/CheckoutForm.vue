@@ -1,21 +1,85 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { checkoutFormSchema } from "../checkout-form.schema";
 import type { CheckoutFormData } from "@/shared/types/toy.types";
 import BaseButton from "@/shared/components/BaseButton.vue";
 import { formatCurrency } from "@/shared/utils/currency.util";
+import { useAuthStore } from "@/modules/auth/auth.store";
+import { useCartStore } from "@/modules/cart/cart.store";
 import * as yup from "yup";
 
 interface Props {
   isSubmitting: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "submit-order", data: CheckoutFormData): void;
   (e: "delivery-change", option: "standard" | "express" | "gift-wrapped"): void;
 }>();
+
+const authStore = useAuthStore();
+const cartStore = useCartStore();
+
+interface PaymentMerchant {
+  id: number;
+  name: string;
+  code: string;
+  account_name: string;
+  account_number: string;
+  qr_image_url: string;
+  instructions: string;
+}
+
+// 4 Static QR Merchants: GoTyme, GCash, MariBank, PayMaya
+const paymentMerchants = ref<PaymentMerchant[]>([
+  {
+    id: 1,
+    name: "GoTyme Bank",
+    code: "gotyme",
+    account_name: "Russel Luis Gementiza",
+    account_number: "GoTyme (**0813)",
+    qr_image_url: "/images/qr/gotyme-qr.png",
+    instructions: "Scan with your GoTyme or any InstaPay app. Input the exact total and save transaction screenshot.",
+  },
+  {
+    id: 2,
+    name: "GCash",
+    code: "gcash",
+    account_name: "RU***L LU*S G.",
+    account_number: "+63 956 997 ****",
+    qr_image_url: "/images/qr/gcash-qr.jpg",
+    instructions: "Scan via GCash app. Transfer fees may apply. Save transaction receipt to confirm payment.",
+  },
+  {
+    id: 3,
+    name: "MariBank",
+    code: "maribank",
+    account_name: "RUSSEL LUIS GEMENTIZA",
+    account_number: "MariBank(****4301)",
+    qr_image_url: "/images/qr/maribank-qr.png",
+    instructions: "Scan via MariBank or any InstaPay e-wallet. Save transfer confirmation.",
+  },
+  {
+    id: 4,
+    name: "PayMaya",
+    code: "paymaya",
+    account_name: "Russel Luis Gementiza",
+    account_number: "+63 *** *** 0813 (@russelluis)",
+    qr_image_url: "/images/qr/maya-qr.jpg",
+    instructions: "Scan using Maya app. Transfer fees may apply. Save confirmation receipt.",
+  },
+]);
+
+const selectedMerchantCode = ref<string>("gotyme");
+
+const selectedMerchant = computed(() => {
+  return (
+    paymentMerchants.value.find((m) => m.code === selectedMerchantCode.value) ||
+    paymentMerchants.value[0]
+  );
+});
 
 const form = ref<CheckoutFormData>({
   firstName: "",
@@ -28,7 +92,8 @@ const form = ref<CheckoutFormData>({
   notes: "",
   deliveryOption: "standard",
   giftMessage: "",
-  paymentMethod: "card",
+  paymentMethod: "qr",
+  qrMerchantCode: "gotyme",
   cardNumber: "",
   cardExpiry: "",
   cardCvv: "",
@@ -36,14 +101,58 @@ const form = ref<CheckoutFormData>({
 
 const errors = ref<Record<string, string>>({});
 
+// Compute estimated order total for display in QR instruction banner
+const deliveryFee = computed(() => {
+  switch (form.value.deliveryOption) {
+    case "express":
+      return 12.99;
+    case "gift-wrapped":
+      return 7.99;
+    case "standard":
+    default:
+      return cartStore.standardShippingCost;
+  }
+});
+
+const estimatedTotal = computed(() => {
+  const taxableBase = Math.max(0, cartStore.subtotal - cartStore.promoDiscount);
+  const vat = (taxableBase * cartStore.vatPercentage) / 100;
+  return Math.max(0, taxableBase + deliveryFee.value + vat);
+});
+
+// Auto-fill shipping and contact details from the authenticated user's profile
+const populateFromAuth = () => {
+  const u = authStore.currentUser;
+  if (!u) return;
+
+  const fullName = (u.name || "").trim();
+  const spaceIndex = fullName.indexOf(" ");
+  const firstName = spaceIndex !== -1 ? fullName.substring(0, spaceIndex) : fullName;
+  const lastName = spaceIndex !== -1 ? fullName.substring(spaceIndex + 1) : "";
+
+  if (!form.value.firstName && firstName) form.value.firstName = firstName;
+  if (!form.value.lastName && lastName) form.value.lastName = lastName;
+  if (!form.value.email && u.email) form.value.email = u.email;
+  if (!form.value.phone && u.phone) form.value.phone = u.phone;
+  if (!form.value.streetAddress && u.address_line1) form.value.streetAddress = u.address_line1;
+  if (!form.value.city && u.city) form.value.city = u.city;
+  if (!form.value.postalCode && u.postal_code) form.value.postalCode = u.postal_code;
+};
+
 const handleDeliverySelect = (opt: "standard" | "express" | "gift-wrapped") => {
   form.value.deliveryOption = opt;
   emit("delivery-change", opt);
 };
 
+const handleSelectMerchant = (code: string) => {
+  selectedMerchantCode.value = code;
+  form.value.qrMerchantCode = code;
+};
+
 const handleSubmit = async () => {
   errors.value = {};
   try {
+    form.value.qrMerchantCode = selectedMerchantCode.value;
     const validData = await checkoutFormSchema.validate(form.value, {
       abortEarly: false,
     });
@@ -59,6 +168,23 @@ const handleSubmit = async () => {
     }
   }
 };
+
+onMounted(async () => {
+  populateFromAuth();
+
+  // Fetch active merchants from backend
+  try {
+    const res = await fetch("/api/ref-payment-merchants");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        paymentMerchants.value = data;
+      }
+    }
+  } catch (e) {
+    // Keep local fallback list
+  }
+});
 </script>
 
 <template>
@@ -67,14 +193,25 @@ const handleSubmit = async () => {
     <div
       class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4"
     >
-      <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+        <div class="flex items-center gap-2">
+          <span
+            class="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center"
+            >1</span
+          >
+          <h3 class="text-base font-extrabold text-slate-900">
+            Shipping &amp; Contact Details
+          </h3>
+        </div>
+
+        <!-- Authenticated Profile Autofill Badge -->
         <span
-          class="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center"
-          >1</span
+          v-if="authStore.isAuthenticated"
+          class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/70"
         >
-        <h3 class="text-base font-extrabold text-slate-900">
-          Shipping &amp; Contact Details
-        </h3>
+          <span>✓</span>
+          <span>Autofilled from your Profile</span>
+        </span>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -319,25 +456,59 @@ const handleSubmit = async () => {
       </div>
     </div>
 
-    <!-- Step 3: Payment Method -->
+    <!-- Step 3: Secure Payment -->
     <div
-      class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4"
+      class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5"
     >
-      <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <span
+            class="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center"
+            >3</span
+          >
+          <h3 class="text-base font-extrabold text-slate-900">Secure Payment</h3>
+        </div>
+
         <span
-          class="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center"
-          >3</span
+          v-if="form.paymentMethod === 'qr'"
+          class="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full"
         >
-        <h3 class="text-base font-extrabold text-slate-900">Secure Payment</h3>
+          Option 1: 0% Fee Static QR
+        </span>
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
+      <!-- Payment Method Radios (Static QR Ph, Credit/Debit, Cash on Delivery) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Static QR Code (Preferred / 0% Fee) -->
         <label
-          class="p-3 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center gap-1.5 transition-all"
+          class="p-4 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center justify-between gap-1.5 transition-all"
+          :class="
+            form.paymentMethod === 'qr'
+              ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+              : 'border-slate-200 hover:border-slate-300'
+          "
+        >
+          <input
+            v-model="form.paymentMethod"
+            type="radio"
+            value="qr"
+            class="sr-only"
+          />
+          <div class="text-2xl">📱</div>
+          <div>
+            <span class="text-xs font-extrabold text-slate-900 block">QR (GoTyme / E-Wallets)</span>
+            <span class="text-[10px] text-emerald-600 font-bold">0% Transaction Fee</span>
+          </div>
+          <span class="text-[9px] text-slate-400 font-semibold">GoTyme &bull; GCash &bull; MariBank &bull; Maya</span>
+        </label>
+
+        <!-- Credit / Debit -->
+        <label
+          class="p-4 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center justify-between gap-1.5 transition-all"
           :class="
             form.paymentMethod === 'card'
-              ? 'border-rose-600 bg-rose-50/50'
-              : 'border-slate-200'
+              ? 'border-rose-600 bg-rose-50/50 shadow-xs'
+              : 'border-slate-200 hover:border-slate-300'
           "
         >
           <input
@@ -346,34 +517,21 @@ const handleSubmit = async () => {
             value="card"
             class="sr-only"
           />
-          <span class="text-xl">💳</span>
-          <span class="text-xs font-bold text-slate-800">Credit / Debit</span>
+          <div class="text-2xl">💳</div>
+          <div>
+            <span class="text-xs font-extrabold text-slate-900 block">Credit / Debit</span>
+            <span class="text-[10px] text-slate-400 font-semibold">Visa / MasterCard</span>
+          </div>
+          <span class="text-[9px] text-slate-400">3D Secure Verified</span>
         </label>
 
+        <!-- Cash on Delivery -->
         <label
-          class="p-3 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center gap-1.5 transition-all"
-          :class="
-            form.paymentMethod === 'wallet'
-              ? 'border-rose-600 bg-rose-50/50'
-              : 'border-slate-200'
-          "
-        >
-          <input
-            v-model="form.paymentMethod"
-            type="radio"
-            value="wallet"
-            class="sr-only"
-          />
-          <span class="text-xl">📱</span>
-          <span class="text-xs font-bold text-slate-800">GCash / Maya</span>
-        </label>
-
-        <label
-          class="p-3 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center gap-1.5 transition-all"
+          class="p-4 rounded-2xl border-2 cursor-pointer text-center flex flex-col items-center justify-between gap-1.5 transition-all"
           :class="
             form.paymentMethod === 'cod'
-              ? 'border-rose-600 bg-rose-50/50'
-              : 'border-slate-200'
+              ? 'border-rose-600 bg-rose-50/50 shadow-xs'
+              : 'border-slate-200 hover:border-slate-300'
           "
         >
           <input
@@ -382,13 +540,113 @@ const handleSubmit = async () => {
             value="cod"
             class="sr-only"
           />
-          <span class="text-xl">💵</span>
-          <span class="text-xs font-bold text-slate-800">Cash on Delivery</span>
+          <div class="text-2xl">💵</div>
+          <div>
+            <span class="text-xs font-extrabold text-slate-900 block">Cash on Delivery</span>
+            <span class="text-[10px] text-slate-400 font-semibold">Nationwide Delivery</span>
+          </div>
+          <span class="text-[9px] text-slate-400">Pay upon doorstep receipt</span>
         </label>
       </div>
 
+      <!-- ─── SUB-SECTION: Static QR Merchant Selection & Live QR Display ─────────────────────── -->
+      <div v-if="form.paymentMethod === 'qr'" class="space-y-4 pt-1 animate-fade-in">
+        <div>
+          <label class="block text-xs font-extrabold text-slate-800 mb-1.5">
+            Select Your Receiving Wallet / Bank:
+          </label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              v-for="merch in paymentMerchants"
+              :key="merch.code"
+              type="button"
+              class="px-3 py-2.5 rounded-xl border-2 text-xs font-extrabold transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center"
+              :class="
+                selectedMerchantCode === merch.code
+                  ? 'border-indigo-600 bg-indigo-600 text-white shadow-xs'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+              "
+              @click="handleSelectMerchant(merch.code)"
+            >
+              <span>{{ merch.name }}</span>
+              <span
+                class="text-[9px] font-medium"
+                :class="selectedMerchantCode === merch.code ? 'text-indigo-100' : 'text-slate-400'"
+              >
+                {{ merch.code === 'gotyme' ? 'No transfer fee' : 'InstaPay QR' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Static QR Code Display Box with Explicit User Instruction -->
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+          <!-- Exact Instruction Banner Required by User -->
+          <div class="bg-indigo-50/80 border border-indigo-200 text-indigo-900 p-3.5 rounded-xl text-xs font-semibold leading-relaxed">
+            <div class="flex items-center gap-1.5 font-extrabold text-indigo-950 mb-0.5">
+              <span>📌 Payment Instruction:</span>
+            </div>
+            Scan this <strong>{{ selectedMerchant.name }}</strong> QR, input the exact total of
+            <strong class="text-rose-600 font-mono text-sm underline">{{ formatCurrency(estimatedTotal) }}</strong>,
+            and reply to your confirmation email with the payment screenshot.
+          </div>
+
+          <!-- QR Image & Receiving Account Box -->
+          <div class="flex flex-col sm:flex-row items-center gap-5 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <div class="bg-white p-2 rounded-xl border border-slate-200 shadow-xs shrink-0 text-center">
+              <img
+                :src="selectedMerchant.qr_image_url"
+                :alt="`${selectedMerchant.name} QR Code`"
+                class="w-44 h-auto rounded-lg mx-auto object-contain"
+              />
+              <span class="text-[10px] font-bold text-slate-400 block mt-1">
+                Scan via {{ selectedMerchant.name }}
+              </span>
+            </div>
+
+            <div class="space-y-2 text-xs flex-1 text-center sm:text-left">
+              <div>
+                <span class="text-[10px] uppercase font-bold text-slate-400">Receiving Merchant</span>
+                <p class="font-black text-slate-900 text-sm">{{ selectedMerchant.name }}</p>
+              </div>
+
+              <div v-if="selectedMerchant.account_name">
+                <span class="text-[10px] uppercase font-bold text-slate-400">Account Name</span>
+                <p class="font-extrabold text-slate-800">{{ selectedMerchant.account_name }}</p>
+              </div>
+
+              <div v-if="selectedMerchant.account_number">
+                <span class="text-[10px] uppercase font-bold text-slate-400">Account / ID Number</span>
+                <p class="font-mono font-bold text-indigo-700">{{ selectedMerchant.account_number }}</p>
+              </div>
+
+              <div class="pt-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400">Payable Amount</span>
+                <p class="text-lg font-black text-rose-600 font-mono">{{ formatCurrency(estimatedTotal) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explanation of Zero-Cost Manual Verification Flow -->
+          <div class="text-[11px] text-slate-500 space-y-1 bg-white/60 p-3 rounded-xl border border-slate-200/60">
+            <div class="font-bold text-slate-700 flex items-center gap-1.5">
+              <span>💡 Zero-Cost Static QR Flow:</span>
+            </div>
+            <p>
+              1. When you click <strong>Place Order</strong>, your order is saved as <strong>Pending</strong>.
+            </p>
+            <p>
+              2. Our Laravel email engine will automatically dispatch an email attaching this static QR code image.
+            </p>
+            <p>
+              3. You transfer the exact amount and reply with your receipt screenshot. We will verify and mark your order as <strong>Paid</strong>!
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Card Fields Simulation -->
-      <div v-if="form.paymentMethod === 'card'" class="space-y-3 pt-2">
+      <div v-else-if="form.paymentMethod === 'card'" class="space-y-3 pt-2 animate-fade-in">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1"
             >Card Number *</label
@@ -448,6 +706,14 @@ const handleSubmit = async () => {
           </div>
         </div>
       </div>
+
+      <!-- Cash on Delivery Notice -->
+      <div v-else-if="form.paymentMethod === 'cod'" class="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1 animate-fade-in">
+        <span class="font-extrabold flex items-center gap-1">📦 Cash on Delivery Confirmed</span>
+        <p class="text-[11px] text-amber-800">
+          Please prepare the exact amount of <strong>{{ formatCurrency(estimatedTotal) }}</strong> in cash upon courier package arrival.
+        </p>
+      </div>
     </div>
 
     <!-- Place Order Button -->
@@ -458,7 +724,7 @@ const handleSubmit = async () => {
       fullWidth
       :loading="isSubmitting"
     >
-      Place Order &amp; Confirm Dispatch 📦
+      {{ form.paymentMethod === 'qr' ? 'Place Order & Receive QR Instructions 📲' : 'Place Order & Confirm Dispatch 📦' }}
     </BaseButton>
   </form>
 </template>

@@ -26,7 +26,8 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
     notes: "",
     deliveryOption: "standard",
     giftMessage: "",
-    paymentMethod: "card",
+    paymentMethod: "qr",
+    qrMerchantCode: "gotyme",
     cardNumber: "",
     cardExpiry: "",
     cardCvv: "",
@@ -106,7 +107,11 @@ export const useCheckoutStore = defineStore("checkoutStore", () => {
           shipping_address: data.streetAddress,
           city: data.city,
           postal_code: data.postalCode,
-          payment_method: data.paymentMethod.toUpperCase(),
+          payment_method:
+            data.paymentMethod === "qr"
+              ? `QR - ${(data.qrMerchantCode || "gotyme").toUpperCase()}`
+              : data.paymentMethod.toUpperCase(),
+          qr_merchant_code: data.qrMerchantCode || "gotyme",
           total_amount: orderTotal,
           shipping_amount: shippingFee,
           tax_amount: vatAmount,

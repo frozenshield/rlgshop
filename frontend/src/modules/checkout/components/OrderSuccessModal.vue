@@ -97,11 +97,30 @@ const handleContinueShopping = () => {
             <div
               class="flex justify-between items-center pt-2 border-t border-slate-200/70 font-extrabold text-sm text-slate-900"
             >
-              <span>Total Paid:</span>
+              <span>{{ order.shippingDetails.paymentMethod === 'qr' ? 'Payable via Static QR:' : 'Total Paid:' }}</span>
               <span class="text-rose-600">{{
                 formatCurrency(order.total)
               }}</span>
             </div>
+          </div>
+
+          <!-- Static QR Notice for Option 1 Manual Verification -->
+          <div
+            v-if="order.shippingDetails.paymentMethod === 'qr'"
+            class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 text-xs text-indigo-950 text-left space-y-2 animate-fade-in"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-extrabold flex items-center gap-1.5 text-indigo-900">
+                <span>📧 Static QR Payment Email Sent</span>
+              </span>
+              <span class="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                Pending Screenshot
+              </span>
+            </div>
+            <p class="text-[11px] text-indigo-800 leading-relaxed">
+              We have dispatched your static QR code to <strong>{{ order.shippingDetails.email }}</strong>.
+              Scan the QR, input the exact total of <strong>{{ formatCurrency(order.total) }}</strong>, and reply to that email with your payment screenshot.
+            </p>
           </div>
 
           <!-- Items Ordered Mini-Preview -->
