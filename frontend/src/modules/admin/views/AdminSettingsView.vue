@@ -1470,7 +1470,7 @@ const showFeedback = (msg: string) => {
     </div>
 
     <!-- TAB 4: Store Localization -->
-    <div v-else class="space-y-4">
+    <div v-else-if="activeTab === 'localization'" class="space-y-4">
       <div
         class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6"
       >
