@@ -312,6 +312,11 @@ export interface DashboardMetrics {
   low_stock_count: number;
   unread_inquiries_count: number;
   active_visitors_today: number;
+  checkout_active_visitors?: number;
+  telemetry_source?: string;
+  telemetry_label?: string;
+  telemetry_window?: string;
+  ga4_configured?: boolean;
   revenue_growth_pct: number;
   order_velocity_pct: number;
   aov_bundle_lift: number;

@@ -102,12 +102,43 @@ const saveGatewaySettings = async () => {
   }
 };
 
-const activeTab = ref<"staff" | "payments" | "shipping" | "localization">(
-  "staff",
-);
+const activeTab = ref<
+  "staff" | "payments" | "shipping" | "localization" | "analytics"
+>("staff");
 const savedFeedback = ref("");
 const staffError = ref("");
 const isLoadingStaff = ref(false);
+
+interface Ga4TelemetryData {
+  configured: boolean;
+  source: string;
+  label: string;
+  active_users: number;
+  checkout_active_users: number;
+  window_description: string;
+  property_id?: string;
+  timestamp: string;
+}
+
+const ga4Telemetry = ref<Ga4TelemetryData | null>(null);
+const isLoadingGa4 = ref(false);
+
+const fetchGa4Telemetry = async () => {
+  isLoadingGa4.value = true;
+  try {
+    const res = await fetch("/api/admin/analytics/realtime");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        ga4Telemetry.value = json.data;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch GA4 realtime telemetry", e);
+  } finally {
+    isLoadingGa4.value = false;
+  }
+};
 
 interface StaffRole {
   id: number;
@@ -566,6 +597,7 @@ onMounted(() => {
   fetchCurrencies();
   fetchWeightUnits();
   fetchLocalization();
+  fetchGa4Telemetry();
 });
 
 const addStaff = async () => {
@@ -774,6 +806,18 @@ const showFeedback = (msg: string) => {
           @click="activeTab = 'localization'"
         >
           🌐 Localization
+        </button>
+        <button
+          type="button"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+          :class="
+            activeTab === 'analytics'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          "
+          @click="activeTab = 'analytics'"
+        >
+          📊 Google Analytics 4 (GA4)
         </button>
       </div>
     </div>
@@ -1620,6 +1664,139 @@ const showFeedback = (msg: string) => {
                 : "Save Localization Settings"
             }}</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Google Analytics 4 (GA4) Realtime Telemetry -->
+    <div
+      v-if="activeTab === 'analytics'"
+      class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6 animate-fade-in"
+    >
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Google Analytics 4 (GA4) Realtime Telemetry
+            </h2>
+            <span
+              :class="
+                ga4Telemetry?.configured
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              "
+              class="text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5"
+            >
+              <span
+                class="w-1.5 h-1.5 rounded-full"
+                :class="ga4Telemetry?.configured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'"
+              ></span>
+              {{ ga4Telemetry?.configured ? 'GA4 Connected' : 'Database Session Fallback' }}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">
+            Realtime metrics queried via Google Analytics Data API (runRealtimeReport) over a rolling 30-minute window.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+          :disabled="isLoadingGa4"
+          @click="fetchGa4Telemetry"
+        >
+          <svg
+            class="w-3.5 h-3.5"
+            :class="{ 'animate-spin': isLoadingGa4 }"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span>{{ isLoadingGa4 ? 'Refreshing...' : 'Refresh Telemetry' }}</span>
+        </button>
+      </div>
+
+      <!-- Realtime Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Card 1: Active Visitors -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+          <div class="flex items-center justify-between text-xs text-slate-500 font-semibold">
+            <span>Total Active Visitors</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          </div>
+          <div class="text-2xl font-black text-slate-900 tracking-tight">
+            {{ ga4Telemetry?.active_users ?? 0 }}
+          </div>
+          <p class="text-[11px] text-slate-500">
+            {{ ga4Telemetry?.window_description || 'Active within last 30 minutes' }}
+          </p>
+        </div>
+
+        <!-- Card 2: Active in Checkout -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+          <div class="flex items-center justify-between text-xs text-slate-500 font-semibold">
+            <span>Browsing Checkout URL</span>
+            <span class="text-xs">🛒</span>
+          </div>
+          <div class="text-2xl font-black text-indigo-600 tracking-tight">
+            {{ ga4Telemetry?.checkout_active_users ?? 0 }}
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Filtered by pagePath contains <code class="bg-slate-200 px-1 py-0.5 rounded text-[10px]">/checkout</code>
+          </p>
+        </div>
+
+        <!-- Card 3: Active Data Source -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+          <div class="flex items-center justify-between text-xs text-slate-500 font-semibold">
+            <span>Telemetry Source</span>
+            <span class="text-xs font-mono text-[10px] uppercase font-bold text-slate-400">
+              {{ ga4Telemetry?.source || 'sessions' }}
+            </span>
+          </div>
+          <div class="text-sm font-bold text-slate-800 line-clamp-1 pt-1">
+            {{ ga4Telemetry?.label || 'Local Storefront Sessions' }}
+          </div>
+          <p class="text-[11px] text-slate-500 font-mono text-[10px]">
+            {{ ga4Telemetry?.timestamp ? new Date(ga4Telemetry.timestamp).toLocaleTimeString() : 'Awaiting data' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Configuration & Integration Guide -->
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <span>⚙️ Google Cloud Service Account Setup</span>
+        </h3>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Google Analytics 4 uses server-to-server RS256 token exchange with your Google Cloud Service Account.
+          The backend calls Google's <code class="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded font-mono text-[11px]">analyticsdata.googleapis.com/v1beta/properties/{propertyId}:runRealtimeReport</code> endpoint.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <span class="font-bold text-slate-800 block text-xs">1. Setup Google Cloud &amp; GA4 Access</span>
+            <ol class="list-decimal list-inside space-y-1 text-slate-600 text-[11px] leading-relaxed">
+              <li>Enable the <strong>Google Analytics Data API</strong> in Google Cloud Console.</li>
+              <li>Create a Service Account and download its JSON Key file.</li>
+              <li>In GA4 Property &rarr; Property Access Management, grant the Service Account email <strong>Viewer</strong> role.</li>
+            </ol>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <span class="font-bold text-slate-800 block text-xs">2. Backend Environment Variables (<code class="font-mono">.env</code>)</span>
+            <pre class="bg-slate-900 text-slate-100 p-2.5 rounded-lg text-[10.5px] font-mono overflow-x-auto leading-relaxed">GA4_PROPERTY_ID=123456789
+GA4_SERVICE_ACCOUNT_PATH=storage/ga4-service-account.json</pre>
+            <p class="text-[10px] text-slate-500">
+              Alternatively, paste the JSON directly into <code class="font-mono text-slate-700">GA4_SERVICE_ACCOUNT_JSON</code>. When credentials are not provided, real storefront session activity is used automatically.
+            </p>
+          </div>
         </div>
       </div>
     </div>

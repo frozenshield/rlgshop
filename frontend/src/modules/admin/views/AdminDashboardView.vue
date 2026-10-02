@@ -46,7 +46,7 @@ onMounted(async () => {
           <span
             class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"
           ></span>
-          Live Store Telemetry
+          Live Store Telemetry &bull; {{ adminStore.metrics.telemetryLabel }}
         </div>
         <h1
           class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight"
@@ -227,14 +227,30 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Active Visitors -->
+      <!-- Active Visitors (GA4 Realtime 30-min Rolling Telemetry) -->
       <div
-        class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3"
+        class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3 relative group"
       >
         <div class="flex items-center justify-between text-slate-500">
-          <span class="text-xs font-bold uppercase tracking-wider"
-            >Active Visitors</span
-          >
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold uppercase tracking-wider"
+              >Active Visitors</span
+            >
+            <span
+              v-if="adminStore.metrics.isGa4Configured"
+              class="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase"
+              title="Powered by Google Analytics 4 Realtime API (30-minute rolling window)"
+            >
+              GA4
+            </span>
+            <span
+              v-else
+              class="text-[9px] font-black px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200 uppercase"
+              title="Real live storefront browser sessions in last 30 minutes"
+            >
+              Live
+            </span>
+          </div>
           <span class="p-2 rounded-xl bg-amber-50 text-amber-600 text-sm"
             >👥</span
           >
@@ -246,9 +262,12 @@ onMounted(async () => {
           <p
             class="text-[11px] text-emerald-600 font-bold flex items-center gap-1"
           >
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>124 on checkout</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>{{ adminStore.metrics.checkoutActiveVisitors }} on checkout</span>
           </p>
+          <div class="text-[10px] text-slate-400 font-medium truncate pt-0.5">
+            {{ adminStore.metrics.telemetryWindow }}
+          </div>
         </div>
       </div>
     </div>
