@@ -12,6 +12,7 @@ export const useCatalogFilterComposable = () => {
     selectedTcgSeries,
     selectedPokemonSeries,
     selectedPokemonSet,
+    selectedOnePieceSet,
     selectedAgeGroup,
     maxPriceFilter,
     minRatingFilter,
@@ -118,6 +119,26 @@ export const useCatalogFilterComposable = () => {
           }
         }
 
+        // One Piece Specific Expansion Set filter
+        if (
+          (selectedCategory.value === "tcg" ||
+            selectedCategory.value === "all") &&
+          selectedTcgSeries.value === "one-piece" &&
+          selectedOnePieceSet.value !== "all"
+        ) {
+          const opSet = selectedOnePieceSet.value.toLowerCase();
+          const matchCode =
+            toy.onePieceSetCode &&
+            toy.onePieceSetCode.toLowerCase().includes(opSet);
+          const matchName = toy.name.toLowerCase().includes(opSet);
+          const matchDesc = toy.description.toLowerCase().includes(opSet);
+          const matchTag = toy.tags.some((t) => t.toLowerCase().includes(opSet));
+
+          if (!matchCode && !matchName && !matchDesc && !matchTag) {
+            return false;
+          }
+        }
+
         // Age group filter
         if (
           selectedAgeGroup.value !== "all" &&
@@ -175,6 +196,7 @@ export const useCatalogFilterComposable = () => {
       selectedTcgSeries.value !== "all" ||
       selectedPokemonSeries.value !== "all" ||
       selectedPokemonSet.value !== "all" ||
+      selectedOnePieceSet.value !== "all" ||
       selectedAgeGroup.value !== "all" ||
       maxPriceFilter.value < 100 ||
       minRatingFilter.value > 0 ||

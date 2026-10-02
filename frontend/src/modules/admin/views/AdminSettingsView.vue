@@ -201,10 +201,371 @@ const fetchStaff = async () => {
   }
 };
 
+// ─── Shipping & Tax Rules (Multi-Row & Toggles) ───────────────────────────
+interface ShippingTaxRule {
+  id: number;
+  name: string;
+  standard_shipping_fee: number | string;
+  free_shipping_threshold: number | string;
+  vat_percentage: number | string;
+  is_active: boolean;
+}
+
+const shippingRules = ref<ShippingTaxRule[]>([]);
+const isLoadingShipping = ref(false);
+const shippingError = ref("");
+
+// Add Rule Modal State
+const isAddRuleOpen = ref(false);
+const newRuleName = ref("Standard Logistics & Philippine VAT");
+const newRuleFee = ref<number>(100);
+const newRuleThreshold = ref<number>(2500);
+const newRuleVat = ref<number>(12);
+const newRuleActive = ref(true);
+const isSubmittingNewRule = ref(false);
+
+// Edit Rule Modal State
+const isEditRuleOpen = ref(false);
+const editingRule = ref<ShippingTaxRule | null>(null);
+const editRuleName = ref("");
+const editRuleFee = ref<number>(100);
+const editRuleThreshold = ref<number>(2500);
+const editRuleVat = ref<number>(12);
+const editRuleActive = ref(true);
+const isUpdatingRule = ref(false);
+
+const fetchShippingRules = async () => {
+  isLoadingShipping.value = true;
+  shippingError.value = "";
+  try {
+    const res = await fetch("/api/shipping-tax?all=1");
+    if (!res.ok) throw new Error("Failed to load shipping and tax rules");
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      shippingRules.value = json.data;
+
+      // Sync active rule with adminStore.settings for store-wide backward compatibility
+      const activeRule = json.data.find((r: ShippingTaxRule) => r.is_active);
+      if (activeRule) {
+        adminStore.settings.flatShippingRate = Number(activeRule.standard_shipping_fee);
+        adminStore.settings.freeShippingThreshold = Number(activeRule.free_shipping_threshold);
+        adminStore.settings.taxRatePercent = Number(activeRule.vat_percentage);
+      }
+    }
+  } catch (e) {
+    console.error("fetchShippingRules error:", e);
+    shippingError.value = "Could not load shipping & tax rules from server.";
+  } finally {
+    isLoadingShipping.value = false;
+  }
+};
+
+const toggleRuleStatus = async (rule: ShippingTaxRule) => {
+  try {
+    const res = await fetch(`/api/shipping-tax/${rule.id}/toggle`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to toggle status");
+    const json = await res.json();
+    if (json.success && json.data) {
+      rule.is_active = Boolean(json.data.is_active);
+      showFeedback(`"${rule.name}" is now ${rule.is_active ? "Active" : "Inactive"}.`);
+      await fetchShippingRules();
+    }
+  } catch (e) {
+    console.error("toggleRuleStatus error:", e);
+    showFeedback("Failed to update status. Please try again.");
+  }
+};
+
+const addShippingRule = async () => {
+  shippingError.value = "";
+  if (!newRuleName.value.trim()) {
+    shippingError.value = "Please provide a name/label for this rule.";
+    return;
+  }
+
+  isSubmittingNewRule.value = true;
+  try {
+    const payload = {
+      name: newRuleName.value.trim(),
+      standard_shipping_fee: Number(newRuleFee.value) || 0,
+      free_shipping_threshold: Number(newRuleThreshold.value) || 0,
+      vat_percentage: Number(newRuleVat.value) || 0,
+      is_active: newRuleActive.value,
+    };
+
+    const res = await fetch("/api/shipping-tax", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      shippingError.value = json?.message || "Failed to create rule.";
+      return;
+    }
+
+    await fetchShippingRules();
+    isAddRuleOpen.value = false;
+    newRuleName.value = "";
+    newRuleFee.value = 100;
+    newRuleThreshold.value = 2500;
+    newRuleVat.value = 12;
+    newRuleActive.value = true;
+    showFeedback(`New shipping fee & VAT rule "${json.data?.name}" created successfully!`);
+  } catch (e) {
+    console.error("addShippingRule error:", e);
+    shippingError.value = "Server error while creating shipping rule.";
+  } finally {
+    isSubmittingNewRule.value = false;
+  }
+};
+
+const openEditRule = (rule: ShippingTaxRule) => {
+  editingRule.value = rule;
+  editRuleName.value = rule.name;
+  editRuleFee.value = Number(rule.standard_shipping_fee);
+  editRuleThreshold.value = Number(rule.free_shipping_threshold);
+  editRuleVat.value = Number(rule.vat_percentage);
+  editRuleActive.value = Boolean(rule.is_active);
+  isEditRuleOpen.value = true;
+};
+
+const saveEditRule = async () => {
+  if (!editingRule.value) return;
+  isUpdatingRule.value = true;
+  shippingError.value = "";
+  try {
+    const payload = {
+      name: editRuleName.value.trim(),
+      standard_shipping_fee: Number(editRuleFee.value) || 0,
+      free_shipping_threshold: Number(editRuleThreshold.value) || 0,
+      vat_percentage: Number(editRuleVat.value) || 0,
+      is_active: editRuleActive.value,
+    };
+
+    const res = await fetch(`/api/shipping-tax/${editingRule.value.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    if (res.ok) {
+      await fetchShippingRules();
+      isEditRuleOpen.value = false;
+      showFeedback(`Shipping & VAT rule "${payload.name}" updated successfully!`);
+    } else {
+      shippingError.value = json?.message || "Failed to update rule.";
+    }
+  } catch (e) {
+    console.error("saveEditRule error:", e);
+    shippingError.value = "Failed to update shipping rule.";
+  } finally {
+    isUpdatingRule.value = false;
+  }
+};
+
+const deleteRule = async (rule: ShippingTaxRule) => {
+  if (!confirm(`Are you sure you want to remove the shipping & tax rule "${rule.name}"?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/shipping-tax/${rule.id}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (res.ok) {
+      await fetchShippingRules();
+      showFeedback(`Rule "${rule.name}" removed successfully.`);
+    } else {
+      const json = await res.json();
+      showFeedback(json?.message || "Failed to delete rule.");
+    }
+  } catch (e) {
+    console.error("deleteRule error:", e);
+  }
+};
+
+// ─── Store Localization & Currencies / Weight Units ───────────────────────
+interface CurrencyItem {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  label: string;
+  exchange_rate: number | string;
+  is_active: boolean;
+}
+
+interface WeightUnitItem {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  system: string;
+  is_active: boolean;
+}
+
+interface LocalizationSettings {
+  id: number;
+  store_legal_name: string;
+  brand_logo_url: string | null;
+  brand_logo_title: string;
+  brand_logo_subtitle: string;
+  ref_currency_id: number | null;
+  currency_code: string;
+  timezone: string;
+  ref_weight_unit_id: number | null;
+  weight_unit_code: string;
+  date_format: string;
+}
+
+const currencies = ref<CurrencyItem[]>([]);
+const weightUnits = ref<WeightUnitItem[]>([]);
+const localization = ref<LocalizationSettings>({
+  id: 1,
+  store_legal_name: "RLG Hobby Shop",
+  brand_logo_url: "/logo.png",
+  brand_logo_title: "RLG Online Shop",
+  brand_logo_subtitle: "Storefront, Admin & Favicon",
+  ref_currency_id: 1,
+  currency_code: "PHP",
+  timezone: "Asia/Manila (GMT+8)",
+  ref_weight_unit_id: 1,
+  weight_unit_code: "kg_g",
+  date_format: "YYYY-MM-DD",
+});
+const isLoadingLocalization = ref(false);
+const isSavingLocalization = ref(false);
+const localizationError = ref("");
+
+const fetchCurrencies = async () => {
+  try {
+    const res = await fetch("/api/ref-currencies");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        currencies.value = json.data;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load currencies", e);
+  }
+};
+
+const fetchWeightUnits = async () => {
+  try {
+    const res = await fetch("/api/ref-weight-units");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        weightUnits.value = json.data;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load weight units", e);
+  }
+};
+
+const fetchLocalization = async () => {
+  isLoadingLocalization.value = true;
+  localizationError.value = "";
+  try {
+    const res = await fetch("/api/localization");
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        localization.value = {
+          ...localization.value,
+          ...json.data,
+        };
+        adminStore.settings.storeName =
+          json.data.store_legal_name || "RLG Hobby Shop";
+        adminStore.settings.currency = json.data.currency_code || "PHP";
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load store localization", e);
+    localizationError.value =
+      "Failed to load localization settings from server.";
+  } finally {
+    isLoadingLocalization.value = false;
+  }
+};
+
+const saveLocalizationSettings = async () => {
+  isSavingLocalization.value = true;
+  localizationError.value = "";
+  try {
+    const payload = {
+      store_legal_name: localization.value.store_legal_name,
+      brand_logo_url: localization.value.brand_logo_url,
+      brand_logo_title: localization.value.brand_logo_title,
+      brand_logo_subtitle: localization.value.brand_logo_subtitle,
+      currency_code: localization.value.currency_code,
+      ref_currency_id: localization.value.ref_currency_id,
+      timezone: localization.value.timezone,
+      weight_unit_code: localization.value.weight_unit_code,
+      ref_weight_unit_id: localization.value.ref_weight_unit_id,
+      date_format: localization.value.date_format,
+    };
+
+    const res = await fetch("/api/localization", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    if (res.ok && json.success) {
+      localization.value = {
+        ...localization.value,
+        ...json.data,
+      };
+      adminStore.settings.storeName = json.data.store_legal_name;
+      adminStore.settings.currency = json.data.currency_code;
+      showFeedback("Store localization parameters saved successfully!");
+    } else {
+      localizationError.value =
+        json?.message || "Failed to save localization settings.";
+    }
+  } catch (e) {
+    console.error("saveLocalizationSettings error:", e);
+    localizationError.value =
+      "Server error while saving localization settings.";
+  } finally {
+    isSavingLocalization.value = false;
+  }
+};
+
 onMounted(() => {
   fetchRoles();
   fetchStaff();
   fetchPaymentMethods();
+  fetchShippingRules();
+  fetchCurrencies();
+  fetchWeightUnits();
+  fetchLocalization();
 });
 
 const addStaff = async () => {
@@ -826,66 +1187,240 @@ const showFeedback = (msg: string) => {
 
     <!-- TAB 3: Shipping & Tax Zones -->
     <div v-else-if="activeTab === 'shipping'" class="space-y-4">
-      <div
-        class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6"
-      >
+      <div class="flex items-center justify-between">
         <div>
           <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">
-            Shipping Rates &amp; Value-Added Tax (VAT)
+            Shipping Rates &amp; Value-Added Tax (VAT) Rules
           </h2>
-          <p class="text-xs text-slate-500">
-            Configure logistics rate cards, free delivery threshold, and tax
-            calculations
+          <p class="text-xs text-slate-500 mt-0.5">
+            Configure logistics rate cards, free delivery thresholds, and Philippine VAT calculations.
+            Toggle active/inactive per rule, or add another fee row.
           </p>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Standard Nationwide Shipping (PHP)</label
-            >
-            <input
-              v-model.number="adminStore.settings.flatShippingRate"
-              type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Free Shipping Order Threshold (PHP)</label
-            >
-            <input
-              v-model.number="adminStore.settings.freeShippingThreshold"
-              type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1"
-              >Philippine VAT Percentage (%)</label
-            >
-            <input
-              v-model.number="adminStore.settings.taxRatePercent"
-              type="number"
-              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
-            />
-          </div>
-        </div>
-
-        <div class="flex justify-end pt-2 border-t border-slate-100">
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-            @click="
-              showFeedback(
-                'Logistics and tax calculations successfully updated!',
-              )
-            "
+            class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Refresh from server"
+            :disabled="isLoadingShipping"
+            @click="fetchShippingRules"
           >
-            Save Logistics &amp; Tax Rules
+            <svg
+              class="w-4 h-4"
+              :class="{ 'animate-spin': isLoadingShipping }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
           </button>
+          <button
+            type="button"
+            class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+            @click="isAddRuleOpen = true"
+          >
+            <span>+ Add Fee / Tax Rule</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error alert -->
+      <div
+        v-if="shippingError"
+        class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center justify-between animate-fade-in"
+      >
+        <span>{{ shippingError }}</span>
+        <button
+          type="button"
+          class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer"
+          @click="shippingError = ''"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Status legend -->
+      <div class="flex items-center gap-4 text-[11px] text-slate-500">
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          Active — applied at customer checkout and order tax calculation
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+          Inactive — paused / tax-exempt
+        </span>
+      </div>
+
+      <!-- Shipping rules table -->
+      <div
+        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden"
+      >
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr
+                class="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase font-bold text-[10px] tracking-wider"
+              >
+                <th class="p-4">Fee / Rule Name</th>
+                <th class="p-4">Standard Shipping (PHP)</th>
+                <th class="p-4">Free Shipping Order Threshold (PHP)</th>
+                <th class="p-4">Philippine VAT (%)</th>
+                <th class="p-4 text-center">Status Toggle</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <!-- Loading -->
+              <tr v-if="isLoadingShipping">
+                <td colspan="6" class="p-8 text-center text-slate-400">
+                  <div class="flex items-center justify-center gap-2">
+                    <span
+                      class="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"
+                    ></span>
+                    <span class="text-xs font-semibold"
+                      >Loading shipping &amp; tax rules...</span
+                    >
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Empty State -->
+              <tr v-else-if="shippingRules.length === 0">
+                <td colspan="6" class="p-8 text-center text-slate-400">
+                  <p class="font-bold text-slate-600 text-xs">
+                    No shipping &amp; tax fee rules found
+                  </p>
+                  <p class="text-[11px] text-slate-400 mt-1">
+                    Click "+ Add Fee / Tax Rule" to create a shipping &amp; tax calculation row.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Rule Rows -->
+              <tr
+                v-for="rule in shippingRules"
+                :key="rule.id"
+                class="hover:bg-slate-50/70 transition-colors"
+                :class="rule.is_active ? 'bg-emerald-50/10' : ''"
+              >
+                <!-- Column 1: Rule Name -->
+                <td class="p-4">
+                  <div class="flex items-center gap-2.5">
+                    <div
+                      class="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-sm flex-shrink-0"
+                    >
+                      🚚
+                    </div>
+                    <div>
+                      <span class="font-bold text-slate-900 block leading-tight">
+                        {{ rule.name }}
+                      </span>
+                      <span class="text-[10px] text-slate-400 font-mono">
+                        Rule ID: #{{ rule.id }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Column 2: Standard Shipping Fee -->
+                <td class="p-4">
+                  <span class="font-bold text-slate-900 font-mono text-xs">
+                    ₱{{ Number(rule.standard_shipping_fee).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                  </span>
+                </td>
+
+                <!-- Column 3: Free Shipping Threshold -->
+                <td class="p-4">
+                  <span class="font-bold text-slate-900 font-mono text-xs">
+                    ₱{{ Number(rule.free_shipping_threshold).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                  </span>
+                </td>
+
+                <!-- Column 4: Philippine VAT (%) -->
+                <td class="p-4">
+                  <span
+                    class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border inline-flex items-center gap-1"
+                    :class="
+                      Number(rule.vat_percentage) > 0
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    "
+                  >
+                    <span>{{ Number(rule.vat_percentage).toFixed(2) }}%</span>
+                    <span v-if="Number(rule.vat_percentage) === 12" class="text-[9px] font-extrabold uppercase">
+                      (BIR 12%)
+                    </span>
+                  </span>
+                </td>
+
+                <!-- Column 5: Status Toggle -->
+                <td class="p-4 text-center">
+                  <div class="inline-flex items-center gap-2.5">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="sr-only peer"
+                        :checked="rule.is_active"
+                        @change="toggleRuleStatus(rule)"
+                      />
+                      <div
+                        class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
+                      />
+                    </label>
+                    <span
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                      :class="
+                        rule.is_active
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                      "
+                    >
+                      {{ rule.is_active ? "Active" : "Inactive" }}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Column 6: Actions -->
+                <td class="p-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      class="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                      @click="openEditRule(rule)"
+                    >
+                      Edit Rule
+                    </button>
+                    <button
+                      type="button"
+                      class="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                      title="Remove Rule"
+                      @click="deleteRule(rule)"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -895,95 +1430,195 @@ const showFeedback = (msg: string) => {
       <div
         class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-6"
       >
-        <div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">
-            Store Localization &amp; Formats
-          </h2>
-          <p class="text-xs text-slate-500">
-            Manage base transaction currency, default time zones, and date
-            conventions
-          </p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Store Localization &amp; Formats
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Manage base transaction currency, default time zones, and weight conventions
+            </p>
+          </div>
+          <button
+            type="button"
+            class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Refresh from server"
+            :disabled="isLoadingLocalization"
+            @click="fetchLocalization"
+          >
+            <svg
+              class="w-4 h-4"
+              :class="{ 'animate-spin': isLoadingLocalization }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Error alert if any -->
+        <div
+          v-if="localizationError"
+          class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center justify-between animate-fade-in"
+        >
+          <span>{{ localizationError }}</span>
+          <button
+            type="button"
+            class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer"
+            @click="localizationError = ''"
+          >
+            ✕
+          </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <!-- Active Brand Logo -->
           <div>
             <label class="block font-bold text-slate-700 mb-1"
               >Active Brand Logo</label
             >
-            <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200 h-[42px]">
+            <div
+              class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200 h-[42px]"
+            >
               <img
-                src="/logo.png"
+                :src="localization.brand_logo_url || '/logo.png'"
                 alt="Active Shop Logo"
                 class="w-8 h-8 object-contain rounded-lg shadow-2xs"
               />
               <div class="text-[10px] text-slate-500 leading-tight">
-                <span class="font-bold text-slate-800 block">RLG Online Shop</span>
-                <span>Storefront, Admin &amp; Favicon</span>
+                <span class="font-bold text-slate-800 block">
+                  {{ localization.brand_logo_title || "RLG Online Shop" }}
+                </span>
+                <span>{{
+                  localization.brand_logo_subtitle ||
+                  "Storefront, Admin & Favicon"
+                }}</span>
               </div>
             </div>
           </div>
 
+          <!-- Store Legal Name -->
           <div>
             <label class="block font-bold text-slate-700 mb-1"
               >Store Legal Name</label
             >
             <input
-              v-model="adminStore.settings.storeName"
+              v-model="localization.store_legal_name"
               type="text"
+              placeholder="e.g. RLG Hobby Shop"
               class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-slate-800"
             />
           </div>
 
+          <!-- Default Store Currency -->
           <div>
             <label class="block font-bold text-slate-700 mb-1"
               >Default Store Currency</label
             >
             <select
-              v-model="adminStore.settings.currency"
-              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold focus:outline-none focus:border-slate-800"
+              v-model="localization.currency_code"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold focus:outline-none focus:border-slate-800 cursor-pointer"
             >
-              <option value="PHP" class="text-slate-900 bg-white">
-                Philippine Peso (PHP ₱)
-              </option>
-              <option value="USD" class="text-slate-900 bg-white">
-                US Dollar (USD $)
-              </option>
-              <option value="JPY" class="text-slate-900 bg-white">
-                Japanese Yen (JPY ¥)
+              <option
+                v-for="curr in currencies"
+                :key="curr.code"
+                :value="curr.code"
+                class="text-slate-900 bg-white"
+              >
+                {{ curr.label || `${curr.name} (${curr.code} ${curr.symbol})` }}
               </option>
             </select>
           </div>
 
+          <!-- Timezone -->
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Timezone</label>
-            <input
-              type="text"
-              value="Asia/Manila (GMT+8)"
-              disabled
-              class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-mono"
-            />
+            <label class="block font-bold text-slate-700 mb-1"
+              >Timezone</label
+            >
+            <select
+              v-model="localization.timezone"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold focus:outline-none focus:border-slate-800 cursor-pointer"
+            >
+              <option value="Asia/Manila (GMT+8)" class="text-slate-900 bg-white">
+                Asia/Manila (GMT+8) — Philippines
+              </option>
+              <option value="Asia/Tokyo (GMT+9)" class="text-slate-900 bg-white">
+                Asia/Tokyo (GMT+9) — Japan
+              </option>
+              <option value="Asia/Singapore (GMT+8)" class="text-slate-900 bg-white">
+                Asia/Singapore (GMT+8) — Singapore
+              </option>
+              <option value="Asia/Hong_Kong (GMT+8)" class="text-slate-900 bg-white">
+                Asia/Hong_Kong (GMT+8) — Hong Kong
+              </option>
+              <option value="Asia/Seoul (GMT+9)" class="text-slate-900 bg-white">
+                Asia/Seoul (GMT+9) — South Korea
+              </option>
+              <option value="UTC (GMT+0)" class="text-slate-900 bg-white">
+                UTC (GMT+0) — Universal Time
+              </option>
+              <option value="America/New_York (GMT-5)" class="text-slate-900 bg-white">
+                America/New_York (GMT-5) — US Eastern
+              </option>
+              <option value="America/Los_Angeles (GMT-8)" class="text-slate-900 bg-white">
+                America/Los_Angeles (GMT-8) — US Pacific
+              </option>
+              <option value="Europe/London (GMT+0)" class="text-slate-900 bg-white">
+                Europe/London (GMT+0) — UK
+              </option>
+              <option value="Europe/Paris (GMT+1)" class="text-slate-900 bg-white">
+                Europe/Paris (GMT+1) — Central Europe
+              </option>
+              <option value="Australia/Sydney (GMT+11)" class="text-slate-900 bg-white">
+                Australia/Sydney (GMT+11) — Australia
+              </option>
+            </select>
           </div>
 
+          <!-- Weight Unit -->
           <div>
             <label class="block font-bold text-slate-700 mb-1"
               >Weight Unit</label
             >
-            <input
-              type="text"
-              value="Kilograms (kg) &bull; Grams (g)"
-              disabled
-              class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-mono"
-            />
+            <select
+              v-model="localization.weight_unit_code"
+              class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold focus:outline-none focus:border-slate-800 cursor-pointer"
+            >
+              <option
+                v-for="unit in weightUnits"
+                :key="unit.code"
+                :value="unit.code"
+                class="text-slate-900 bg-white"
+              >
+                {{ unit.name }}
+              </option>
+            </select>
           </div>
         </div>
 
         <div class="flex justify-end pt-2 border-t border-slate-100">
           <button
             type="button"
-            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-            @click="showFeedback('Store localization parameters saved!')"
+            :disabled="isSavingLocalization"
+            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2 transition-all"
+            @click="saveLocalizationSettings"
           >
-            Save Localization Settings
+            <span
+              v-if="isSavingLocalization"
+              class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
+            ></span>
+            <span>{{
+              isSavingLocalization
+                ? "Saving..."
+                : "Save Localization Settings"
+            }}</span>
           </button>
         </div>
       </div>
@@ -1245,6 +1880,268 @@ const showFeedback = (msg: string) => {
                 class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
               ></span>
               <span>{{ isUpdatingStaff ? "Saving..." : "Save Changes" }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Add Shipping & Tax Rule Modal -->
+    <teleport to="body">
+      <div
+        v-if="isAddRuleOpen"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display [color-scheme:light]"
+        >
+          <div
+            class="flex items-center justify-between pb-3 border-b border-slate-100"
+          >
+            <div>
+              <h3 class="text-base font-bold text-slate-900">
+                Add Shipping &amp; Tax Fee Rule
+              </h3>
+              <p class="text-xs text-slate-500">
+                Configure rate card, free threshold &amp; Philippine VAT
+              </p>
+            </div>
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+              @click="isAddRuleOpen = false"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Fee / Rule Name</label
+              >
+              <input
+                v-model="newRuleName"
+                type="text"
+                placeholder="e.g. Standard Nationwide Logistics &amp; 12% VAT"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Standard Nationwide Shipping Fee (PHP ₱)</label
+              >
+              <input
+                v-model.number="newRuleFee"
+                type="number"
+                step="0.01"
+                placeholder="100.00"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Free Shipping Order Threshold (PHP ₱)</label
+              >
+              <input
+                v-model.number="newRuleThreshold"
+                type="number"
+                step="0.01"
+                placeholder="2500.00"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Philippine VAT Percentage (% BIR Rate)</label
+              >
+              <input
+                v-model.number="newRuleVat"
+                type="number"
+                step="0.01"
+                placeholder="12.00"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Initial Status</label
+              >
+              <div class="flex items-center gap-4 pt-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="newRuleActive"
+                    type="radio"
+                    :value="true"
+                    class="accent-emerald-600"
+                  />
+                  <span class="font-bold text-emerald-700">Active</span>
+                </label>
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="newRuleActive"
+                    type="radio"
+                    :value="false"
+                    class="accent-slate-600"
+                  />
+                  <span class="font-bold text-slate-600">Inactive</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button
+              type="button"
+              class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
+              @click="isAddRuleOpen = false"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="isSubmittingNewRule"
+              class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              @click="addShippingRule"
+            >
+              <span
+                v-if="isSubmittingNewRule"
+                class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></span>
+              <span>{{ isSubmittingNewRule ? "Saving..." : "Add Fee &amp; VAT Rule" }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Edit Shipping & Tax Rule Modal -->
+    <teleport to="body">
+      <div
+        v-if="isEditRuleOpen && editingRule"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 font-display animate-scale-up [color-scheme:light]"
+        >
+          <div
+            class="flex items-center justify-between pb-3 border-b border-slate-100"
+          >
+            <div>
+              <h3 class="text-base font-bold text-slate-900">
+                Edit Shipping &amp; Tax Rule
+              </h3>
+              <p class="text-xs text-slate-500">
+                Update fees and tax calculation for Rule #{{ editingRule.id }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+              @click="isEditRuleOpen = false"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Fee / Rule Name</label
+              >
+              <input
+                v-model="editRuleName"
+                type="text"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Standard Nationwide Shipping (PHP ₱)</label
+              >
+              <input
+                v-model.number="editRuleFee"
+                type="number"
+                step="0.01"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Free Shipping Order Threshold (PHP ₱)</label
+              >
+              <input
+                v-model.number="editRuleThreshold"
+                type="number"
+                step="0.01"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Philippine VAT Percentage (%)</label
+              >
+              <input
+                v-model.number="editRuleVat"
+                type="number"
+                step="0.01"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 [color-scheme:light]"
+              />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 mb-1"
+                >Status</label
+              >
+              <div class="flex items-center gap-4 pt-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="editRuleActive"
+                    type="radio"
+                    :value="true"
+                    class="accent-emerald-600"
+                  />
+                  <span class="font-bold text-emerald-700">Active</span>
+                </label>
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="editRuleActive"
+                    type="radio"
+                    :value="false"
+                    class="accent-slate-600"
+                  />
+                  <span class="font-bold text-slate-600">Inactive</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button
+              type="button"
+              class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
+              @click="isEditRuleOpen = false"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="isUpdatingRule"
+              class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              @click="saveEditRule"
+            >
+              <span
+                v-if="isUpdatingRule"
+                class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></span>
+              <span>{{ isUpdatingRule ? "Saving..." : "Save Changes" }}</span>
             </button>
           </div>
         </div>

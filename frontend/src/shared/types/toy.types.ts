@@ -45,6 +45,8 @@ export interface ToyProduct {
   tags: string[];
   pokemonSetSeries?: string; // e.g. "Scarlet & Violet", "Sword & Shield"
   pokemonSetCode?: string; // e.g. "SV2a", "SV1", "S12a"
+  onePieceSetCode?: string; // e.g. "OP-01", "OP-05", "EB-01", "PRB-01"
+  onePieceProductLine?: string; // e.g. "Main Boosters (OP)", "Extra Boosters (EB)"
   isFeatured?: boolean;
   isBestSeller?: boolean;
   isNewArrival?: boolean;
@@ -62,6 +64,21 @@ export interface RefPokemonSetItem {
   set_type: string;
   notes?: string | null;
   release_order: number;
+}
+
+export interface RefOnePieceSetItem {
+  id: number;
+  subcategories_id?: number;
+  code: string;
+  name: string;
+  product_line: string;
+  set_type: string;
+  release_date?: string | null;
+  status?: string;
+  description?: string | null;
+  notes?: string | null;
+  is_subset?: boolean;
+  release_order?: number;
 }
 
 export interface RefPokemonSeriesItem {

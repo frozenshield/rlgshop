@@ -19,6 +19,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
   const selectedTcgSeries = ref<TcgSubCategory | "all">("all");
   const selectedPokemonSeries = ref<string | "all">("all");
   const selectedPokemonSet = ref<string | "all">("all");
+  const selectedOnePieceSet = ref<string | "all">("all");
   const selectedAgeGroup = ref<AgeGroup | "all">("all");
   const maxPriceFilter = ref<number>(15000);
   const minRatingFilter = ref<number>(0);
@@ -79,6 +80,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
       selectedTcgSeries.value = "all";
       selectedPokemonSeries.value = "all";
       selectedPokemonSet.value = "all";
+      selectedOnePieceSet.value = "all";
     }
   };
 
@@ -91,6 +93,9 @@ export const useCatalogStore = defineStore("catalogStore", () => {
       selectedPokemonSeries.value = "all";
       selectedPokemonSet.value = "all";
     }
+    if (series !== "one-piece") {
+      selectedOnePieceSet.value = "all";
+    }
   };
 
   const setPokemonSeries = (series: string | "all") => {
@@ -100,6 +105,10 @@ export const useCatalogStore = defineStore("catalogStore", () => {
 
   const setPokemonSet = (setId: string | "all") => {
     selectedPokemonSet.value = setId;
+  };
+
+  const setOnePieceSet = (setId: string | "all") => {
+    selectedOnePieceSet.value = setId;
   };
 
   const setAgeGroup = (age: AgeGroup | "all") => {
@@ -116,6 +125,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     selectedTcgSeries.value = "all";
     selectedPokemonSeries.value = "all";
     selectedPokemonSet.value = "all";
+    selectedOnePieceSet.value = "all";
     selectedAgeGroup.value = "all";
     maxPriceFilter.value = 15000;
     minRatingFilter.value = 0;
@@ -133,6 +143,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     selectedTcgSeries,
     selectedPokemonSeries,
     selectedPokemonSet,
+    selectedOnePieceSet,
     selectedAgeGroup,
     maxPriceFilter,
     minRatingFilter,
@@ -149,6 +160,7 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     setTcgSeries,
     setPokemonSeries,
     setPokemonSet,
+    setOnePieceSet,
     setAgeGroup,
     setSearchQuery,
     resetFilters,

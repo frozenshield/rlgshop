@@ -108,16 +108,27 @@ export const useCartStore = defineStore("cartStore", () => {
         const json = await res.json();
         if (json.success && json.data) {
           const d = json.data;
-          if (d.standard_shipping_fee !== undefined) {
-            standardShippingFee.value = Number(d.standard_shipping_fee) || 100;
+          const isActive = d.is_active !== false && d.is_active !== 0;
+          if (isActive) {
+            if (d.standard_shipping_fee !== undefined) {
+              standardShippingFee.value = Number(d.standard_shipping_fee) || 100;
+            }
+            if (d.free_shipping_threshold !== undefined) {
+              freeShippingThreshold.value =
+                Number(d.free_shipping_threshold) || 2500;
+            }
+            if (d.vat_percentage !== undefined) {
+              vatPercentage.value = Number(d.vat_percentage) || 12;
+            }
+          } else {
+            // Rule is explicitly marked inactive
+            vatPercentage.value = 0;
+            standardShippingFee.value = 0;
           }
-          if (d.free_shipping_threshold !== undefined) {
-            freeShippingThreshold.value =
-              Number(d.free_shipping_threshold) || 2500;
-          }
-          if (d.vat_percentage !== undefined) {
-            vatPercentage.value = Number(d.vat_percentage) || 12;
-          }
+        } else {
+          // No active shipping & tax rule found in database
+          vatPercentage.value = 0;
+          standardShippingFee.value = 0;
         }
       }
     } catch (e) {

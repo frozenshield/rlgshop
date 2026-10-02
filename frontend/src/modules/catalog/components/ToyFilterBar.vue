@@ -11,11 +11,13 @@ import type {
   TcgSubCategory,
   RefPokemonSeriesItem,
   RefPokemonSetItem,
+  RefOnePieceSetItem,
 } from "@/shared/types/toy.types";
 import {
   fetchPokemonSeries,
   fetchPokemonSets,
 } from "@/shared/services/pokemon-sets.service";
+import { fetchOnePieceSets } from "@/shared/services/onepiece-sets.service";
 import { formatCurrency } from "@/shared/utils/currency.util";
 
 interface Props {
@@ -40,6 +42,19 @@ const loadPokemonSets = async () => {
   }
 };
 
+const allOnePieceSets = ref<RefOnePieceSetItem[]>([]);
+const isLoadingOnePieceSets = ref(false);
+
+const loadOnePieceSets = async () => {
+  if (allOnePieceSets.value.length > 0) return;
+  isLoadingOnePieceSets.value = true;
+  try {
+    allOnePieceSets.value = await fetchOnePieceSets();
+  } finally {
+    isLoadingOnePieceSets.value = false;
+  }
+};
+
 // Group sets by generation series for clean, organized optgroups while selecting japanese_set
 const groupedPokemonSets = computed(() => {
   const groups: { series: string; sets: RefPokemonSetItem[] }[] = [];
@@ -60,6 +75,26 @@ const groupedPokemonSets = computed(() => {
   return groups;
 });
 
+// Group One Piece sets by product line
+const groupedOnePieceSets = computed(() => {
+  const groups: { productLine: string; sets: RefOnePieceSetItem[] }[] = [];
+  const map = new Map<string, RefOnePieceSetItem[]>();
+
+  for (const s of allOnePieceSets.value) {
+    const lineName = s.product_line || "Other Sets";
+    if (!map.has(lineName)) {
+      map.set(lineName, []);
+    }
+    map.get(lineName)!.push(s);
+  }
+
+  for (const [productLine, sets] of map.entries()) {
+    groups.push({ productLine, sets });
+  }
+
+  return groups;
+});
+
 // Popular Japanese sets for 1-click quick filter buttons
 const popularJapaneseSets = [
   "Pokémon Card 151",
@@ -72,11 +107,23 @@ const popularJapaneseSets = [
   "Snow Hazard / Clay Burst",
 ];
 
+// Popular One Piece sets for 1-click quick buttons
+const popularOnePieceSets = [
+  { code: "OP-01", label: "OP-01 Romance Dawn" },
+  { code: "OP-05", label: "OP-05 Awakening of the New Era" },
+  { code: "OP-07", label: "OP-07 500 Years in the Future" },
+  { code: "OP-09", label: "OP-09 Emperors in the New World" },
+  { code: "EB-01", label: "EB-01 Memorial Collection" },
+  { code: "PRB-01", label: "PRB-01 The Best" },
+];
+
 watch(
   () => store.selectedTcgSeries,
   (newSeries) => {
     if (newSeries === "pokemon") {
       loadPokemonSets();
+    } else if (newSeries === "one-piece") {
+      loadOnePieceSets();
     }
   },
   { immediate: true },
@@ -89,6 +136,15 @@ const handleSetChange = (e: Event) => {
 
 const handleResetPokemonFilters = () => {
   store.setPokemonSet("all");
+};
+
+const handleOnePieceSetChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement;
+  store.setOnePieceSet(target.value);
+};
+
+const handleResetOnePieceFilters = () => {
+  store.setOnePieceSet("all");
 };
 
 const ageGroups: { id: AgeGroup | "all"; label: string }[] = [
@@ -326,6 +382,116 @@ const handleAgeClick = (age: AgeGroup | "all") => {
           @click="store.setPokemonSet(setName)"
         >
           {{ setName }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Row 1.7: One Piece Card Game Set Dropdown (Ref Data from Backend ref_onepiece_set) -->
+    <div
+      v-if="
+        (store.selectedCategory === 'tcg' ||
+          store.selectedCategory === 'all') &&
+        store.selectedTcgSeries === 'one-piece'
+      "
+      class="bg-gradient-to-r from-red-950/40 via-orange-950/20 to-slate-950/70 p-4 rounded-2xl border border-orange-500/35 animate-fade-in space-y-3"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🏴‍☠️</span>
+          <div>
+            <h4
+              class="text-xs font-black text-orange-300 uppercase tracking-wider flex items-center gap-2"
+            >
+              <span>One Piece Card Game Set</span>
+              <span
+                class="px-1.5 py-0.5 rounded bg-orange-400/20 text-orange-300 border border-orange-400/30 text-[9px] font-extrabold"
+              >
+                ref_onepiece_set
+              </span>
+            </h4>
+            <p class="text-[11px] text-slate-400">
+              Filter by official One Piece Set expansion (<span
+                class="text-orange-300 font-mono"
+                >code &amp; name</span
+              >)
+            </p>
+          </div>
+        </div>
+
+        <button
+          v-if="store.selectedOnePieceSet !== 'all'"
+          type="button"
+          class="self-start sm:self-auto text-[11px] font-bold text-orange-400 hover:text-orange-300 underline cursor-pointer flex items-center gap-1"
+          @click="handleResetOnePieceFilters"
+        >
+          <span>✕</span>
+          <span>Clear Set Filter</span>
+        </button>
+      </div>
+
+      <!-- Main One Piece Set Dropdown -->
+      <div class="space-y-1 pt-1">
+        <label class="block text-[11px] font-bold text-slate-300">
+          Select One Piece Set:
+        </label>
+        <div class="relative">
+          <select
+            :value="store.selectedOnePieceSet"
+            :disabled="isLoadingOnePieceSets"
+            class="w-full p-2.5 pr-8 rounded-xl bg-slate-950 border border-orange-500/40 text-orange-200 text-xs font-bold focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/30 cursor-pointer disabled:opacity-50 [color-scheme:dark]"
+            @change="handleOnePieceSetChange"
+          >
+            <option value="all" class="bg-slate-900 text-slate-200">
+              🏴‍☠️ All One Piece Sets (All {{ allOnePieceSets.length }} Sets)
+            </option>
+            <optgroup
+              v-for="group in groupedOnePieceSets"
+              :key="group.productLine"
+              :label="group.productLine"
+              class="bg-slate-950 text-orange-400 font-bold"
+            >
+              <option
+                v-for="set in group.sets"
+                :key="set.id"
+                :value="set.code"
+                class="bg-slate-900 text-white font-medium"
+              >
+                [{{ set.code }}] {{ set.name }} ({{ set.set_type }})
+              </option>
+            </optgroup>
+          </select>
+          <div
+            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-orange-400 text-xs"
+          >
+            ▼
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Badges of popular One Piece Sets -->
+      <div
+        v-if="popularOnePieceSets.length > 0"
+        class="flex items-center gap-1.5 overflow-x-auto pt-1 no-scrollbar text-[11px]"
+      >
+        <span
+          class="text-slate-400 font-bold whitespace-nowrap text-[10px] uppercase"
+          >Popular Sets:</span
+        >
+        <button
+          v-for="item in popularOnePieceSets"
+          :key="item.code"
+          type="button"
+          :class="[
+            'px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap border transition-all cursor-pointer',
+            store.selectedOnePieceSet === item.code
+              ? 'bg-orange-500 text-slate-950 border-orange-400 font-extrabold shadow-xs'
+              : 'bg-slate-900/80 text-orange-200/90 border-orange-500/25 hover:border-orange-400 hover:text-white',
+          ]"
+          @click="store.setOnePieceSet(item.code)"
+        >
+          {{ item.label }}
         </button>
       </div>
     </div>

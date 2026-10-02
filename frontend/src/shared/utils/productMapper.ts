@@ -84,7 +84,7 @@ export function mapApiProductToToy(p: any): ToyProduct {
     galleryImages = [imageUrl];
   }
 
-  // 6. Tags
+  // 6. Tags & Set Codes
   const tags: string[] = [];
   if (tcgSeries) tags.push(tcgSeries);
   if (p.subcategory?.desc) tags.push(p.subcategory.desc);
@@ -93,6 +93,19 @@ export function mapApiProductToToy(p: any): ToyProduct {
   if (p.name && p.name.includes("151")) tags.push("151");
   if (p.name && p.name.toLowerCase().includes("charizard"))
     tags.push("Charizard");
+
+  // One Piece Set Code extraction
+  let onePieceSetCode: string | undefined = undefined;
+  if (tcgSeries === "one-piece" || (p.name && /OP-|EB-|PRB-|ST-/i.test(p.name))) {
+    const opMatch =
+      (p.name || "").match(/\b(OP-\d+|EB-\d+|PRB-\d+|ST-\d+)\b/i) ||
+      (p.sku || "").match(/\b(OP-\d+|EB-\d+|PRB-\d+|ST-\d+)\b/i);
+    const code = opMatch?.[1]?.toUpperCase();
+    if (code) {
+      onePieceSetCode = code;
+      tags.push(code);
+    }
+  }
 
   // 7. Slug
   const slug =
@@ -110,7 +123,12 @@ export function mapApiProductToToy(p: any): ToyProduct {
     category,
     tcgSeries,
     ageGroup: "9-12",
-    pokemonType: tcgSeries === "pokemon" ? "TCG ⚡" : undefined,
+    pokemonType:
+      tcgSeries === "pokemon"
+        ? "TCG ⚡"
+        : tcgSeries === "one-piece"
+          ? "One Piece 🏴‍☠️"
+          : undefined,
     price,
     originalPrice: price > 0 ? Math.round(price * 1.15) : undefined,
     discountPercent: 15,
@@ -125,6 +143,7 @@ export function mapApiProductToToy(p: any): ToyProduct {
     pokemonSetSeries: p.pokemon_set?.series || undefined,
     pokemonSetCode:
       p.pokemon_set?.japanese_code || p.pokemon_set?.series || undefined,
+    onePieceSetCode,
     isFeatured: true,
     isBestSeller: Number(p.id) <= 6,
     isNewArrival: true,

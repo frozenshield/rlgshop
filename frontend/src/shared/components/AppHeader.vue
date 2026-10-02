@@ -239,25 +239,38 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
             </transition>
           </div>
 
-          <!-- Figures & Model Kits Button -->
+          <!-- Gunpla Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer"
+            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
-              catalogStore.selectedCategory === 'anime-figures' ||
               catalogStore.selectedCategory === 'gunpla'
+                ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
+                : ''
+            "
+            @click="navigateToCategory('gunpla')"
+          >
+            <span>🤖 Gunpla</span>
+          </button>
+
+          <!-- Anime Figures Button -->
+          <button
+            type="button"
+            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            :class="
+              catalogStore.selectedCategory === 'anime-figures'
                 ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
                 : ''
             "
             @click="navigateToCategory('anime-figures')"
           >
-            <span>🤖 Gunpla Figures</span>
+            <span>🥋 Anime Figures</span>
           </button>
 
-          <!-- Hobby Supplies Button -->
+          <!-- Anime Merchandise Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer"
+            class="px-3 py-2 rounded-xl hover:text-indigo-400 hover:bg-indigo-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'anime-merchandise'
                 ? 'text-indigo-400 bg-indigo-950/60 border border-indigo-500/30'
@@ -271,7 +284,7 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
           <!-- Toys & Plushies Button -->
           <button
             type="button"
-            class="px-3 py-2 rounded-xl hover:text-pink-400 hover:bg-pink-950/40 transition-colors flex items-center gap-1 cursor-pointer"
+            class="px-3 py-2 rounded-xl hover:text-pink-400 hover:bg-pink-950/40 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
             :class="
               catalogStore.selectedCategory === 'toys-plushies'
                 ? 'text-pink-400 bg-pink-950/60 border border-pink-500/30'
@@ -786,16 +799,30 @@ const navigateToTcgSeries = (seriesId: TcgSubCategory) => {
         <button
           type="button"
           class="w-full text-left px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+          @click="navigateToCategory('gunpla')"
+        >
+          🤖 Gunpla &amp; Model Kits
+        </button>
+        <button
+          type="button"
+          class="w-full text-left px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
           @click="navigateToCategory('anime-figures')"
         >
-          🤖 Gunpla &amp; Figures
+          🥋 Anime Figures
         </button>
         <button
           type="button"
           class="w-full text-left px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
           @click="navigateToCategory('anime-merchandise')"
         >
-          🛡️ Hobby Supplies
+          🛡️ Anime Merchandise
+        </button>
+        <button
+          type="button"
+          class="w-full text-left px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+          @click="navigateToCategory('toys-plushies')"
+        >
+          🧸 Toys &amp; Plushies
         </button>
 
         <router-link
