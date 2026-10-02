@@ -300,3 +300,39 @@ export interface AdminChatConversation {
   };
   latest_message?: AdminChatMessage;
 }
+
+export interface DashboardMetrics {
+  total_revenue: number;
+  total_orders: number;
+  average_order_value: number;
+  total_added_cart: number;
+  total_cart_unique_items: number;
+  total_added_favourite: number;
+  pending_orders_count: number;
+  low_stock_count: number;
+  unread_inquiries_count: number;
+  active_visitors_today: number;
+  revenue_growth_pct: number;
+  order_velocity_pct: number;
+  aov_bundle_lift: number;
+}
+
+export interface DashboardTopProduct {
+  name: string;
+  unitsSold: number;
+  revenue: number;
+  share: string;
+}
+
+export interface DashboardTopReferrer {
+  source: string;
+  visitors: number;
+  conversionRate: string;
+}
+
+export interface DashboardData {
+  metrics: DashboardMetrics;
+  top_products: DashboardTopProduct[];
+  top_referrers: DashboardTopReferrer[];
+  recent_orders: any[];
+}

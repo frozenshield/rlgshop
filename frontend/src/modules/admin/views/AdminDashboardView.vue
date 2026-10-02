@@ -17,7 +17,13 @@ const openItemsDetail = (order: AdminOrder) => {
   isItemsDetailModalOpen.value = true;
 };
 
+const setTimeframe = async (timeframe: "today" | "week" | "month") => {
+  adminStore.dashboardTimeframe = timeframe;
+  await adminStore.fetchDashboardData(timeframe);
+};
+
 onMounted(async () => {
+  await adminStore.fetchDashboardData(adminStore.dashboardTimeframe);
   if (adminStore.orders.length === 0) {
     await adminStore.fetchOrders();
   }
@@ -65,7 +71,7 @@ onMounted(async () => {
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
           "
-          @click="adminStore.dashboardTimeframe = 'today'"
+          @click="setTimeframe('today')"
         >
           Today
         </button>
@@ -77,7 +83,7 @@ onMounted(async () => {
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
           "
-          @click="adminStore.dashboardTimeframe = 'week'"
+          @click="setTimeframe('week')"
         >
           This Week
         </button>
@@ -89,15 +95,15 @@ onMounted(async () => {
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
           "
-          @click="adminStore.dashboardTimeframe = 'month'"
+          @click="setTimeframe('month')"
         >
           This Month
         </button>
       </div>
     </div>
 
-    <!-- At-a-Glance Core Metrics (4 Cards) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    <!-- At-a-Glance Core Metrics (6 Cards including Cart & Favourites Telemetry) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
       <!-- Total Revenue -->
       <div
         class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3"
@@ -118,7 +124,7 @@ onMounted(async () => {
             class="text-[11px] text-emerald-600 font-bold flex items-center gap-1"
           >
             <span>&uarr; +18.4%</span>
-            <span class="text-slate-400 font-normal">vs previous period</span>
+            <span class="text-slate-400 font-normal">vs previous</span>
           </p>
         </div>
       </div>
@@ -143,7 +149,7 @@ onMounted(async () => {
             class="text-[11px] text-indigo-600 font-bold flex items-center gap-1"
           >
             <span>&uarr; +12.1%</span>
-            <span class="text-slate-400 font-normal">order velocity</span>
+            <span class="text-slate-400 font-normal">velocity</span>
           </p>
         </div>
       </div>
@@ -154,7 +160,7 @@ onMounted(async () => {
       >
         <div class="flex items-center justify-between text-slate-500">
           <span class="text-xs font-bold uppercase tracking-wider"
-            >Avg Order Value (AOV)</span
+            >Avg Order (AOV)</span
           >
           <span class="p-2 rounded-xl bg-rose-50 text-rose-600 text-sm"
             >🏷️</span
@@ -169,6 +175,54 @@ onMounted(async () => {
           >
             <span>&uarr; +₱420</span>
             <span class="text-slate-400 font-normal">bundle lift</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Total Added in Cart (Live Telemetry from SP) -->
+      <div
+        class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3"
+      >
+        <div class="flex items-center justify-between text-slate-500">
+          <span class="text-xs font-bold uppercase tracking-wider"
+            >Total in Cart</span
+          >
+          <span class="p-2 rounded-xl bg-sky-50 text-sky-600 text-sm"
+            >🛒</span
+          >
+        </div>
+        <div class="space-y-0.5">
+          <div class="text-2xl font-black text-slate-900">
+            {{ adminStore.metrics.totalAddedCart }} Items
+          </div>
+          <p
+            class="text-[11px] text-sky-600 font-bold flex items-center gap-1"
+          >
+            <span>{{ adminStore.metrics.totalCartUniqueItems }} active baskets</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Total in Favourites (Live Telemetry from SP) -->
+      <div
+        class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3"
+      >
+        <div class="flex items-center justify-between text-slate-500">
+          <span class="text-xs font-bold uppercase tracking-wider"
+            >In Favourites</span
+          >
+          <span class="p-2 rounded-xl bg-pink-50 text-pink-600 text-sm"
+            >❤️</span
+          >
+        </div>
+        <div class="space-y-0.5">
+          <div class="text-2xl font-black text-slate-900">
+            {{ adminStore.metrics.totalAddedFavourite }} Saved
+          </div>
+          <p
+            class="text-[11px] text-pink-600 font-bold flex items-center gap-1"
+          >
+            <span>Wishlist demand</span>
           </p>
         </div>
       </div>
@@ -193,7 +247,7 @@ onMounted(async () => {
             class="text-[11px] text-emerald-600 font-bold flex items-center gap-1"
           >
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>124 live on checkout</span>
+            <span>124 on checkout</span>
           </p>
         </div>
       </div>

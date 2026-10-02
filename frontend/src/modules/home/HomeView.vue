@@ -94,12 +94,64 @@ const defaultReviews: StoreReview[] = [
     user: { name: "David Cruz", customer_profile: { segment: "Regular" } },
     product: { name: "Leafeon GX 012/066 RR" },
   },
+  {
+    id: 4,
+    user_id: 6,
+    product_id: 2,
+    stars: 5,
+    message:
+      "RG RX-78-2 Ver 2.0 arrived double-boxed with thick bubble wrap. Zero box dings! Highly recommended gunpla shop.",
+    image: null,
+    staff_reply:
+      "Enjoy the build Christian! That Ver 2.0 inner frame is magnificent.",
+    user: { name: "Christian Santos", customer_profile: { segment: "VIP" } },
+    product: { name: "RG 1/144 RX-78-2 Gundam Ver.2.0" },
+  },
+  {
+    id: 5,
+    user_id: 7,
+    product_id: 3,
+    stars: 5,
+    message:
+      "Got the Pop Up Parade figure in pristine Japanese box. Authenticity sticker intact. Fast shipping to Cebu!",
+    image: null,
+    staff_reply: "Thank you for trusting us Bea! More figure drops coming soon.",
+    user: { name: "Bea Alcantara", customer_profile: { segment: "Regular" } },
+    product: { name: "Pop Up Parade Scale Figure" },
+  },
+  {
+    id: 6,
+    user_id: 8,
+    product_id: 4,
+    stars: 5,
+    message:
+      "Pulled a Manga Shanks from the OP-05 box! 100% unweighed, authentic sealed boxes. My go-to TCG hub in PH.",
+    image: null,
+    staff_reply: "HOLY GRAIL PULL! Huge congratulations Paolo!! 🏴‍☠️🔥",
+    user: { name: "Paolo Mendoza", customer_profile: { segment: "VIP" } },
+    product: { name: "One Piece Card Game OP-05 Awakening" },
+  },
 ];
 
+const showAllReviews = ref(false);
+const showAllBlogs = ref(false);
+
+const allReviews = computed<StoreReview[]>(() => {
+  return liveReviews.value.length > 0 ? liveReviews.value : defaultReviews;
+});
+
 const displayedReviews = computed<StoreReview[]>(() => {
-  return liveReviews.value.length > 0
-    ? liveReviews.value.slice(0, 3)
-    : defaultReviews;
+  if (showAllReviews.value) {
+    return allReviews.value;
+  }
+  return allReviews.value.slice(0, 3);
+});
+
+const displayedBlogs = computed(() => {
+  if (showAllBlogs.value) {
+    return cmsStore.publishedBlogs;
+  }
+  return cmsStore.publishedBlogs.slice(0, 4);
 });
 
 onMounted(() => {
@@ -404,21 +456,40 @@ const goToCatalog = (
 
       <!-- 7. LAYER: Verified Collector Reviews Section -->
       <section
-        class="bg-slate-900/60 rounded-3xl p-8 sm:p-12 border border-indigo-500/20 shadow-xl space-y-6 text-center backdrop-blur-md"
+        class="bg-slate-900/60 rounded-3xl p-8 sm:p-12 border border-indigo-500/20 shadow-xl space-y-6 backdrop-blur-md"
       >
-        <div class="max-w-xl mx-auto space-y-1">
-          <span
-            class="text-xs font-bold uppercase tracking-wider text-indigo-300 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-500/30"
+        <div
+          class="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4"
+        >
+          <div class="space-y-1 text-left">
+            <span
+              class="text-xs font-bold uppercase tracking-wider text-indigo-300 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-500/30 inline-block"
+            >
+              Verified Hobbyist Reviews
+            </span>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-white mt-2">
+              Trusted by 10,000+ Collectors &amp; Builders
+            </h3>
+            <p class="text-xs text-slate-400">
+              Read authentic reviews from card players, model kit builders, and
+              anime enthusiasts
+            </p>
+          </div>
+
+          <!-- Header See More Link -->
+          <button
+            v-if="allReviews.length > 3"
+            type="button"
+            class="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 cursor-pointer transition-colors flex-shrink-0"
+            @click="showAllReviews = !showAllReviews"
           >
-            Verified Hobbyist Reviews
-          </span>
-          <h3 class="text-2xl sm:text-3xl font-extrabold text-white mt-2">
-            Trusted by 10,000+ Collectors &amp; Builders
-          </h3>
-          <p class="text-xs text-slate-400">
-            Read authentic reviews from card players, model kit builders, and
-            anime enthusiasts
-          </p>
+            <span>{{
+              showAllReviews
+                ? "Show Less"
+                : `See More Reviews (${allReviews.length})`
+            }}</span>
+            <span>{{ showAllReviews ? "▴" : "→" }}</span>
+          </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -507,6 +578,22 @@ const goToCatalog = (
             </div>
           </div>
         </div>
+
+        <!-- Bottom See More Action -->
+        <div v-if="allReviews.length > 3" class="pt-2 text-center">
+          <button
+            type="button"
+            class="px-6 py-2.5 rounded-2xl bg-slate-950/90 hover:bg-slate-900 text-amber-400 hover:text-amber-300 border border-indigo-500/30 hover:border-amber-400/50 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2"
+            @click="showAllReviews = !showAllReviews"
+          >
+            <span>{{
+              showAllReviews
+                ? "Show Less Reviews"
+                : `See More Reviews (${allReviews.length - 3} more)`
+            }}</span>
+            <span>{{ showAllReviews ? "▴" : "↓" }}</span>
+          </button>
+        </div>
       </section>
 
       <!-- 8. LAYER: Hobby Guides & Collector Articles (Dynamic from CMS) -->
@@ -527,14 +614,30 @@ const goToCatalog = (
               </span>
             </div>
             <p class="text-xs text-slate-400 font-medium mt-1">
-              Tournament meta breakdowns, modeling build tips, and preservation guides from our team
+              Tournament meta breakdowns, modeling build tips, and preservation
+              guides from our team
             </p>
           </div>
+
+          <!-- Header See More Link -->
+          <button
+            v-if="cmsStore.publishedBlogs.length > 4"
+            type="button"
+            class="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 cursor-pointer transition-colors flex-shrink-0"
+            @click="showAllBlogs = !showAllBlogs"
+          >
+            <span>{{
+              showAllBlogs
+                ? "Show Less"
+                : `See More Articles (${cmsStore.publishedBlogs.length})`
+            }}</span>
+            <span>{{ showAllBlogs ? "▴" : "→" }}</span>
+          </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div
-            v-for="post in cmsStore.publishedBlogs"
+            v-for="post in displayedBlogs"
             :key="post.id"
             class="bg-slate-900/90 rounded-3xl p-6 border border-slate-800 hover:border-indigo-500/50 shadow-xl shadow-black/40 hover:shadow-indigo-500/10 transition-all duration-300 flex flex-col justify-between group cursor-pointer"
             @click="cmsStore.openBlogModal(post)"
@@ -546,7 +649,9 @@ const goToCatalog = (
                 >
                   {{ post.category }}
                 </span>
-                <span class="text-slate-500 font-mono text-[11px]">{{ post.date }}</span>
+                <span class="text-slate-500 font-mono text-[11px]">{{
+                  post.date
+                }}</span>
               </div>
 
               <h3
@@ -560,13 +665,36 @@ const goToCatalog = (
               </p>
             </div>
 
-            <div class="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs">
-              <span class="text-slate-400 font-medium">By <strong class="text-slate-200">{{ post.author }}</strong></span>
-              <span class="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+            <div
+              class="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs"
+            >
+              <span class="text-slate-400 font-medium"
+                >By
+                <strong class="text-slate-200">{{ post.author }}</strong></span
+              >
+              <span
+                class="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1"
+              >
                 Read Article &rarr;
               </span>
             </div>
           </div>
+        </div>
+
+        <!-- Bottom See More Action -->
+        <div v-if="cmsStore.publishedBlogs.length > 4" class="pt-2 text-center">
+          <button
+            type="button"
+            class="px-6 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 text-amber-400 hover:text-amber-300 border border-slate-700/80 hover:border-amber-400/40 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2"
+            @click="showAllBlogs = !showAllBlogs"
+          >
+            <span>{{
+              showAllBlogs
+                ? "Show Less Articles"
+                : `See More Articles (${cmsStore.publishedBlogs.length - 4} more)`
+            }}</span>
+            <span>{{ showAllBlogs ? "▴" : "↓" }}</span>
+          </button>
         </div>
       </section>
 

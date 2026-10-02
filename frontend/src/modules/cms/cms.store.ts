@@ -64,6 +64,42 @@ const DEFAULT_BLOGS: CMSBlogPost[] = [
     content:
       "Single blade nippers, sanding sponges, panel lining markers, and topcoat finishes explained. Protect your parts and achieve pristine nub removal on Real Grade kits without plastic stress marks.\n\nFinish with a matte topcoat for a display-worthy anime-accurate finish.",
   },
+  {
+    id: "post-3",
+    title: "Anime Scale Figure Care: Cleaning, Display Lighting & UV Protection",
+    category: "Figure Collection",
+    author: "Curator Mia",
+    date: "2026-09-10",
+    status: "Published",
+    summary:
+      "Avoid yellowing, paint transfer, and drooping joints with proper temperature and LED casing.",
+    content:
+      "Keep your prize and scale figures in pristine showroom condition. Avoid direct sunlight which causes PVC yellowing and pigment bleaching. Use acrylic display cases with dust-proof seals and soft goat-hair brushes for cleaning.",
+  },
+  {
+    id: "post-4",
+    title: "Grading TCG Cards in the Philippines: PSA vs BGS vs CGC Guide",
+    category: "TCG Preservation",
+    author: "Grading Specialist Leo",
+    date: "2026-09-05",
+    status: "Published",
+    summary:
+      "Centering, corners, edges, and surface preparation before submitting your grail cards.",
+    content:
+      "Learn the grading criteria between PSA, Beckett, and CGC. Step-by-step submission preparation: micro-fiber wipe down, penny sleeve insertion without corner dings, and semi-rigid card savers for maximum transit protection.",
+  },
+  {
+    id: "post-5",
+    title: "Gunpla Panel Lining: Tamiya Accent Color vs Gundam Marker Fine Point",
+    category: "Gunpla & Modeling",
+    author: "Master Builder Ken",
+    date: "2026-08-28",
+    status: "Published",
+    summary:
+      "Capillary action enameled wash technique vs mechanical precision ink pens compared.",
+    content:
+      "Enhance every mechanical seam on your High Grade and Master Grade mobile suits. We compare enamel pour washes with alcohol-based fine markers, detailing cleanup with lighter fluid and gloss coat preparation.",
+  },
 ];
 
 export const useCmsStore = defineStore("cmsStore", () => {
@@ -71,6 +107,15 @@ export const useCmsStore = defineStore("cmsStore", () => {
   const banners = useStorage<CMSBanner[]>("rlg-cms-banners", DEFAULT_BANNERS);
   const pages = useStorage<CMSStaticPages>("rlg-cms-pages", DEFAULT_PAGES);
   const blogs = useStorage<CMSBlogPost[]>("rlg-cms-blogs", DEFAULT_BLOGS);
+
+  // Auto-seed missing defaults if cached blog list has fewer than 5
+  if (Array.isArray(blogs.value) && blogs.value.length < DEFAULT_BLOGS.length) {
+    const existingIds = new Set(blogs.value.map((b) => b.id));
+    const missing = DEFAULT_BLOGS.filter((b) => !existingIds.has(b.id));
+    if (missing.length > 0) {
+      blogs.value = [...blogs.value, ...missing];
+    }
+  }
 
   const isLoading = ref(false);
   const isSaving = ref(false);

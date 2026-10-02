@@ -22,6 +22,10 @@ import type {
   CustomerReviewItem,
   AdminChatConversation,
   AdminChatMessage,
+  DashboardMetrics,
+  DashboardData,
+  DashboardTopProduct,
+  DashboardTopReferrer,
 } from "./admin.types";
 import { useCmsStore } from "@/modules/cms/cms.store";
 
@@ -696,8 +700,51 @@ export const useAdminStore = defineStore("adminStore", () => {
     },
   });
 
+  // Live Dashboard Telemetry State (Stored Procedure API)
+  const dashboardData = ref<DashboardData | null>(null);
+  const isLoadingDashboard = ref(false);
+
+  const fetchDashboardData = async (timeframe = dashboardTimeframe.value) => {
+    isLoadingDashboard.value = true;
+    try {
+      const res = await fetch(`/api/admin/dashboard?timeframe=${timeframe}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          dashboardData.value = json.data;
+        }
+      }
+    } catch (err) {
+      console.warn("[Admin Store] Failed to fetch dashboard telemetry", err);
+    } finally {
+      isLoadingDashboard.value = false;
+    }
+  };
+
   // Getters / Computed Metrics for Dashboard
   const metrics = computed(() => {
+    if (dashboardData.value?.metrics) {
+      const dm = dashboardData.value.metrics;
+      return {
+        totalRevenue: dm.total_revenue,
+        totalOrdersCount: dm.total_orders,
+        averageOrderValue: dm.average_order_value,
+        totalAddedCart: dm.total_added_cart,
+        totalCartUniqueItems: dm.total_cart_unique_items,
+        totalAddedFavourite: dm.total_added_favourite,
+        pendingOrdersCount: dm.pending_orders_count,
+        lowStockCount: dm.low_stock_count,
+        unreadInquiriesCount: dm.unread_inquiries_count,
+        activeVisitorsToday: dm.active_visitors_today,
+        revenueGrowthPct: dm.revenue_growth_pct,
+        orderVelocityPct: dm.order_velocity_pct,
+        aovBundleLift: dm.aov_bundle_lift,
+        grossSales: dm.total_revenue * 1.12,
+        netSales: dm.total_revenue,
+        totalTax: dm.total_revenue * 0.12,
+      };
+    }
+
     const totalSales = orders.value
       .filter((o) => o.status !== "Canceled")
       .reduce((sum, o) => sum + o.total, 0);
@@ -715,44 +762,55 @@ export const useAdminStore = defineStore("adminStore", () => {
     return {
       totalRevenue: totalSales,
       totalOrdersCount: orders.value.length,
-      activeVisitorsToday: 1842,
+      averageOrderValue: Math.round(totalSales / (orders.value.length || 1)),
+      totalAddedCart: 1,
+      totalCartUniqueItems: 1,
+      totalAddedFavourite: 1,
       pendingOrdersCount,
       lowStockCount,
       unreadInquiriesCount,
+      activeVisitorsToday: 1842,
+      revenueGrowthPct: 18.4,
+      orderVelocityPct: 12.1,
+      aovBundleLift: 420.00,
       grossSales: totalSales * 1.12,
       netSales: totalSales,
       totalTax: totalSales * 0.12,
-      averageOrderValue: Math.round(totalSales / (orders.value.length || 1)),
     };
   });
 
   // Top performers
-  const topProducts = computed(() => [
-    {
-      name: "One Piece OP-05 Awakening of the New Era",
-      unitsSold: 94,
-      revenue: 446500,
-      share: "38%",
-    },
-    {
-      name: "Pokémon TCG 151 Elite Trainer Box",
-      unitsSold: 78,
-      revenue: 218322,
-      share: "24%",
-    },
-    {
-      name: "Hololive OCG Blooming Radiance Booster Box",
-      unitsSold: 56,
-      revenue: 221200,
-      share: "19%",
-    },
-    {
-      name: "RG 1/144 RX-78-2 Gundam Ver.2.0 Kit",
-      unitsSold: 42,
-      revenue: 107100,
-      share: "12%",
-    },
-  ]);
+  const topProducts = computed(() => {
+    if (dashboardData.value?.top_products && dashboardData.value.top_products.length > 0) {
+      return dashboardData.value.top_products;
+    }
+    return [
+      {
+        name: "One Piece OP-05 Awakening of the New Era",
+        unitsSold: 94,
+        revenue: 446500,
+        share: "38%",
+      },
+      {
+        name: "Pokémon TCG 151 Elite Trainer Box",
+        unitsSold: 78,
+        revenue: 218322,
+        share: "24%",
+      },
+      {
+        name: "Hololive OCG Blooming Radiance Booster Box",
+        unitsSold: 56,
+        revenue: 221200,
+        share: "19%",
+      },
+      {
+        name: "RG 1/144 RX-78-2 Gundam Ver.2.0 Kit",
+        unitsSold: 42,
+        revenue: 107100,
+        share: "12%",
+      },
+    ];
+  });
 
   const topReferrers = computed(() => [
     {
@@ -1644,6 +1702,9 @@ export const useAdminStore = defineStore("adminStore", () => {
     staffMembers,
     settings,
     metrics,
+    dashboardData,
+    isLoadingDashboard,
+    fetchDashboardData,
     topProducts,
     topReferrers,
     allowedModulePaths,
