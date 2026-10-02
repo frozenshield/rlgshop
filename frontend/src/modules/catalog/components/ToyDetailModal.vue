@@ -4,6 +4,7 @@ import type { ToyProduct } from "@/shared/types/toy.types";
 import { TCG_SERIES_DATA } from "@/shared/constants/categories.data";
 import { formatCurrency, formatAgeGroup } from "@/shared/utils/currency.util";
 import { formatProductDescription } from "@/shared/utils/descriptionFormatter";
+import { mapApiProductToToy } from "@/shared/utils/productMapper";
 import { useCartStore } from "@/modules/cart/cart.store";
 import { useWishlistStore } from "@/modules/wishlist/wishlist.store";
 import BaseBadge from "@/shared/components/BaseBadge.vue";
@@ -89,6 +90,49 @@ const formatDate = (dateStr?: string) => {
   } catch {
     return "Recent";
   }
+};
+
+// Frequently Bought Together Bundles
+const activeBundle = ref<any>(null);
+
+const fetchProductBundle = async (productId: number | string) => {
+  try {
+    const res = await fetch(`/api/product-bundles?primary_product_id=${productId}&active_only=true`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        activeBundle.value = json.data[0];
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch product bundle", e);
+  }
+  activeBundle.value = null;
+};
+
+watch(
+  () => props.toy,
+  (newToy) => {
+    if (newToy?.id) {
+      fetchProductBundle(newToy.id);
+    } else {
+      activeBundle.value = null;
+    }
+  },
+  { immediate: true },
+);
+
+const handleAddBundleToCart = () => {
+  if (!props.toy) return;
+  cartStore.addItem(props.toy, 1);
+  if (activeBundle.value && Array.isArray(activeBundle.value.bundled_products)) {
+    for (const comp of activeBundle.value.bundled_products) {
+      cartStore.addItem(mapApiProductToToy(comp), 1);
+    }
+  }
+  emit("close");
+  cartStore.isDrawerOpen = true;
 };
 </script>
 
@@ -356,6 +400,53 @@ const formatDate = (dateStr?: string) => {
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                     />
                   </svg>
+                </button>
+              </div>
+
+              <!-- Frequently Bought Together Bundle Offer -->
+              <div
+                v-if="activeBundle && activeBundle.bundled_products && activeBundle.bundled_products.length > 0"
+                class="mt-4 p-4 rounded-2xl bg-slate-950/80 border border-indigo-500/40 space-y-3 shadow-lg"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-black uppercase text-indigo-400 tracking-wider flex items-center gap-1">
+                      <span>✨</span>
+                      <span>{{ activeBundle.badge_text || 'Frequently Bought Together' }}</span>
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                      Save {{ activeBundle.discount_percentage }}%
+                    </span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-400 font-mono">Special Combo</span>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Main Product -->
+                  <div class="flex items-center gap-2 p-1.5 px-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                    <img :src="currentImage" class="w-7 h-7 object-cover rounded-lg" />
+                    <span class="font-bold text-slate-200 truncate max-w-[120px]">{{ toy.name }}</span>
+                  </div>
+                  <span class="text-indigo-400 font-bold text-sm">+</span>
+                  <!-- Companion Products -->
+                  <div
+                    v-for="comp in activeBundle.bundled_products"
+                    :key="comp.id"
+                    class="flex items-center gap-2 p-1.5 px-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs"
+                  >
+                    <img :src="comp.image_url" class="w-7 h-7 object-cover rounded-lg" />
+                    <span class="font-bold text-slate-200 truncate max-w-[130px]">{{ comp.name }}</span>
+                    <span class="text-amber-400 font-mono text-[11px] font-bold">{{ formatCurrency(comp.price) }}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 hover:opacity-95 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-98"
+                  @click="handleAddBundleToCart"
+                >
+                  <span>🎁</span>
+                  <span>Add Combo to Cart &amp; Save {{ activeBundle.discount_percentage }}%</span>
                 </button>
               </div>
             </div>

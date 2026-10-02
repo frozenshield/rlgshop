@@ -208,15 +208,59 @@ export interface PromoCode {
   isActive: boolean;
 }
 
+export interface ProductBundleItem {
+  id: number;
+  primary_product_id: number;
+  primary_product?: any;
+  title: string;
+  bundle_product_ids: number[];
+  bundled_products?: any[];
+  discount_percentage: number;
+  conversion_lift: string;
+  badge_text: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface AbandonedCart {
-  id: string;
+  id: string | number;
+  customer_id?: number | null;
   customerEmail: string;
   customerName: string;
   itemsCount: number;
   totalValue: number;
+  cartItems?: any[];
+  recoveryToken?: string;
+  discountCode?: string;
+  discountPercent?: number;
   lastActive: string;
   recovered: boolean;
   reminderSent: boolean;
+  reminderSentAt?: string | null;
+}
+
+export interface SeoMetadataItem {
+  id?: number;
+  entity_type: string;
+  entity_id?: number | null;
+  page_name: string;
+  route_path: string;
+  meta_title: string;
+  meta_description: string;
+  meta_keywords?: string;
+  focus_keyword?: string;
+  canonical_url?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image_url?: string;
+  twitter_card?: string;
+  robots?: string;
+  structured_data_json?: any;
+  seo_score?: number;
+  ai_generated?: boolean;
+  ai_model?: string;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 export interface CMSBanner {

@@ -10,6 +10,8 @@ import type {
   CustomerInquiry,
   PromoCode,
   AbandonedCart,
+  ProductBundleItem,
+  SeoMetadataItem,
   CMSBanner,
   StaffMember,
   StoreSettings,
@@ -641,32 +643,24 @@ export const useAdminStore = defineStore("adminStore", () => {
     },
   ]);
 
+  // Upsell & Bundles
+  const productBundles = ref<ProductBundleItem[]>([]);
+  const isLoadingBundles = ref(false);
+
   // Abandoned Carts
-  const abandonedCarts = useStorage<AbandonedCart[]>(
-    "rlg-admin-abandoned-carts",
-    [
-      {
-        id: "AB-881",
-        customerEmail: "joshua.hobby@gmail.com",
-        customerName: "Joshua Aquino",
-        itemsCount: 2,
-        totalValue: 5498,
-        lastActive: "2 hours ago",
-        recovered: false,
-        reminderSent: false,
-      },
-      {
-        id: "AB-882",
-        customerEmail: "mika.otaku@yahoo.com",
-        customerName: "Mika Fernandez",
-        itemsCount: 1,
-        totalValue: 2688,
-        lastActive: "6 hours ago",
-        recovered: false,
-        reminderSent: true,
-      },
-    ],
-  );
+  const abandonedCarts = ref<AbandonedCart[]>([]);
+  const isLoadingAbandonedCarts = ref(false);
+  const abandonedCartStats = ref({
+    total_abandoned_value: 0,
+    abandoned_count: 0,
+    reminders_sent_count: 0,
+    recovered_count: 0,
+    recovery_rate_percent: 0,
+  });
+
+  // SEO Metadata
+  const seoMetadataList = ref<SeoMetadataItem[]>([]);
+  const isLoadingSeo = ref(false);
 
   // CMS Banners (Delegated to centralized useCmsStore with live backend API sync)
   const cmsStore = useCmsStore();
@@ -1319,11 +1313,247 @@ export const useAdminStore = defineStore("adminStore", () => {
     }
   };
 
-  const sendAbandonedCartReminder = (cartId: string) => {
-    const cart = abandonedCarts.value.find((c) => c.id === cartId);
+  // ─── Upsell & Bundles Actions ──────────────────────────────────────────────
+  const fetchProductBundles = async () => {
+    isLoadingBundles.value = true;
+    try {
+      const res = await fetch("/api/product-bundles");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          productBundles.value = json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch product bundles from API", e);
+    } finally {
+      isLoadingBundles.value = false;
+    }
+  };
+
+  const createProductBundle = async (payload: any) => {
+    try {
+      const res = await fetch("/api/product-bundles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        await fetchProductBundles();
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to create product bundle", e);
+    }
+    return false;
+  };
+
+  const updateProductBundle = async (id: number, payload: any) => {
+    try {
+      const res = await fetch(`/api/product-bundles/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        await fetchProductBundles();
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to update product bundle", e);
+    }
+    return false;
+  };
+
+  const toggleProductBundle = async (id: number) => {
+    const b = productBundles.value.find((item) => item.id === id);
+    if (b) {
+      b.is_active = !b.is_active;
+    }
+    try {
+      await fetch(`/api/product-bundles/${id}/toggle`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+    } catch (e) {
+      console.error("Failed to toggle bundle status", e);
+    }
+  };
+
+  const deleteProductBundle = async (id: number) => {
+    try {
+      const res = await fetch(`/api/product-bundles/${id}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        productBundles.value = productBundles.value.filter((b) => b.id !== id);
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to delete product bundle", e);
+    }
+    return false;
+  };
+
+  // ─── Abandoned Cart Actions ────────────────────────────────────────────────
+  const fetchAbandonedCarts = async () => {
+    isLoadingAbandonedCarts.value = true;
+    try {
+      const res = await fetch("/api/admin/abandoned-carts");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          abandonedCarts.value = json.data.map((c: any) => ({
+            id: c.id,
+            customer_id: c.customer_id,
+            customerName: c.customer_name,
+            customerEmail: c.customer_email,
+            itemsCount: c.items_count,
+            totalValue: Number(c.total_value) || 0,
+            cartItems: c.cart_items,
+            recoveryToken: c.recovery_token,
+            discountCode: c.discount_code,
+            discountPercent: c.discount_percent,
+            lastActive: c.last_active_human || "Recently",
+            recovered: Boolean(c.recovered),
+            reminderSent: Boolean(c.reminder_sent),
+            reminderSentAt: c.reminder_sent_at,
+          }));
+          if (json.statistics) {
+            abandonedCartStats.value = json.statistics;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch abandoned carts from API", e);
+    } finally {
+      isLoadingAbandonedCarts.value = false;
+    }
+  };
+
+  const sendAbandonedCartReminder = async (cartId: string | number) => {
+    const cart = abandonedCarts.value.find((c) => String(c.id) === String(cartId));
     if (cart) {
       cart.reminderSent = true;
+      cart.reminderSentAt = new Date().toISOString();
+      abandonedCartStats.value.reminders_sent_count++;
     }
+
+    try {
+      const res = await fetch(`/api/admin/abandoned-carts/${cartId}/send-reminder`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.message || "Recovery email sent successfully!";
+      }
+    } catch (e) {
+      console.error("Failed to dispatch abandoned cart email", e);
+    }
+    return null;
+  };
+
+  const dispatchAllAbandonedCarts = async () => {
+    try {
+      const res = await fetch("/api/admin/abandoned-carts/dispatch-all", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        await fetchAbandonedCarts();
+        const json = await res.json();
+        return json.message || "All recovery emails dispatched!";
+      }
+    } catch (e) {
+      console.error("Failed to dispatch all recovery emails", e);
+    }
+    return null;
+  };
+
+  const deleteAbandonedCart = async (cartId: string | number) => {
+    try {
+      const res = await fetch(`/api/admin/abandoned-carts/${cartId}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        abandonedCarts.value = abandonedCarts.value.filter((c) => String(c.id) !== String(cartId));
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to delete abandoned cart", e);
+    }
+    return false;
+  };
+
+  // ─── SEO Metadata Actions ─────────────────────────────────────────────────
+  const fetchSeoMetadata = async () => {
+    isLoadingSeo.value = true;
+    try {
+      const res = await fetch("/api/seo-metadata");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          seoMetadataList.value = json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch SEO metadata list from API", e);
+    } finally {
+      isLoadingSeo.value = false;
+    }
+  };
+
+  const generateAiSeo = async (params: any) => {
+    try {
+      const res = await fetch("/api/seo-metadata/generate-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data;
+      }
+    } catch (e) {
+      console.error("Failed to generate AI SEO metadata", e);
+    }
+    return null;
+  };
+
+  const saveSeoMetadata = async (payload: any) => {
+    try {
+      const res = await fetch("/api/seo-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        await fetchSeoMetadata();
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to save SEO metadata", e);
+    }
+    return false;
+  };
+
+  const deleteSeoMetadata = async (id: number) => {
+    try {
+      const res = await fetch(`/api/seo-metadata/${id}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        seoMetadataList.value = seoMetadataList.value.filter((s) => s.id !== id);
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to delete SEO metadata", e);
+    }
+    return false;
   };
 
   // Inquiry Actions
@@ -1707,7 +1937,26 @@ export const useAdminStore = defineStore("adminStore", () => {
     replyToCustomerReview,
     deleteCustomerReview,
     promoCodes,
+    productBundles,
+    isLoadingBundles,
+    fetchProductBundles,
+    createProductBundle,
+    updateProductBundle,
+    toggleProductBundle,
+    deleteProductBundle,
     abandonedCarts,
+    isLoadingAbandonedCarts,
+    abandonedCartStats,
+    fetchAbandonedCarts,
+    sendAbandonedCartReminder,
+    dispatchAllAbandonedCarts,
+    deleteAbandonedCart,
+    seoMetadataList,
+    isLoadingSeo,
+    fetchSeoMetadata,
+    generateAiSeo,
+    saveSeoMetadata,
+    deleteSeoMetadata,
     cmsBanners,
     staffMembers,
     settings,
@@ -1735,7 +1984,6 @@ export const useAdminStore = defineStore("adminStore", () => {
     addInventoryItem,
     addPromoCode,
     togglePromoCode,
-    sendAbandonedCartReminder,
     markInquiryStatus,
   };
 });
