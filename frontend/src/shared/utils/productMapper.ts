@@ -35,7 +35,11 @@ export function mapApiProductToToy(p: any): ToyProduct {
   const subId = Number(p.ref_subcategory_id || p.subcategory?.id || 0);
   let tcgSeries: TcgSubCategory | undefined = undefined;
   if (category === "tcg") {
-    if (subId === 1 || subDesc.includes("pokemon")) {
+    if (
+      subId === 1 ||
+      subDesc.includes("pokemon") ||
+      (p.name && (p.name.toLowerCase().includes("pokemon") || p.name.toLowerCase().includes("pokémon")))
+    ) {
       tcgSeries = "pokemon";
     } else if (
       subId === 2 ||

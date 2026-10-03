@@ -145,6 +145,38 @@ const getStatusBadge = (status: OrderStatus) => {
       return "bg-slate-100 text-slate-800";
   }
 };
+
+// Pending Status Confirmation State
+const pendingStatusChanges = ref<Record<string, OrderStatus>>({});
+const updatingStatusOrderId = ref<string | null>(null);
+
+const onStatusSelectChange = (
+  orderId: string,
+  currentStatus: OrderStatus,
+  newStatus: OrderStatus,
+) => {
+  if (newStatus === currentStatus) {
+    delete pendingStatusChanges.value[orderId];
+  } else {
+    pendingStatusChanges.value[orderId] = newStatus;
+  }
+};
+
+const confirmStatusChange = async (orderId: string) => {
+  const newStatus = pendingStatusChanges.value[orderId];
+  if (!newStatus) return;
+  updatingStatusOrderId.value = orderId;
+  try {
+    await adminStore.updateOrderStatus(orderId, newStatus);
+    delete pendingStatusChanges.value[orderId];
+  } finally {
+    updatingStatusOrderId.value = null;
+  }
+};
+
+const cancelStatusChange = (orderId: string) => {
+  delete pendingStatusChanges.value[orderId];
+};
 </script>
 
 <template>
@@ -338,31 +370,66 @@ const getStatusBadge = (status: OrderStatus) => {
                 </span>
               </td>
 
-              <!-- Status Dropdown Selector -->
-              <td class="p-4">
-                <select
-                  :value="order.status"
-                  class="text-xs font-bold px-2.5 py-1 rounded-full border cursor-pointer focus:outline-none"
-                  :class="getStatusBadge(order.status)"
-                  @change="
-                    (e) =>
-                      adminStore.updateOrderStatus(
-                        order.id,
-                        (e.target as HTMLSelectElement).value as OrderStatus,
-                      )
-                  "
-                >
-                  <option value="Pending">⏳ Pending</option>
-                  <option value="Processing">⚙️ Processing</option>
-                  <option value="Shipped">📦 Shipped</option>
-                  <option value="In Transit">🚚 In Transit</option>
-                  <option value="Delivered">✓ Delivered</option>
-                  <option value="Completed">★ Completed</option>
-                  <option value="Accepted">🤝 Accepted</option>
-                  <option value="Canceled">✕ Canceled</option>
-                  <option value="Refunded">💸 Refunded</option>
-                  <option value="Returned">↩️ Returned</option>
-                </select>
+              <!-- Status Dropdown Selector with Check & Ex Confirmation -->
+              <td class="p-4 whitespace-nowrap">
+                <div class="flex items-center gap-1.5">
+                  <select
+                    :value="pendingStatusChanges[order.id] || order.status"
+                    class="text-xs font-bold px-2.5 py-1 rounded-full border cursor-pointer focus:outline-none transition-all"
+                    :class="[
+                      getStatusBadge(pendingStatusChanges[order.id] || order.status),
+                      pendingStatusChanges[order.id] ? 'ring-2 ring-amber-400 border-amber-400 shadow-xs' : ''
+                    ]"
+                    @change="
+                      (e) =>
+                        onStatusSelectChange(
+                          order.id,
+                          order.status,
+                          (e.target as HTMLSelectElement).value as OrderStatus,
+                        )
+                    "
+                  >
+                    <option value="Pending">⏳ Pending</option>
+                    <option value="Processing">⚙️ Processing</option>
+                    <option value="Shipped">📦 Shipped</option>
+                    <option value="In Transit">🚚 In Transit</option>
+                    <option value="Delivered">✓ Delivered</option>
+                    <option value="Completed">★ Completed</option>
+                    <option value="Accepted">🤝 Accepted</option>
+                    <option value="Canceled">✕ Canceled</option>
+                    <option value="Refunded">💸 Refunded</option>
+                    <option value="Returned">↩️ Returned</option>
+                  </select>
+
+                  <!-- Confirmation Controls (Check & Ex) -->
+                  <div
+                    v-if="pendingStatusChanges[order.id]"
+                    class="flex items-center gap-1 animate-fadeIn shrink-0"
+                  >
+                    <button
+                      type="button"
+                      title="Confirm status change"
+                      class="w-6 h-6 rounded-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white flex items-center justify-center text-xs font-black shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                      :disabled="updatingStatusOrderId === order.id"
+                      @click="confirmStatusChange(order.id)"
+                    >
+                      <span
+                        v-if="updatingStatusOrderId === order.id"
+                        class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+                      ></span>
+                      <span v-else>✓</span>
+                    </button>
+                    <button
+                      type="button"
+                      title="Cancel and revert"
+                      class="w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-95 text-white flex items-center justify-center text-[11px] font-black shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                      :disabled="updatingStatusOrderId === order.id"
+                      @click="cancelStatusChange(order.id)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
               </td>
 
               <!-- Fulfillment / Tracking -->
