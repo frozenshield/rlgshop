@@ -259,14 +259,19 @@ class CustomerOrderService
             'ref_order_status_id' => $statusId,
         ];
 
+        $targetStatus = RefOrderStatus::find($statusId);
+        $targetName = strtolower($targetStatus?->name ?? '');
+
         // If explicit payment_status is provided in payload
         if (! empty($data['payment_status'])) {
             $updateData['payment_status'] = $data['payment_status'];
+        } elseif ($targetName === 'pending') {
+            // When an order is reverted back to Pending status,
+            // payment status resets back to Pending (Awaiting Payment verification)
+            $updateData['payment_status'] = 'Pending';
         } elseif ($customerOrder->payment_status === 'Pending') {
             // Once order is verified and moved into processing or subsequent fulfillment stages,
             // pending payment (e.g. Static QR) is marked as Paid.
-            $targetStatus = RefOrderStatus::find($statusId);
-            $targetName = strtolower($targetStatus?->name ?? '');
             if (in_array($targetName, ['processing', 'shipped', 'in_transit', 'delivered', 'completed', 'accepted'])) {
                 $updateData['payment_status'] = 'Paid';
             }
