@@ -238,8 +238,13 @@ class CustomerOrderService
     {
         $statusId = $data['ref_order_status_id'] ?? null;
         if (! $statusId && ! empty($data['status_name'])) {
-            $status = RefOrderStatus::where('name', strtolower(trim($data['status_name'])))
-                ->orWhere('label', 'like', trim($data['status_name']))
+            $rawStatus = trim((string) $data['status_name']);
+            $snakeStatus = Str::snake($rawStatus);
+            $normalizedStatus = str_replace(['-', ' '], '_', strtolower($rawStatus));
+            $status = RefOrderStatus::where('name', strtolower($rawStatus))
+                ->orWhere('name', $snakeStatus)
+                ->orWhere('name', $normalizedStatus)
+                ->orWhere('label', 'like', $rawStatus)
                 ->first();
             if ($status) {
                 $statusId = $status->id;
