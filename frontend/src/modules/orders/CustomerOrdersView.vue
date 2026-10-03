@@ -296,11 +296,7 @@ const getStepProgressIndex = (order: OrderRecord): number => {
     return 6;
   }
   // Step 5: In Transit
-  if (
-    s === "in_transit" ||
-    s === "in-transit" ||
-    s.includes("transit")
-  ) {
+  if (s === "in_transit" || s === "in-transit" || s.includes("transit")) {
     return 5;
   }
   // Step 4: Shipped
@@ -689,16 +685,19 @@ const formatDate = (dateStr: string) => {
                 &bull; Status:
                 <span
                   :class="
-                    (order.paymentStatus === 'Paid' || order.paymentStatus === 'Success') &&
+                    (order.paymentStatus === 'Paid' ||
+                      order.paymentStatus === 'Success') &&
                     !order.status?.toLowerCase().includes('pend')
                       ? 'text-emerald-400 font-semibold'
                       : 'text-amber-400 font-semibold'
                   "
-                >{{
-                  order.status?.toLowerCase().includes('pend') && order.paymentStatus !== 'Refunded'
-                    ? 'Pending'
-                    : order.paymentStatus
-                }}</span>
+                  >{{
+                    order.status?.toLowerCase().includes("pend") &&
+                    order.paymentStatus !== "Refunded"
+                      ? "Pending"
+                      : order.paymentStatus
+                  }}</span
+                >
               </p>
             </div>
 
@@ -773,10 +772,10 @@ const formatDate = (dateStr: string) => {
                       step.isCompleted
                         ? 'bg-amber-400 text-slate-950 font-black ring-4 ring-amber-400/20 shadow-md'
                         : step.isCurrent
-                          ? (step.isPendingPayment
-                              ? 'bg-amber-500/20 text-amber-300 border-2 border-amber-400 ring-4 ring-amber-400/20 animate-pulse'
-                              : 'bg-indigo-600 text-white font-black ring-4 ring-indigo-500/30 animate-pulse shadow-md')
-                          : 'bg-slate-800 text-slate-500 border border-slate-700/60'
+                          ? step.isPendingPayment
+                            ? 'bg-amber-500/20 text-amber-300 border-2 border-amber-400 ring-4 ring-amber-400/20 animate-pulse'
+                            : 'bg-indigo-600 text-white font-black ring-4 ring-indigo-500/30 animate-pulse shadow-md'
+                          : 'bg-slate-800 text-slate-500 border border-slate-700/60',
                     ]"
                   >
                     <span>{{ step.icon }}</span>
@@ -787,8 +786,10 @@ const formatDate = (dateStr: string) => {
                       step.isCompleted
                         ? 'text-white'
                         : step.isCurrent
-                          ? (step.isPendingPayment ? 'text-amber-400' : 'text-indigo-300 font-extrabold')
-                          : 'text-slate-500'
+                          ? step.isPendingPayment
+                            ? 'text-amber-400'
+                            : 'text-indigo-300 font-extrabold'
+                          : 'text-slate-500',
                     ]"
                   >
                     {{ step.title }}

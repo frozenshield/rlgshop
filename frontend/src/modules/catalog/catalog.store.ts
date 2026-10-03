@@ -38,14 +38,32 @@ export const useCatalogStore = defineStore("catalogStore", () => {
     if (isLoaded.value && !force && toys.value.length > 0) return;
     isLoading.value = true;
     try {
-      const res = await fetch("/api/products?per_page=100");
+      const res = await fetch("/api/products?per_page=1000");
       if (res.ok) {
         const json = await res.json();
-        const items = Array.isArray(json.data)
+        let items = Array.isArray(json.data)
           ? json.data
           : Array.isArray(json)
             ? json
             : [];
+
+        // Fetch remaining pages if database grows beyond 1000 items
+        if (json.last_page && json.last_page > 1) {
+          for (let page = 2; page <= json.last_page; page++) {
+            try {
+              const nextRes = await fetch(`/api/products?per_page=1000&page=${page}`);
+              if (nextRes.ok) {
+                const nextJson = await nextRes.json();
+                if (Array.isArray(nextJson.data)) {
+                  items = items.concat(nextJson.data);
+                }
+              }
+            } catch (err) {
+              console.warn(`Could not fetch page ${page}`, err);
+            }
+          }
+        }
+
         if (items.length > 0) {
           toys.value = items.map(mapApiProductToToy);
           isLoaded.value = true;
