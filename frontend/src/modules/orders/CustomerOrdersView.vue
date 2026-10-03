@@ -48,9 +48,9 @@ interface OrderRecord {
 const orders = ref<OrderRecord[]>([]);
 const isLoading = ref(true);
 const searchQuery = ref("");
-const selectedFilter = ref<"all" | "shipped" | "delivered" | "processing">(
-  "all",
-);
+const selectedFilter = ref<
+  "all" | "shipped" | "delivered" | "processing" | "completed"
+>("all");
 const selectedOrderForModal = ref<OrderRecord | null>(null);
 
 const openAuthModal = () => {
@@ -190,10 +190,20 @@ const filteredOrders = computed(() => {
   return orders.value.filter((o) => {
     // Status filter
     if (selectedFilter.value !== "all") {
-      const st = o.status.toLowerCase();
-      if (selectedFilter.value === "shipped" && !st.includes("ship"))
+      const st = (o.status || "").toLowerCase();
+      if (
+        selectedFilter.value === "shipped" &&
+        !st.includes("ship") &&
+        !st.includes("transit")
+      )
         return false;
       if (selectedFilter.value === "delivered" && !st.includes("deliver"))
+        return false;
+      if (
+        selectedFilter.value === "completed" &&
+        !st.includes("complete") &&
+        !st.includes("accept")
+      )
         return false;
       if (
         selectedFilter.value === "processing" &&
@@ -223,28 +233,181 @@ const filteredOrders = computed(() => {
 });
 
 const getStatusBadgeClass = (status: string) => {
-  const s = status.toLowerCase();
-  if (s.includes("deliver")) {
+  const s = (status || "").toLowerCase();
+  if (s.includes("complete") || s.includes("accept")) {
     return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+  }
+  if (s.includes("deliver")) {
+    return "bg-teal-500/20 text-teal-400 border border-teal-500/40";
+  }
+  if (s.includes("transit")) {
+    return "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40";
   }
   if (s.includes("ship")) {
     return "bg-purple-500/20 text-purple-400 border border-purple-500/40";
   }
-  if (s.includes("process") || s.includes("paid")) {
+  if (s.includes("process")) {
     return "bg-blue-500/20 text-blue-400 border border-blue-500/40";
   }
   if (s.includes("cancel")) {
     return "bg-rose-500/20 text-rose-400 border border-rose-500/40";
   }
+  if (s.includes("refund")) {
+    return "bg-pink-500/20 text-pink-400 border border-pink-500/40";
+  }
   return "bg-amber-500/20 text-amber-400 border border-amber-500/40";
 };
 
-const getStepProgressIndex = (status: string) => {
-  const s = status.toLowerCase();
-  if (s.includes("deliver")) return 4;
-  if (s.includes("ship")) return 3;
-  if (s.includes("process") || s.includes("pack")) return 2;
+export interface TimelineStep {
+  step: number;
+  key: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  isCompleted: boolean;
+  isCurrent: boolean;
+  isPendingPayment?: boolean;
+}
+
+const getStepProgressIndex = (order: OrderRecord): number => {
+  const s = (order.status || "").toLowerCase().trim();
+  const p = (order.paymentStatus || "").toLowerCase().trim();
+  const isPaid =
+    p === "paid" || p === "success" || p === "completed";
+
+  // Step 7: Completed (Accepted / Completed)
+  if (
+    s === "completed" ||
+    s === "accepted" ||
+    s.includes("complete") ||
+    s.includes("accept")
+  ) {
+    return 7;
+  }
+  // Step 6: Delivered
+  if (s === "delivered" || s.includes("deliver")) {
+    return 6;
+  }
+  // Step 5: In Transit
+  if (
+    s === "in_transit" ||
+    s === "in-transit" ||
+    s.includes("transit")
+  ) {
+    return 5;
+  }
+  // Step 4: Shipped
+  if (s === "shipped" || s.includes("ship")) {
+    // If tracking number exists and dispatched, advance into In Transit
+    return order.trackingNumber ? 5 : 4;
+  }
+  // Step 3: Processing
+  if (s === "processing" || s.includes("process") || s.includes("pack")) {
+    return 3;
+  }
+  // Step 2: Payment Confirmed / Paid
+  if (isPaid) {
+    return 2;
+  }
+  // Step 1: Order Placed (Payment Pending)
   return 1;
+};
+
+const getProgressLineWidth = (order: OrderRecord): string => {
+  const current = getStepProgressIndex(order);
+  const ratio = Math.max(0, Math.min(6, current - 1)) / 6;
+  return `${ratio * 85.72}%`;
+};
+
+const getTimelineSteps = (order: OrderRecord): TimelineStep[] => {
+  const current = getStepProgressIndex(order);
+  const p = (order.paymentStatus || "").toLowerCase().trim();
+  const isPaid =
+    p === "paid" || p === "success" || p === "completed";
+  const isCod =
+    order.paymentMethod?.toLowerCase().includes("cod") ||
+    order.paymentMethod?.toLowerCase().includes("cash");
+
+  return [
+    {
+      step: 1,
+      key: "order-placed",
+      title: "Order Placed",
+      subtitle: "Verified",
+      icon: "✓",
+      isCompleted: current >= 1,
+      isCurrent: current === 1,
+    },
+    {
+      step: 2,
+      key: "payment",
+      title: isPaid ? "Payment Success" : "Payment Pending",
+      subtitle: isPaid
+        ? `${order.paymentMethod || "Online"} Paid`
+        : isCod
+          ? "Due on Delivery"
+          : "Awaiting Verification",
+      icon: isPaid ? "✓" : current === 1 ? "⏳" : "💳",
+      isCompleted: isPaid,
+      isCurrent: !isPaid && current <= 2,
+      isPendingPayment: !isPaid,
+    },
+    {
+      step: 3,
+      key: "processing",
+      title: "Processing",
+      subtitle: current >= 3 ? "Pick & Pack" : "Pending",
+      icon: current > 3 ? "✓" : current === 3 ? "📦" : "3",
+      isCompleted: current > 3,
+      isCurrent: current === 3,
+    },
+    {
+      step: 4,
+      key: "shipped",
+      title: "Shipped",
+      subtitle:
+        current >= 4
+          ? order.carrierName
+            ? order.carrierName.split(" ")[0]
+            : "Dispatched"
+          : "Carrier Dispatch",
+      icon: current > 4 ? "✓" : current === 4 ? "🏷️" : "4",
+      isCompleted: current > 4,
+      isCurrent: current === 4,
+    },
+    {
+      step: 5,
+      key: "in-transit",
+      title: "In Transit",
+      subtitle:
+        current >= 5
+          ? order.trackingNumber
+            ? "On the Road"
+            : "In Transit"
+          : "Logistics Hub",
+      icon: current > 5 ? "✓" : current === 5 ? "🚚" : "5",
+      isCompleted: current > 5,
+      isCurrent: current === 5,
+    },
+    {
+      step: 6,
+      key: "delivered",
+      title: "Delivered",
+      subtitle: current >= 6 ? "Package Arrived" : "Collector Handed",
+      icon: current > 6 ? "✓" : current === 6 ? "🏠" : "6",
+      isCompleted: current >= 6,
+      isCurrent: current === 6,
+    },
+    {
+      step: 7,
+      key: "completed",
+      title: "Completed",
+      subtitle: current >= 7 ? "Order Finalized" : "Final Step",
+      icon: current >= 7 ? "★" : "7",
+      isCompleted: current >= 7,
+      isCurrent: current === 7,
+    },
+  ];
 };
 
 const formatDate = (dateStr: string) => {
@@ -433,6 +596,18 @@ const formatDate = (dateStr: string) => {
           >
             ✓ Delivered
           </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer"
+            :class="
+              selectedFilter === 'completed'
+                ? 'bg-amber-400 text-slate-950'
+                : 'text-slate-400 hover:text-white'
+            "
+            @click="selectedFilter = 'completed'"
+          >
+            ★ Completed
+          </button>
         </div>
       </div>
 
@@ -501,9 +676,13 @@ const formatDate = (dateStr: string) => {
                   order.paymentMethod
                 }}</span>
                 &bull; Status:
-                <span class="text-emerald-400 font-semibold">{{
-                  order.paymentStatus
-                }}</span>
+                <span
+                  :class="
+                    order.paymentStatus === 'Paid' || order.paymentStatus === 'Success'
+                      ? 'text-emerald-400 font-semibold'
+                      : 'text-amber-400 font-semibold'
+                  "
+                >{{ order.paymentStatus }}</span>
               </p>
             </div>
 
@@ -530,139 +709,81 @@ const formatDate = (dateStr: string) => {
             </div>
           </div>
 
-          <!-- Live Progress Stepper Graphic -->
+          <!-- Live Progress Stepper Graphic (7-Step Order Locator) -->
           <div class="p-6 bg-slate-900/60 border-b border-slate-800/80">
-            <h4
-              class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4"
-            >
-              Shipment Journey Timeline
-            </h4>
-            <div class="grid grid-cols-4 gap-2 text-center relative">
-              <!-- Progress bar line background -->
+            <div class="flex items-center justify-between mb-4">
+              <h4
+                class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"
+              >
+                <span>📍</span>
+                <span>Shipment Journey Locator</span>
+              </h4>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-400"
+                  >Current Stage:
+                  <strong class="text-amber-400 font-bold uppercase">{{
+                    order.statusLabel || order.status
+                  }}</strong></span
+                >
+                <span
+                  class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700"
+                  >Step {{ getStepProgressIndex(order) }} / 7</span
+                >
+              </div>
+            </div>
+            <div class="overflow-x-auto pb-2 -mx-2 px-2 custom-scrollbar">
               <div
-                class="absolute top-4 left-[12%] right-[12%] h-1 bg-slate-800 -z-0"
-              ></div>
-              <!-- Active progress bar line -->
-              <div
-                class="absolute top-4 left-[12%] h-1 bg-gradient-to-r from-amber-400 to-emerald-400 -z-0 transition-all duration-500"
-                :style="{
-                  width:
-                    getStepProgressIndex(order.status) === 1
-                      ? '0%'
-                      : getStepProgressIndex(order.status) === 2
-                        ? '33%'
-                        : getStepProgressIndex(order.status) === 3
-                          ? '66%'
-                          : '76%',
-                }"
-              ></div>
-
-              <!-- Step 1: Order Placed -->
-              <div class="flex flex-col items-center relative z-10 space-y-1.5">
+                class="min-w-[620px] sm:min-w-0 grid grid-cols-7 gap-1 text-center relative py-1"
+              >
+                <!-- Track background line -->
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                  :class="
-                    getStepProgressIndex(order.status) >= 1
-                      ? 'bg-amber-400 text-slate-950 font-black ring-4 ring-amber-400/20'
-                      : 'bg-slate-800 text-slate-400'
-                  "
-                >
-                  ✓
-                </div>
-                <span
-                  class="text-[11px] font-bold"
-                  :class="
-                    getStepProgressIndex(order.status) >= 1
-                      ? 'text-white'
-                      : 'text-slate-500'
-                  "
-                >
-                  Order Placed
-                </span>
-                <span class="text-[10px] text-slate-400 hidden sm:block"
-                  >Verified</span
-                >
-              </div>
-
-              <!-- Step 2: Processing -->
-              <div class="flex flex-col items-center relative z-10 space-y-1.5">
+                  class="absolute top-4 left-[7.14%] right-[7.14%] h-1 bg-slate-800 -z-0 rounded-full"
+                ></div>
+                <!-- Active gradient progress line -->
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                  :class="
-                    getStepProgressIndex(order.status) >= 2
-                      ? 'bg-amber-400 text-slate-950 font-black ring-4 ring-amber-400/20'
-                      : 'bg-slate-800 text-slate-400'
-                  "
-                >
-                  {{ getStepProgressIndex(order.status) >= 2 ? "✓" : "2" }}
-                </div>
-                <span
-                  class="text-[11px] font-bold"
-                  :class="
-                    getStepProgressIndex(order.status) >= 2
-                      ? 'text-white'
-                      : 'text-slate-500'
-                  "
-                >
-                  Packed &amp; Sealed
-                </span>
-                <span class="text-[10px] text-slate-400 hidden sm:block"
-                  >Double bubble wrap</span
-                >
-              </div>
+                  class="absolute top-4 left-[7.14%] h-1 bg-gradient-to-r from-amber-400 via-indigo-500 to-emerald-400 -z-0 transition-all duration-700 rounded-full"
+                  :style="{ width: getProgressLineWidth(order) }"
+                ></div>
 
-              <!-- Step 3: Shipped / In Transit -->
-              <div class="flex flex-col items-center relative z-10 space-y-1.5">
+                <!-- 7 Journey Steps: Order Placed -> Payment (Pending/Success) -> Processing -> Shipped -> In Transit -> Delivered -> Completed -->
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                  :class="
-                    getStepProgressIndex(order.status) >= 3
-                      ? 'bg-indigo-500 text-white font-black ring-4 ring-indigo-500/20 animate-pulse'
-                      : 'bg-slate-800 text-slate-400'
-                  "
+                  v-for="step in getTimelineSteps(order)"
+                  :key="step.key"
+                  class="flex flex-col items-center relative z-10 space-y-1.5 px-0.5"
                 >
-                  {{ getStepProgressIndex(order.status) >= 3 ? "🚚" : "3" }}
+                  <div
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
+                    :class="[
+                      step.isCompleted
+                        ? 'bg-amber-400 text-slate-950 font-black ring-4 ring-amber-400/20 shadow-md'
+                        : step.isCurrent
+                          ? (step.isPendingPayment
+                              ? 'bg-amber-500/20 text-amber-300 border-2 border-amber-400 ring-4 ring-amber-400/20 animate-pulse'
+                              : 'bg-indigo-600 text-white font-black ring-4 ring-indigo-500/30 animate-pulse shadow-md')
+                          : 'bg-slate-800 text-slate-500 border border-slate-700/60'
+                    ]"
+                  >
+                    <span>{{ step.icon }}</span>
+                  </div>
+                  <span
+                    class="text-[10px] sm:text-[11px] font-bold leading-tight"
+                    :class="[
+                      step.isCompleted
+                        ? 'text-white'
+                        : step.isCurrent
+                          ? (step.isPendingPayment ? 'text-amber-400' : 'text-indigo-300 font-extrabold')
+                          : 'text-slate-500'
+                    ]"
+                  >
+                    {{ step.title }}
+                  </span>
+                  <span
+                    class="text-[9px] sm:text-[10px] text-slate-400 leading-tight hidden sm:block truncate max-w-full"
+                    :title="step.subtitle"
+                  >
+                    {{ step.subtitle }}
+                  </span>
                 </div>
-                <span
-                  class="text-[11px] font-bold"
-                  :class="
-                    getStepProgressIndex(order.status) >= 3
-                      ? 'text-indigo-300'
-                      : 'text-slate-500'
-                  "
-                >
-                  In Transit
-                </span>
-                <span class="text-[10px] text-slate-400 hidden sm:block">{{
-                  order.carrierName
-                }}</span>
-              </div>
-
-              <!-- Step 4: Delivered -->
-              <div class="flex flex-col items-center relative z-10 space-y-1.5">
-                <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                  :class="
-                    getStepProgressIndex(order.status) >= 4
-                      ? 'bg-emerald-400 text-slate-950 font-black ring-4 ring-emerald-400/20'
-                      : 'bg-slate-800 text-slate-400'
-                  "
-                >
-                  {{ getStepProgressIndex(order.status) >= 4 ? "★" : "4" }}
-                </div>
-                <span
-                  class="text-[11px] font-bold"
-                  :class="
-                    getStepProgressIndex(order.status) >= 4
-                      ? 'text-emerald-400'
-                      : 'text-slate-500'
-                  "
-                >
-                  Delivered
-                </span>
-                <span class="text-[10px] text-slate-400 hidden sm:block"
-                  >Collector Handed</span
-                >
               </div>
             </div>
           </div>

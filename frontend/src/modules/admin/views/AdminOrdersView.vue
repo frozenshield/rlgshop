@@ -127,8 +127,12 @@ const getStatusBadge = (status: OrderStatus) => {
       return "bg-blue-100 text-blue-800 border-blue-200";
     case "Shipped":
       return "bg-purple-100 text-purple-800 border-purple-200";
+    case "In Transit":
+      return "bg-indigo-100 text-indigo-800 border-indigo-200";
     case "Delivered":
       return "bg-emerald-100 text-emerald-800 border-emerald-200";
+    case "Completed":
+      return "bg-teal-100 text-teal-800 border-teal-200";
     case "Accepted":
       return "bg-indigo-100 text-indigo-800 border-indigo-200";
     case "Canceled":
@@ -195,7 +199,9 @@ const getStatusBadge = (status: OrderStatus) => {
             'Pending',
             'Processing',
             'Shipped',
+            'In Transit',
             'Delivered',
+            'Completed',
             'Accepted',
             'Canceled',
             'Refunded',
@@ -348,8 +354,10 @@ const getStatusBadge = (status: OrderStatus) => {
                 >
                   <option value="Pending">⏳ Pending</option>
                   <option value="Processing">⚙️ Processing</option>
-                  <option value="Shipped">🚚 Shipped</option>
+                  <option value="Shipped">📦 Shipped</option>
+                  <option value="In Transit">🚚 In Transit</option>
                   <option value="Delivered">✓ Delivered</option>
+                  <option value="Completed">★ Completed</option>
                   <option value="Accepted">🤝 Accepted</option>
                   <option value="Canceled">✕ Canceled</option>
                   <option value="Refunded">💸 Refunded</option>
