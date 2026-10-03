@@ -48,9 +48,13 @@ class ProductService
             $query->orderBy('created_at', 'desc');
         }
 
-        $perPage = (int) ($filters['per_page'] ?? 15);
-        if ($perPage < 1 || $perPage > 1000) {
-            $perPage = 15;
+        if (isset($filters['per_page']) && ($filters['per_page'] === 'all' || (int) $filters['per_page'] === -1)) {
+            $perPage = max(1, min($query->count(), 5000));
+        } else {
+            $perPage = (int) ($filters['per_page'] ?? 15);
+            if ($perPage < 1 || $perPage > 2000) {
+                $perPage = 15;
+            }
         }
 
         return $query->paginate($perPage);
