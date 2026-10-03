@@ -255,9 +255,24 @@ class CustomerOrderService
             return null;
         }
 
-        $customerOrder->update([
+        $updateData = [
             'ref_order_status_id' => $statusId,
-        ]);
+        ];
+
+        // If explicit payment_status is provided in payload
+        if (! empty($data['payment_status'])) {
+            $updateData['payment_status'] = $data['payment_status'];
+        } elseif ($customerOrder->payment_status === 'Pending') {
+            // Once order is verified and moved into processing or subsequent fulfillment stages,
+            // pending payment (e.g. Static QR) is marked as Paid.
+            $targetStatus = RefOrderStatus::find($statusId);
+            $targetName = strtolower($targetStatus?->name ?? '');
+            if (in_array($targetName, ['processing', 'shipped', 'in_transit', 'delivered', 'completed', 'accepted'])) {
+                $updateData['payment_status'] = 'Paid';
+            }
+        }
+
+        $customerOrder->update($updateData);
 
         return $customerOrder->load(['status', 'items', 'fulfillment.carrier']);
     }
