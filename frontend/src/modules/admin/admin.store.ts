@@ -1115,8 +1115,20 @@ export const useAdminStore = defineStore("adminStore", () => {
   // Order Management Actions
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     const order = orders.value.find((o) => o.id === orderId);
+    const newPaymentStatus =
+      newStatus === "Pending"
+        ? "Pending"
+        : ["Processing", "Shipped", "In Transit", "Delivered", "Completed"].includes(
+              newStatus,
+            )
+          ? "Paid"
+          : undefined;
+
     if (order) {
       order.status = newStatus;
+      if (newPaymentStatus) {
+        order.paymentStatus = newPaymentStatus;
+      }
     }
 
     try {
@@ -1124,7 +1136,10 @@ export const useAdminStore = defineStore("adminStore", () => {
       await fetch(`/api/customer-orders/${targetId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status_name: newStatus.toLowerCase() }),
+        body: JSON.stringify({
+          status_name: newStatus.toLowerCase(),
+          ...(newPaymentStatus ? { payment_status: newPaymentStatus } : {}),
+        }),
       });
     } catch (e) {
       console.warn("Could not sync order status to backend:", e);

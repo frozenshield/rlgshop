@@ -128,33 +128,36 @@ const fetchOrders = async () => {
         }));
 
         // Also merge local storage placed orders from current session
-        const localOrders = checkoutStore.orderHistory.map((lo) => ({
-          id: lo.orderId,
-          orderNumber: lo.orderId,
-          createdAt: lo.createdAt,
-          status: "processing",
-          statusLabel: "Processing",
-          statusBadgeColor: "blue",
-          totalAmount: lo.total,
-          paymentMethod: lo.shippingDetails.paymentMethod.toUpperCase(),
-          paymentStatus: "Paid",
-          customerName:
-            `${lo.shippingDetails.firstName} ${lo.shippingDetails.lastName}`.trim(),
-          customerEmail: lo.shippingDetails.email,
-          customerPhone: lo.shippingDetails.phone,
-          shippingAddress: lo.shippingDetails.streetAddress,
-          city: lo.shippingDetails.city,
-          carrierName: "J&T Express (Standard)",
-          trackingNumber: `PH-${Math.floor(100000000 + Math.random() * 900000000)}`,
-          trackingUrl: "https://www.jtexpress.ph",
-          items: lo.items.map((it) => ({
-            product_name: it.toy.name,
-            sku: it.toy.slug || "TCG-COLLECTIBLE",
-            price: it.toy.price,
-            quantity: it.quantity,
-            image_url: it.toy.imageUrl,
-          })),
-        }));
+        const localOrders = checkoutStore.orderHistory.map((lo) => {
+          const isCard = lo.shippingDetails.paymentMethod === "card";
+          return {
+            id: lo.orderId,
+            orderNumber: lo.orderId,
+            createdAt: lo.createdAt,
+            status: isCard ? "processing" : "pending",
+            statusLabel: isCard ? "Processing" : "Pending",
+            statusBadgeColor: isCard ? "blue" : "amber",
+            totalAmount: lo.total,
+            paymentMethod: lo.shippingDetails.paymentMethod.toUpperCase(),
+            paymentStatus: isCard ? "Paid" : "Pending",
+            customerName:
+              `${lo.shippingDetails.firstName} ${lo.shippingDetails.lastName}`.trim(),
+            customerEmail: lo.shippingDetails.email,
+            customerPhone: lo.shippingDetails.phone,
+            shippingAddress: lo.shippingDetails.streetAddress,
+            city: lo.shippingDetails.city,
+            carrierName: "J&T Express (Standard)",
+            trackingNumber: `PH-${Math.floor(100000000 + Math.random() * 900000000)}`,
+            trackingUrl: "https://www.jtexpress.ph",
+            items: lo.items.map((it) => ({
+              product_name: it.toy.name,
+              sku: it.toy.slug || "TCG-COLLECTIBLE",
+              price: it.toy.price,
+              quantity: it.quantity,
+              image_url: it.toy.imageUrl,
+            })),
+          };
+        });
 
         const existingNums = new Set(dbOrders.map((d) => d.orderNumber));
         const filteredLocals = localOrders.filter(
@@ -272,8 +275,12 @@ export interface TimelineStep {
 const getStepProgressIndex = (order: OrderRecord): number => {
   const s = (order.status || "").toLowerCase().trim();
   const p = (order.paymentStatus || "").toLowerCase().trim();
-  const isPaid =
-    p === "paid" || p === "success" || p === "completed";
+  const isOrderPending = s === "pending" || s.includes("pend");
+
+  // If order status is Pending or paymentStatus is Pending, keep at Step 1 (Awaiting Payment)
+  if (isOrderPending || p === "pending") {
+    return 1;
+  }
 
   // Step 7: Completed (Accepted / Completed)
   if (
@@ -306,6 +313,7 @@ const getStepProgressIndex = (order: OrderRecord): number => {
     return 3;
   }
   // Step 2: Payment Confirmed / Paid
+  const isPaid = p === "paid" || p === "success" || p === "completed";
   if (isPaid) {
     return 2;
   }
@@ -321,9 +329,12 @@ const getProgressLineWidth = (order: OrderRecord): string => {
 
 const getTimelineSteps = (order: OrderRecord): TimelineStep[] => {
   const current = getStepProgressIndex(order);
+  const s = (order.status || "").toLowerCase().trim();
   const p = (order.paymentStatus || "").toLowerCase().trim();
+  const isOrderPending = s === "pending" || s.includes("pend");
   const isPaid =
-    p === "paid" || p === "success" || p === "completed" || current >= 3;
+    !isOrderPending &&
+    (p === "paid" || p === "success" || p === "completed" || current >= 3);
   const isCod =
     order.paymentMethod?.toLowerCase().includes("cod") ||
     order.paymentMethod?.toLowerCase().includes("cash");
@@ -346,10 +357,10 @@ const getTimelineSteps = (order: OrderRecord): TimelineStep[] => {
         ? `${order.paymentMethod || "Online"} Paid`
         : isCod
           ? "Due on Delivery"
-          : "Awaiting Verification",
-      icon: isPaid ? "✓" : current === 1 ? "⏳" : "💳",
+          : "Awaiting Payment",
+      icon: isPaid ? "✓" : "⏳",
       isCompleted: isPaid,
-      isCurrent: !isPaid && current <= 2,
+      isCurrent: !isPaid,
       isPendingPayment: !isPaid,
     },
     {
@@ -678,11 +689,16 @@ const formatDate = (dateStr: string) => {
                 &bull; Status:
                 <span
                   :class="
-                    order.paymentStatus === 'Paid' || order.paymentStatus === 'Success'
+                    (order.paymentStatus === 'Paid' || order.paymentStatus === 'Success') &&
+                    !order.status?.toLowerCase().includes('pend')
                       ? 'text-emerald-400 font-semibold'
                       : 'text-amber-400 font-semibold'
                   "
-                >{{ order.paymentStatus }}</span>
+                >{{
+                  order.status?.toLowerCase().includes('pend') && order.paymentStatus !== 'Refunded'
+                    ? 'Pending'
+                    : order.paymentStatus
+                }}</span>
               </p>
             </div>
 
