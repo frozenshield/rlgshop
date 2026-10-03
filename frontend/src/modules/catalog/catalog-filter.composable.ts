@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useCatalogStore } from "./catalog.store";
 import type { ToyProduct } from "@/shared/types/toy.types";
@@ -22,6 +22,33 @@ export const useCatalogFilterComposable = () => {
     selectedToyForModal,
     isDetailModalOpen,
   } = storeToRefs(store);
+
+  // Pagination State (Default 16 per page for clean 4x4 grid)
+  const currentPage = ref(1);
+  const itemsPerPage = ref(16);
+  const pageSizeOptions = [12, 16, 24, 36, 48];
+
+  // Reset to page 1 whenever any filter or sorting criteria changes
+  watch(
+    [
+      searchQuery,
+      selectedCategory,
+      selectedTcgSeries,
+      selectedPokemonSeries,
+      selectedPokemonSet,
+      selectedOnePieceSet,
+      selectedAgeGroup,
+      maxPriceFilter,
+      minRatingFilter,
+      sortBy,
+      onlyInStock,
+      onlyDiscounted,
+      itemsPerPage,
+    ],
+    () => {
+      currentPage.value = 1;
+    },
+  );
 
   // Filtered and Sorted Toy List
   const filteredToys = computed<ToyProduct[]>(() => {
@@ -206,9 +233,102 @@ export const useCatalogFilterComposable = () => {
   });
 
   const totalResults = computed(() => filteredToys.value.length);
+  const totalPages = computed(() =>
+    Math.max(1, Math.ceil(filteredToys.value.length / itemsPerPage.value)),
+  );
+
+  watch(totalPages, (newTotal) => {
+    if (currentPage.value > newTotal) {
+      currentPage.value = newTotal;
+    }
+  });
+
+  const paginatedToys = computed<ToyProduct[]>(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    return filteredToys.value.slice(start, start + itemsPerPage.value);
+  });
+
+  const paginationStart = computed(() => {
+    if (filteredToys.value.length === 0) return 0;
+    return (currentPage.value - 1) * itemsPerPage.value + 1;
+  });
+
+  const paginationEnd = computed(() => {
+    return Math.min(
+      currentPage.value * itemsPerPage.value,
+      filteredToys.value.length,
+    );
+  });
+
+  const displayedPages = computed<Array<number | string>>(() => {
+    const current = currentPage.value;
+    const total = totalPages.value;
+    const delta = 2;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const pages: Array<number | string> = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    pages.push(1);
+
+    if (left > 2) {
+      pages.push("...");
+    }
+
+    for (let i = left; i <= right; i++) {
+      pages.push(i);
+    }
+
+    if (right < total - 1) {
+      pages.push("...");
+    }
+
+    pages.push(total);
+
+    return pages;
+  });
+
+  const setPage = (page: number | string) => {
+    if (typeof page === "number" && page >= 1 && page <= totalPages.value) {
+      currentPage.value = page;
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage.value > 1) {
+      currentPage.value--;
+    }
+  };
+
+  const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+      currentPage.value++;
+    }
+  };
+
+  const setItemsPerPage = (size: number) => {
+    itemsPerPage.value = size;
+    currentPage.value = 1;
+  };
 
   return {
     filteredToys,
+    paginatedToys,
+    currentPage,
+    itemsPerPage,
+    pageSizeOptions,
+    totalPages,
+    paginationStart,
+    paginationEnd,
+    displayedPages,
+    setPage,
+    prevPage,
+    nextPage,
+    setItemsPerPage,
     hasActiveFilters,
     totalResults,
     selectedToyForModal,
