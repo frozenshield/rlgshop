@@ -323,7 +323,7 @@ const getTimelineSteps = (order: OrderRecord): TimelineStep[] => {
   const current = getStepProgressIndex(order);
   const p = (order.paymentStatus || "").toLowerCase().trim();
   const isPaid =
-    p === "paid" || p === "success" || p === "completed";
+    p === "paid" || p === "success" || p === "completed" || current >= 3;
   const isCod =
     order.paymentMethod?.toLowerCase().includes("cod") ||
     order.paymentMethod?.toLowerCase().includes("cash");
@@ -336,7 +336,7 @@ const getTimelineSteps = (order: OrderRecord): TimelineStep[] => {
       subtitle: "Verified",
       icon: "✓",
       isCompleted: current >= 1,
-      isCurrent: current === 1,
+      isCurrent: current === 1 && !isPaid,
     },
     {
       step: 2,
